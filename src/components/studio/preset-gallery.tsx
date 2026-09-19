@@ -1,0 +1,97 @@
+import { encode } from "uqr";
+import { useEffect, useState } from "react";
+import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
+import { renderQr } from "@/lib/qr/render";
+import type { QrStyle } from "@/lib/qr/types";
+import { cn } from "@/lib/utils";
+import { useStudio } from "@/lib/store";
+
+const THUMB = encode("BEACON", { ecc: "M", border: 0 });
+
+function PresetThumb({
+  style,
+  active,
+  name,
+  delay,
+  onPick,
+}: {
+  style: QrStyle;
+  active: boolean;
+  name: string;
+  delay: number;
+  onPick: () => void;
+}) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    const canvas = document.createElement("canvas");
+    const thumbStyle: QrStyle = { ...style, imageMode: "none", quietZone: 1, transparentBg: false };
+    renderQr(canvas, THUMB, thumbStyle, { pixelSize: 96, exportScale: true });
+    setSrc(canvas.toDataURL("image/png"));
+  }, [style]);
+
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      title={name}
+      style={{ animationDelay: `${delay}ms` }}
+      className={cn(
+        "preset-pop group flex min-w-0 flex-col gap-1.5 rounded-md border p-1.5 text-left transition-all duration-150",
+        "hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgb(0_0_0/0.35)] active:scale-[0.97]",
+        active ? "border-accent bg-surface" : "border-border bg-elevated hover:border-border-strong",
+      )}
+    >
+      <div className="aspect-square overflow-hidden rounded-sm" style={{ background: style.bg }}>
+        {src ? <img src={src} alt="" className="size-full" /> : null}
+      </div>
+      <span className="truncate px-0.5 text-[10px] leading-tight text-muted group-hover:text-fg">
+        {name}
+      </span>
+    </button>
+  );
+}
+
+export function PresetGallery() {
+  const category = useStudio((s) => s.category);
+  const presetId = useStudio((s) => s.presetId);
+  const setCategory = useStudio((s) => s.setCategory);
+  const applyPreset = useStudio((s) => s.applyPreset);
+
+  const list =
+    category === "All" ? PRESETS : PRESETS.filter((p) => p.category === category);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap gap-1.5">
+        {PRESET_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(c)}
+            className={cn(
+              "h-8 rounded-full border px-3 text-xs font-medium",
+              category === c
+                ? "border-accent bg-accent text-accent-fg"
+                : "border-border bg-elevated text-muted hover:text-fg",
+            )}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-subtle tabular-nums">{list.length} presets</p>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
+        {list.map((p, i) => (
+          <PresetThumb
+            key={p.id}
+            style={p.style}
+            name={p.name}
+            delay={Math.min(i, 23) * 16}
+            active={presetId === p.id}
+            onPick={() => applyPreset(p.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

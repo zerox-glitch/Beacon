@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0C0C0B"/>
+  <!-- QR-like printer's mark: three finder squares + rounded modules -->
+  <g fill="#F3F0E8">
+    <rect x="5" y="5" width="8" height="8" rx="1.4"/>
+    <rect x="19" y="5" width="8" height="8" rx="1.4"/>
+    <rect x="5" y="19" width="8" height="8" rx="1.4"/>
+  </g>
+  <g fill="#0C0C0B">
+    <rect x="6.7" y="6.7" width="4.6" height="4.6" rx="0.8"/>
+    <rect x="20.7" y="6.7" width="4.6" height="4.6" rx="0.8"/>
+    <rect x="6.7" y="20.7" width="4.6" height="4.6" rx="0.8"/>
+  </g>
+  <g fill="#F3F0E8">
+    <rect x="8.1" y="8.1" width="1.8" height="1.8" rx="0.35"/>
+    <rect x="22.1" y="8.1" width="1.8" height="1.8" rx="0.35"/>
+    <rect x="8.1" y="22.1" width="1.8" height="1.8" rx="0.35"/>
+    <rect x="16.2" y="16.2" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="20.2" y="16.2" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="24.4" y="16.2" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="16.2" y="20.4" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="24.4" y="20.4" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="16.2" y="24.6" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="20.2" y="24.6" width="2.4" height="2.4" rx="0.45"/>
+    <rect x="24.4" y="24.6" width="2.4" height="2.4" rx="0.45"/>
+  </g>
+</svg>
