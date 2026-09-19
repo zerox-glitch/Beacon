@@ -37,6 +37,8 @@ function ColorField({
 export function DesignPanel() {
   const style = useStudio((s) => s.style);
   const patch = useStudio((s) => s.patchStyle);
+  const imageUrl = useStudio((s) => s.imageUrl);
+  const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
 
   return (
     <div className="flex flex-col gap-6">
@@ -174,6 +176,59 @@ export function DesignPanel() {
         </div>
       </section>
 
+      {pictured && (
+        <section className="grid gap-4 rounded-lg border border-border bg-elevated/50 p-3">
+          <p className="text-xs font-medium tracking-wide text-fg">Picture tuning</p>
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Photo fade</Label>
+              <span className="text-xs tabular-nums text-subtle">
+                {Math.round(style.imageOpacity * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.15}
+              max={1}
+              step={0.01}
+              value={[style.imageOpacity]}
+              onValueChange={([v]) => patch({ imageOpacity: v ?? 0.9 })}
+            />
+            <p className="mt-1 text-xs text-subtle">Lower = code stands out more.</p>
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Dot weight</Label>
+              <span className="text-xs tabular-nums text-subtle">
+                {Math.round(style.dotScale * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.28}
+              max={0.72}
+              step={0.01}
+              value={[style.dotScale]}
+              onValueChange={([v]) => patch({ dotScale: v ?? 0.56 })}
+            />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Contrast</Label>
+              <span className="text-xs tabular-nums text-subtle">
+                {Math.round(style.contrast * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.35}
+              max={1}
+              step={0.01}
+              value={[style.contrast]}
+              onValueChange={([v]) => patch({ contrast: v ?? 0.72 })}
+            />
+            <p className="mt-1 text-xs text-subtle">Used by the Mosaic treatment.</p>
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-4">
         <div>
           <div className="mb-1 flex items-center justify-between">
@@ -210,26 +265,47 @@ export function DesignPanel() {
               <button
                 key={e}
                 type="button"
+                disabled={pictured}
                 onClick={() => patch({ ecc: e })}
                 className={cn(
-                  "h-11 rounded-md border text-xs font-medium",
-                  style.ecc === e
-                    ? "border-accent bg-accent text-accent-fg"
-                    : "border-border bg-elevated text-muted",
+                  "h-11 rounded-md border text-xs font-medium disabled:opacity-40",
+                  pictured
+                    ? e === "H"
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-elevated text-muted"
+                    : style.ecc === e
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border bg-elevated text-muted",
                 )}
               >
                 {e}
               </button>
             ))}
           </div>
+          {pictured && (
+            <p className="mt-1 text-xs text-subtle">
+              Auto-locked to H while a picture is on — it carries the code through the art.
+            </p>
+          )}
         </div>
-        <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
+        <label
+          className={cn(
+            "flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm",
+            pictured && "opacity-50",
+          )}
+        >
           Transparent background
           <Switch
+            disabled={pictured}
             checked={style.transparentBg}
             onCheckedChange={(transparentBg) => patch({ transparentBg })}
           />
         </label>
+        {pictured && (
+          <p className="-mt-2 text-xs text-subtle">
+            Transparency needs the picture off — a see-through photo would hide the code.
+          </p>
+        )}
       </section>
     </div>
   );

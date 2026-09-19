@@ -1,4 +1,5 @@
-import { Check, Copy, Download, ImageDown, Info, Printer, Shuffle } from "lucide-react";
+import { Check, Copy, Download, ImageDown, Info, Loader2, Printer, Shuffle, Wand2 } from "lucide-react";
+import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,27 @@ export function QrStage() {
     if (pick) useStudio.getState().applyPreset(pick.id);
   }
 
+  const [fixing, setFixing] = useState(false);
+  async function onAutoFix() {
+    if (fixing) return;
+    setFixing(true);
+    try {
+      const result = await autoFixScan(payload, style, imageUrl, logoUrl);
+      if (result.ok) {
+        if (Object.keys(result.patch).length === 0) {
+          toast.success("Already scannable — you're good!");
+        } else {
+          useStudio.getState().patchStyle(result.patch);
+          toast.success(`Auto-fix worked: ${result.notes.join(", ")}.`);
+        }
+      } else {
+        toast.error(result.error ?? "Could not make this scannable.");
+      }
+    } finally {
+      setFixing(false);
+    }
+  }
+
   const paper = style.bg;
 
   return (
@@ -274,6 +296,10 @@ export function QrStage() {
                       <li>Pick darker modules on a lighter background (or the reverse)</li>
                       <li>Sturdier shapes scan best: Square, Round or Dots</li>
                     </ul>
+                    <p className="mt-1.5">
+                      Or tap <span className="text-fg">Fix scan</span> below and QRWho will
+                      tune it for you.
+                    </p>
                   </>
                 ) : scanOk ? (
                   <p>
@@ -307,6 +333,12 @@ export function QrStage() {
         <Button variant="ghost" size="icon" onClick={surprise} aria-label="Random preset">
           <Shuffle />
         </Button>
+        {scanOk === false && (
+          <Button variant="secondary" onClick={onAutoFix} disabled={fixing}>
+            {fixing ? <Loader2 className="animate-spin" /> : <Wand2 />}
+            {fixing ? "Tuning…" : "Fix scan"}
+          </Button>
+        )}
       </div>
       <p className="max-w-[420px] px-2 text-center text-xs text-subtle">
         Phone cameras read the mark. Picture mode keeps finder eyes solid so scans stay reliable.

@@ -611,7 +611,7 @@ export function renderQr(
 
       if (style.imageMode === "paint" && opts.art) {
         const scale = dark ? Math.max(0.5, style.dotScale) : Math.max(0.34, style.dotScale * 0.78);
-        const ds = cell * scale;
+        const ds = cell * scale * (1 - gap);
         const dx = px0 + (cell - ds) / 2;
         const dy = py0 + (cell - ds) / 2;
         ctx.fillStyle = dark ? fill : style.bg;
