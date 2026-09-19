@@ -22,13 +22,20 @@ so Vercel is the zero-config home for this app.
 
 ### Vercel (recommended, free Hobby plan)
 
+The app lives at the repo root and `vercel.json` pins the build config
+(Framework "Other", `npm run build`, and `outputDirectory: null` so Vercel
+consumes the Build Output API in `.vercel/output` — leave the dashboard
+Output Directory **empty/unset**).
+
 1. Push this repo/branch to GitHub.
-2. On vercel.com: **Add New → Project**, import the repo, pick the branch.
-3. Settings: Framework Preset **Other**, Build Command `npm run build`,
-   Output Directory `.vercel/output`. No environment variables are needed
-   (auth + database are off by default).
-4. Deploy — SSR, HTTPS, CDN and preview deployments are included in the free
-   tier (~100 GB bandwidth/month).
+2. On vercel.com: **Add New → Project**, import the repo.
+3. Set **Production Branch** to the branch that contains the app
+   (e.g. `arena/01a0b73c-beacon`, or `main` after merging the PR), and make
+   sure **Root Directory** is left unset (repo root).
+4. Deploy — no environment variables needed (auth + database are off).
+
+The free tier includes SSR serverless functions, HTTPS, CDN and preview
+deployments (~100 GB bandwidth/month).
 
 ### Other free tiers (small config change)
 

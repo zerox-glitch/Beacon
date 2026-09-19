@@ -1,4 +1,8 @@
 node_modules/
-grok-workspace/node_modules/
-grok-workspace/.vercel/output/
-grok-workspace/screenshots/
+.project_id
+.github_repo
+.env
+.env.*
+.vercel/output/
+screenshots/
+.node_modules.lock
