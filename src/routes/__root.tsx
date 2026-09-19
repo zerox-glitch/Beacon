@@ -4,9 +4,9 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
 const APP_TITLE =
-  "QRWho — Free Artistic QR Code Generator | Custom AI QR Art, Logo, Menu & vCard Maker";
+  "QRWho — Free Artistic QR Code Generator | Custom AI QR Art, Logo, Menu, WiFi & vCard Maker (Vector SVG & PNG)";
 const APP_DESC =
-  "Create beautiful, custom artistic QR codes online for free. Transform any URL, WiFi, vCard, image, restaurant menu or Instagram link into a scannable work of art. 170+ designer presets, photo blending, 2048px print export, 100% private & on-device with zero watermarks.";
+  "Create beautiful, custom artistic QR codes online for free. Transform any URL, WiFi, vCard, photo, restaurant menu or social link into a scannable work of art. 178+ designer presets, photo blending, vector SVG & 2048px PNG print export, 100% private & on-device with zero watermarks.";
 const APP_KEYWORDS = [
   "free qr code generator",
   "custom qr code art",
@@ -37,6 +37,9 @@ const APP_KEYWORDS = [
   "bar menu qr code",
   "contactless dining qr code",
   "qr code generator no signup",
+  "print ready qr code 300 dpi",
+  "svg vector qr code generator",
+  "bulk qr code generator free",
 ].join(", ");
 
 const SCHEMA_JSON_LD = JSON.stringify({
@@ -57,10 +60,10 @@ const SCHEMA_JSON_LD = JSON.stringify({
         "priceCurrency": "USD",
       },
       "featureList": [
-        "170+ Curated Artistic Presets (Japanese Ukiyo-e, Cyberpunk, Royal Gold, Sakura, Minimal Luxe)",
+        "178+ Curated Artistic Presets (Japanese Ukiyo-e, Cyberpunk, Royal Gold, Sakura, Solarpunk, Retro Vaporwave)",
         "Photo-to-QR and Image Blending with Mosaic & Halftone filters",
+        "Infinitely Scalable Vector SVG and 2048px PNG Export for 300 DPI print",
         "Real-Time Camera Scannability Engine and 1-Click Auto-Fix",
-        "High-Density 2048px PNG Export suitable for 300 DPI print",
         "Static Zero-Redirect QR Codes that never expire",
         "100% On-Device Privacy — zero cloud uploads or telemetry",
         "ISO/IEC 18004 Error Correction Level H support",

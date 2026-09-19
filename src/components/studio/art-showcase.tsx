@@ -23,7 +23,7 @@ const SHOWCASE_CARDS = [
     id: "art-ukiyo",
     title: "Ukiyo Wave",
     category: "Japanese Woodblock",
-    tagline: "Ocean indigo on handmade washi texture",
+    tagline: "Ocean indigo on handmade washi texture with leaf finders",
     accent: "from-cyan-900/40 via-teal-900/20 to-transparent",
     border: "border-teal-500/30",
     badge: "Edo Aesthetic",
@@ -32,16 +32,25 @@ const SHOWCASE_CARDS = [
     id: "art-cyberpunk",
     title: "Cyberpunk 2099",
     category: "Sci-Fi & Tech",
-    tagline: "Electric magenta to cyan neon data stream",
+    tagline: "Electric magenta to cyan neon data stream on dark onyx",
     accent: "from-pink-900/40 via-purple-900/20 to-transparent",
     border: "border-pink-500/30",
     badge: "High Voltage",
   },
   {
+    id: "art-vaporwave",
+    title: "Vaporwave 1995",
+    category: "Retro & Synth",
+    tagline: "Pastel lilac, mint green and electric blue dreamscape",
+    accent: "from-fuchsia-900/40 via-cyan-900/20 to-transparent",
+    border: "border-fuchsia-500/30",
+    badge: "Retro Aesthetic",
+  },
+  {
     id: "art-royal",
     title: "Royal Gold",
     category: "Luxury & Fashion",
-    tagline: "Obsidian black with polished gold gradient",
+    tagline: "Obsidian black with polished gold gradient & classy finders",
     accent: "from-amber-900/40 via-yellow-900/20 to-transparent",
     border: "border-amber-500/30",
     badge: "Editorial Luxe",
@@ -54,6 +63,24 @@ const SHOWCASE_CARDS = [
     accent: "from-rose-900/40 via-pink-900/20 to-transparent",
     border: "border-rose-500/30",
     badge: "Romantic",
+  },
+  {
+    id: "art-matcha",
+    title: "Matcha Latte",
+    category: "Café & Organic",
+    tagline: "Earthy matcha green leaf modules on steamed cream",
+    accent: "from-emerald-900/40 via-lime-900/20 to-transparent",
+    border: "border-emerald-500/30",
+    badge: "Organic",
+  },
+  {
+    id: "art-solarpunk",
+    title: "Solarpunk Dawn",
+    category: "Green Tech & Nature",
+    tagline: "Radiant lime & golden solar amber on forest night",
+    accent: "from-lime-900/40 via-amber-900/20 to-transparent",
+    border: "border-lime-500/30",
+    badge: "Solarpunk",
   },
   {
     id: "art-neon-fungi",
@@ -153,7 +180,7 @@ export function ArtShowcase() {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
             <Sparkles className="size-3.5 text-ok" />
-            Curated Art Direction · 170+ Free Styles
+            Curated Art Direction · {PRESETS.length} Free Styles & Vector SVG Export
           </div>
           <h2 className="font-display text-3xl italic tracking-tight sm:text-4xl lg:text-5xl">
             QR codes that refuse to look like medical barcodes.

@@ -1,4 +1,4 @@
-import { Check, Copy, Download, ImageDown, Info, Loader2, Printer, Shuffle, Wand2 } from "lucide-react";
+import { Check, Copy, Download, FileCode2, ImageDown, Info, Loader2, Printer, Shuffle, Wand2 } from "lucide-react";
 import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { tryEncodePayload } from "@/lib/qr/encode";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
+import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { verifyQr } from "@/lib/qr/verify";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -168,6 +169,18 @@ export function QrStage() {
       toast.success("PNG saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
+    }
+  }
+
+  function onDownloadSvg() {
+    try {
+      const encoded = tryEncodePayload(payload, style);
+      if (!encoded.ok) throw new Error(encoded.error);
+      const svg = exportQrSvg(encoded.qr, style, 1000);
+      downloadSvg(svg, "qrwho-vector.svg");
+      toast.success("Vector SVG saved (infinite scale)");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "SVG export failed");
     }
   }
 
@@ -352,13 +365,17 @@ export function QrStage() {
       </div>
 
       <div className="flex w-full max-w-[520px] flex-wrap items-center justify-center gap-2">
-        <Button onClick={onDownload}>
+        <Button onClick={onDownload} title="Download 2048px high-resolution PNG">
           <Download />
-          Download PNG
+          PNG
         </Button>
-        <Button variant="secondary" onClick={onCopyImage}>
+        <Button variant="secondary" onClick={onDownloadSvg} title="Download infinitely scalable vector SVG for print">
+          <FileCode2 />
+          Vector SVG
+        </Button>
+        <Button variant="secondary" onClick={onCopyImage} title="Copy image to clipboard">
           {copied ? <Check /> : <ImageDown />}
-          Copy image
+          Copy
         </Button>
         <Button variant="ghost" size="icon" onClick={onCopyPayload} aria-label="Copy destination">
           <Copy />
