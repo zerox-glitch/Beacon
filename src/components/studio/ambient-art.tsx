@@ -1,5 +1,6 @@
-import { Cpu, Lock, Palette, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
+import { Cpu, Eye, Lock, Palette, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import type { CSSProperties } from "react";
+import { PRESETS } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 
 interface Bit {
@@ -61,6 +62,7 @@ function bitStyle(b: Bit): CSSProperties {
 
 export function AmbientArt() {
   const stageBg = useStudio((s) => s.stageBg);
+  const applyPreset = useStudio((s) => s.applyPreset);
 
   const bgImage =
     stageBg === "cosmic"
@@ -71,11 +73,11 @@ export function AmbientArt() {
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {/* High-definition generative artwork backdrop */}
+      {/* High-definition vibrant generative artwork backdrop */}
       <div
         className="stage-art-canvas"
         style={{
-          backgroundImage: `url('${bgImage}')`,
+          backgroundImage: `url(${bgImage})`,
         }}
       />
 
@@ -89,28 +91,28 @@ export function AmbientArt() {
       <div className="ambient-constellation absolute inset-0 opacity-70" />
 
       {/* Elegant architectural blueprint framing lines */}
-      <div className="absolute left-3 top-3 size-8 border-l-2 border-t-2 border-border-strong opacity-50 sm:left-6 sm:top-6" />
-      <div className="absolute right-3 top-3 size-8 border-r-2 border-t-2 border-border-strong opacity-50 sm:right-6 sm:top-6" />
-      <div className="absolute bottom-3 left-3 size-8 border-l-2 border-b-2 border-border-strong opacity-50 sm:bottom-6 sm:left-6" />
-      <div className="absolute bottom-3 right-3 size-8 border-r-2 border-b-2 border-border-strong opacity-50 sm:bottom-6 sm:right-6" />
+      <div className="absolute left-3 top-3 size-10 border-l-2 border-t-2 border-ok/40 sm:left-6 sm:top-6" />
+      <div className="absolute right-3 top-3 size-10 border-r-2 border-t-2 border-ok/40 sm:right-6 sm:top-6" />
+      <div className="absolute bottom-3 left-3 size-10 border-l-2 border-b-2 border-ok/40 sm:bottom-6 sm:left-6" />
+      <div className="absolute bottom-3 right-3 size-10 border-r-2 border-b-2 border-ok/40 sm:bottom-6 sm:right-6" />
 
-      {/* Floating decorative art badges visible on desktop & tablet */}
-      <div className="absolute left-4 top-6 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
+      {/* Floating decorative studio badges */}
+      <div className="absolute left-4 top-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
         <Sparkles className="size-3.5 text-ok" />
         <span>Generative Matrix · 178 Styles</span>
       </div>
 
-      <div className="absolute right-4 top-6 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
+      <div className="absolute right-4 top-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
         <ShieldCheck className="size-3.5 text-ok" />
         <span>Level H Scannable</span>
       </div>
 
-      <div className="absolute bottom-8 left-4 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
+      <div className="absolute bottom-4 left-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
         <Lock className="size-3.5 text-muted" />
         <span>100% Client-Side Privacy</span>
       </div>
 
-      <div className="absolute bottom-8 right-4 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
+      <div className="absolute bottom-4 right-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
         <Palette className="size-3.5 text-muted" />
         <span>2048px PNG + Vector SVG</span>
       </div>

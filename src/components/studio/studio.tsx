@@ -50,7 +50,7 @@ export function Studio() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-dvh flex-col overflow-x-hidden bg-bg text-fg">
-        <header className="relative shrink-0 overflow-hidden border-b border-border px-4 py-3 sm:px-6">
+        <header className="relative shrink-0 overflow-hidden border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="hero-glow pointer-events-none absolute inset-0" aria-hidden />
           <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex items-center gap-3">
@@ -105,7 +105,7 @@ export function Studio() {
             </ScrollArea>
           </aside>
 
-          <main className="relative min-h-0 min-w-0 overflow-x-hidden bg-bg">
+          <main className="relative min-h-0 min-w-0 overflow-x-hidden">
             <AmbientArt />
             <QrStage />
           </main>
