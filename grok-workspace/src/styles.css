@@ -1,0 +1,131 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-bg: #0c0c0b;
+  --color-elevated: #141413;
+  --color-surface: #1a1917;
+  --color-surface-hover: #22211e;
+  --color-fg: #f3f0e8;
+  --color-muted: #8c8880;
+  --color-subtle: #6a6760;
+  --color-accent: #ece8df;
+  --color-accent-fg: #0c0c0b;
+  --color-border: rgb(243 240 232 / 0.12);
+  --color-border-strong: rgb(243 240 232 / 0.22);
+  --color-ok: #8fa67a;
+  --color-warn: #c4a46a;
+  --color-danger: #c45c4a;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    overflow-x: hidden;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(243 240 232 / 0.16) transparent;
+}
+
+.qr-mat {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgb(243 240 232 / 0.06), transparent 55%),
+    var(--color-elevated);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes glow-drift {
+  0%,
+  100% {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(3%, 3%, 0) scale(1.06);
+    opacity: 1;
+  }
+}
+
+.preset-pop {
+  animation: fade-up 0.35s ease both;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(60% 140% at 12% 0%, rgb(236 232 223 / 0.09), transparent 60%),
+    radial-gradient(46% 120% at 88% 10%, rgb(127 208 196 / 0.08), transparent 62%),
+    radial-gradient(38% 110% at 55% 120%, rgb(224 96 152 / 0.07), transparent 60%);
+  animation: glow-drift 10s ease-in-out infinite;
+}

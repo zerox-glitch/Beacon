@@ -1,0 +1,4 @@
+node_modules/
+grok-workspace/node_modules/
+grok-workspace/.vercel/output/
+grok-workspace/screenshots/
