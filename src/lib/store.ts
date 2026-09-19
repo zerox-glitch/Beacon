@@ -12,6 +12,8 @@ export interface HistoryItem {
   thumb: string;
 }
 
+export type StageBgMood = "vibrant" | "cosmic" | "waves" | "minimal";
+
 interface StudioState {
   payload: Payload;
   style: QrStyle;
@@ -19,6 +21,7 @@ interface StudioState {
   logoUrl: string | null;
   presetId: string | null;
   category: string;
+  stageBg: StageBgMood;
   scanText: string | null;
   scanOk: boolean | null;
   error: string | null;
@@ -31,6 +34,7 @@ interface StudioState {
   setImageUrl: (url: string | null) => void;
   setLogoUrl: (url: string | null) => void;
   setCategory: (category: string) => void;
+  setStageBg: (stageBg: StageBgMood) => void;
   setScan: (ok: boolean | null, text: string | null) => void;
   setError: (error: string | null) => void;
   setMobileTab: (tab: StudioState["mobileTab"]) => void;
@@ -60,6 +64,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   logoUrl: null,
   presetId: null,
   category: "All",
+  stageBg: "vibrant",
   scanText: null,
   scanOk: null,
   error: null,
@@ -109,6 +114,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     })),
   setLogoUrl: (url) => set({ logoUrl: url }),
   setCategory: (category) => set({ category }),
+  setStageBg: (stageBg) => set({ stageBg }),
   setScan: (scanOk, scanText) => set({ scanOk, scanText }),
   setError: (error) => set({ error }),
   setMobileTab: (mobileTab) => set({ mobileTab }),

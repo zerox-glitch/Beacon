@@ -1,4 +1,4 @@
-import { Check, Copy, Download, FileCode2, ImageDown, Info, Loader2, Printer, Shuffle, Wand2 } from "lucide-react";
+import { Check, Copy, Download, FileCode2, ImageDown, Info, Loader2, Palette, Printer, Shuffle, Sparkles, Wand2 } from "lucide-react";
 import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
 import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { verifyQr } from "@/lib/qr/verify";
-import { useStudio } from "@/lib/store";
+import { StageBgMood, useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function makeCanvas(): HTMLCanvasElement {
@@ -52,6 +52,12 @@ function HookLine() {
   );
 }
 
+const BG_MOODS: { id: StageBgMood; label: string; icon: string }[] = [
+  { id: "vibrant", label: "Aurora", icon: "✨" },
+  { id: "cosmic", label: "Cosmic", icon: "🌌" },
+  { id: "waves", label: "Waves", icon: "🌊" },
+];
+
 export function QrStage() {
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
@@ -60,6 +66,7 @@ export function QrStage() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
   const scanOk = useStudio((s) => s.scanOk);
+  const stageBg = useStudio((s) => s.stageBg);
   const error = useStudio((s) => s.error);
   const [copied, setCopied] = useState(false);
   const [px, setPx] = useState(420);
@@ -396,6 +403,30 @@ export function QrStage() {
       <p className="max-w-[420px] px-2 text-center text-xs text-subtle">
         Phone cameras read the mark. Picture mode keeps finder eyes solid so scans stay reliable.
       </p>
+
+      {/* Interactive Background Art Switcher */}
+      <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-surface/80 p-1 shadow-md backdrop-blur">
+        <span className="pl-2.5 pr-1 text-[11px] font-medium text-muted flex items-center gap-1">
+          <Palette className="size-3 text-ok" />
+          <span>Art Mood:</span>
+        </span>
+        {BG_MOODS.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => useStudio.getState().setStageBg(m.id)}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-xs font-medium transition",
+              stageBg === m.id
+                ? "bg-elevated text-fg shadow-sm border border-border"
+                : "text-muted hover:text-fg",
+            )}
+          >
+            {m.icon} {m.label}
+          </button>
+        ))}
+      </div>
+
       <HookLine />
     </div>
   );

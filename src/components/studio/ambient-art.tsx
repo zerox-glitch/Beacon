@@ -1,5 +1,6 @@
-import { Cpu, Lock, Palette, ShieldCheck, Sparkles } from "lucide-react";
+import { Cpu, Lock, Palette, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import type { CSSProperties } from "react";
+import { useStudio } from "@/lib/store";
 
 interface Bit {
   top: string;
@@ -46,7 +47,7 @@ function bitStyle(b: Bit): CSSProperties {
   };
   if (b.kind === "ring") {
     base.background = "transparent";
-    base.border = `2px solid ${b.color}`;
+    base.border = `1.5px solid ${b.color}`;
     base.borderRadius = 4;
   } else if (b.kind === "dot") {
     base.background = b.color;
@@ -59,43 +60,57 @@ function bitStyle(b: Bit): CSSProperties {
 }
 
 export function AmbientArt() {
+  const stageBg = useStudio((s) => s.stageBg);
+
+  const bgImage =
+    stageBg === "cosmic"
+      ? "/bg-art.jpg"
+      : stageBg === "waves"
+        ? "/bg-waves.jpg"
+        : "/bg-vibrant-art.jpg";
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       {/* High-definition generative artwork backdrop */}
-      <div className="stage-art-canvas" />
+      <div
+        className="stage-art-canvas"
+        style={{
+          backgroundImage: `url('${bgImage}')`,
+        }}
+      />
 
       {/* Layered vibrant neon aurora illumination */}
       <div className="stage-art-overlay" />
 
       {/* Crisp geometric dot matrix grid */}
-      <div className="ambient-grid absolute inset-0 opacity-70" />
+      <div className="ambient-grid absolute inset-0 opacity-80" />
 
       {/* Radiant starlight constellation layer */}
-      <div className="ambient-constellation absolute inset-0 opacity-60" />
+      <div className="ambient-constellation absolute inset-0 opacity-70" />
 
       {/* Elegant architectural blueprint framing lines */}
-      <div className="absolute left-4 top-4 size-8 border-l-2 border-t-2 border-border-strong opacity-40 sm:left-8 sm:top-8" />
-      <div className="absolute right-4 top-4 size-8 border-r-2 border-t-2 border-border-strong opacity-40 sm:right-8 sm:top-8" />
-      <div className="absolute bottom-4 left-4 size-8 border-l-2 border-b-2 border-border-strong opacity-40 sm:bottom-8 sm:left-8" />
-      <div className="absolute bottom-4 right-4 size-8 border-r-2 border-b-2 border-border-strong opacity-40 sm:bottom-8 sm:right-8" />
+      <div className="absolute left-3 top-3 size-8 border-l-2 border-t-2 border-border-strong opacity-50 sm:left-6 sm:top-6" />
+      <div className="absolute right-3 top-3 size-8 border-r-2 border-t-2 border-border-strong opacity-50 sm:right-6 sm:top-6" />
+      <div className="absolute bottom-3 left-3 size-8 border-l-2 border-b-2 border-border-strong opacity-50 sm:bottom-6 sm:left-6" />
+      <div className="absolute bottom-3 right-3 size-8 border-r-2 border-b-2 border-border-strong opacity-50 sm:bottom-6 sm:right-6" />
 
-      {/* Floating art accent badges visible in the surrounding canvas space */}
-      <div className="absolute left-6 top-10 hidden xl:flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3.5 py-1.5 text-xs text-muted shadow-lg backdrop-blur">
+      {/* Floating decorative art badges visible on desktop & tablet */}
+      <div className="absolute left-4 top-6 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
         <Sparkles className="size-3.5 text-ok" />
         <span>Generative Matrix · 178 Styles</span>
       </div>
 
-      <div className="absolute right-6 top-10 hidden xl:flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3.5 py-1.5 text-xs text-muted shadow-lg backdrop-blur">
+      <div className="absolute right-4 top-6 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
         <ShieldCheck className="size-3.5 text-ok" />
-        <span>ISO 18004 Level H Scannable</span>
+        <span>Level H Scannable</span>
       </div>
 
-      <div className="absolute bottom-10 left-6 hidden xl:flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3.5 py-1.5 text-xs text-muted shadow-lg backdrop-blur">
+      <div className="absolute bottom-8 left-4 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
         <Lock className="size-3.5 text-muted" />
         <span>100% Client-Side Privacy</span>
       </div>
 
-      <div className="absolute bottom-10 right-6 hidden xl:flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3.5 py-1.5 text-xs text-muted shadow-lg backdrop-blur">
+      <div className="absolute bottom-8 right-4 hidden md:flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1.5 text-xs text-muted shadow-xl backdrop-blur">
         <Palette className="size-3.5 text-muted" />
         <span>2048px PNG + Vector SVG</span>
       </div>
