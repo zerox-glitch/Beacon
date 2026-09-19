@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Beacon";
+const APP_NAME = "QRWho";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,12 +13,12 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Turn any picture into a working QR code. 152 presets, live styling, PNG export.",
+        content: "QRWho — turn any picture into a working QR code. 152 presets, live styling, PNG export.",
       },
       { name: "theme-color", content: "#0c0c0b" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", href: "/logo.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

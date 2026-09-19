@@ -1,6 +1,6 @@
-# Beacon
+# QRWho
 
-Picture QR studio — turn any picture into a working QR code. 152 presets, live
+QRWho — turn any picture into a working QR code. 152 presets, live
 styling, scan-check, PNG export. Built with TanStack Start + Vite + Nitro,
 React 19, Tailwind v4. All QR work happens in the browser (no database, no
 auth required).

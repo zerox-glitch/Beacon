@@ -1,4 +1,4 @@
-import { Check, Copy, Download, ImageDown, Printer, Shuffle } from "lucide-react";
+import { Check, Copy, Download, ImageDown, Info, Printer, Shuffle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export function QrStage() {
   const [px, setPx] = useState(420);
   const [preview, setPreview] = useState<string>("");
   const [dragging, setDragging] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const matRef = useRef<HTMLDivElement>(null);
   const setImageUrl = useStudio((s) => s.setImageUrl);
 
@@ -118,7 +119,7 @@ export function QrStage() {
   async function onDownload() {
     try {
       const canvas = await renderExport(2048);
-      downloadCanvasPng(canvas, "beacon-qr.png");
+      downloadCanvasPng(canvas, "qrwho-qr.png");
       const thumb = workRef.current?.toDataURL("image/jpeg", 0.6) ?? "";
       useStudio.getState().pushHistory({
         label: payloadLabel(payload),
@@ -173,7 +174,7 @@ export function QrStage() {
       if (!doc) return;
       doc.open();
       doc.write(
-        `<html><head><title>Beacon QR</title><style>html,body{margin:0;background:#fff}img{display:block;width:80vmin;margin:8vh auto}</style></head><body><img src="${url}" /></body></html>`,
+        `<html><head><title>QRWho</title><style>html,body{margin:0;background:#fff}img{display:block;width:80vmin;margin:8vh auto}</style></head><body><img src="${url}" /></body></html>`,
       );
       doc.close();
       frame.onload = () => {
@@ -230,10 +231,10 @@ export function QrStage() {
             </div>
           )}
         </div>
-        <div className="pointer-events-none absolute left-4 top-4 sm:left-6 sm:top-6">
-          <span
+        <div className="pointer-events-none absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+          <div
             className={cn(
-              "pointer-events-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+              "pointer-events-auto relative inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
               scanOk
                 ? "border-ok/30 bg-bg/80 text-ok"
                 : scanOk === false
@@ -242,7 +243,49 @@ export function QrStage() {
             )}
           >
             {scanOk ? "Scannable" : scanOk === false ? "Tighten contrast" : "Checking"}
-          </span>
+            <button
+              type="button"
+              aria-label="What does this mean and how do I fix it?"
+              onClick={() => setHelpOpen((v) => !v)}
+              onMouseEnter={() => setHelpOpen(true)}
+              className="rounded-full opacity-70 transition hover:opacity-100"
+            >
+              <Info className="size-3.5" />
+            </button>
+            {helpOpen && (
+              <div
+                onMouseLeave={() => setHelpOpen(false)}
+                className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[78vw] rounded-xl border border-border bg-bg/95 p-3 text-left font-normal leading-relaxed text-muted shadow-2xl backdrop-blur"
+              >
+                {scanOk === false ? (
+                  <>
+                    <p className="mb-1.5 font-medium text-fg">
+                      Cameras may struggle with this style. To tighten it:
+                    </p>
+                    <ul className="list-disc space-y-1 pl-4">
+                      <li>
+                        Design tab: raise <span className="text-fg">Contrast</span> or{" "}
+                        <span className="text-fg">Module gap</span>
+                      </li>
+                      <li>
+                        Image tab: lower <span className="text-fg">Opacity</span> so the code
+                        stands out from the picture
+                      </li>
+                      <li>Pick darker modules on a lighter background (or the reverse)</li>
+                      <li>Sturdier shapes scan best: Square, Round or Dots</li>
+                    </ul>
+                  </>
+                ) : scanOk ? (
+                  <p>
+                    We just decoded this exact artwork with a camera-style reader — phone
+                    cameras will read it too.
+                  </p>
+                ) : (
+                  <p>Checking whether a camera can still read the code with this style…</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,14 +1,6 @@
-import { encode } from "uqr";
 import { ImageIcon, LayoutGrid, Palette, Sparkles, Type } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
-import { renderQr } from "@/lib/qr/render";
-import {
-  DEFAULT_STYLE,
-  type EyeShape,
-  type ModuleShape,
-  type QrStyle,
-} from "@/lib/qr/types";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
@@ -27,44 +19,20 @@ const MOBILE_TABS = [
   { id: "design", label: "Design", icon: Palette },
 ] as const;
 
-const HERO_QR = encode("BEACON", { ecc: "M", border: 0 });
-const HERO_SHAPES: ModuleShape[] = ["fluid", "dots", "confetti", "heart", "dash", "radial", "bubbles"];
-const HERO_EYES: EyeShape[] = ["rounded", "target", "ticks", "circle"];
+const ROTATING_WORDS = ["picture", "menu", "link", "Wi-Fi", "event", "contact"];
 
-/** Tiny live logo: a QR mark that quietly cycles through the studio's module shapes. */
-function HeroMark() {
-  const ref = useRef<HTMLCanvasElement>(null);
+/** A little life: the tagline cycles through what you can turn into a QR. */
+function RotatingWord() {
+  const [i, setI] = useState(0);
   useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    let i = 0;
-    const draw = () => {
-      const style: QrStyle = {
-        ...DEFAULT_STYLE,
-        moduleShape: HERO_SHAPES[i % HERO_SHAPES.length]!,
-        eyeShape: HERO_EYES[i % HERO_EYES.length]!,
-        ballShape: HERO_EYES[i % HERO_EYES.length]!,
-        imageMode: "none",
-        quietZone: 1,
-        fg: "#f3f0e8",
-        bg: "#141413",
-        eyeColor: "#f3f0e8",
-        ballColor: "#f3f0e8",
-      };
-      renderQr(canvas, HERO_QR, style, { pixelSize: 36, exportScale: true });
-      i += 1;
-    };
-    draw();
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = reduced ? 0 : window.setInterval(draw, 1200);
-    return () => window.clearInterval(timer);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = window.setInterval(() => setI((v) => (v + 1) % ROTATING_WORDS.length), 2100);
+    return () => window.clearInterval(t);
   }, []);
   return (
-    <canvas
-      ref={ref}
-      aria-hidden
-      className="size-10 shrink-0 rounded-xl border border-border bg-elevated shadow-[0_0_24px_rgb(236_232_223/0.08)]"
-    />
+    <span key={i} className="word-in inline-block min-w-[3.6em] text-left text-fg">
+      {ROTATING_WORDS[i]}
+    </span>
   );
 }
 
@@ -84,11 +52,17 @@ export function Studio() {
           <div className="hero-glow pointer-events-none absolute inset-0" aria-hidden />
           <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex items-center gap-3">
-              <HeroMark />
+              <img
+                src="/logo.png"
+                alt="QRWho logo"
+                className="logo-float size-11 shrink-0 rounded-xl border border-border shadow-[0_0_28px_rgb(127_208_196/0.18)]"
+              />
               <div>
-                <h1 className="font-display text-2xl italic leading-none tracking-tight">Beacon</h1>
+                <h1 className="font-display text-2xl italic leading-none tracking-tight">
+                  <span className="wordmark-shimmer">QRWho</span>
+                </h1>
                 <p className="mt-0.5 text-xs text-muted">
-                  Picture QR studio — pick a vibe, watch the mark change
+                  Turn any <RotatingWord /> into a working QR — pick a vibe, watch it change
                 </p>
               </div>
             </div>
