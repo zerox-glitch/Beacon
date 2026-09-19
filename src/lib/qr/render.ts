@@ -626,7 +626,7 @@ export function renderQr(
       if (!dark) {
         if (style.accentShape && style.accentColor && style.accentOnLight) {
           ctx.fillStyle = style.accentColor;
-          const ds = cell * 0.42;
+          const ds = cell * 0.3;
           drawModuleShape(ctx, px0 + (cell - ds) / 2, py0 + (cell - ds) / 2, ds, style.accentShape, undefined, grid);
         }
         continue;

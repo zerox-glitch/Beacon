@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { AmbientArt } from "@/components/studio/ambient-art";
+import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
@@ -91,7 +92,7 @@ export function Studio() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
+        <div className="grid min-h-[calc(100dvh-65px)] flex-1 grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
           <aside className="hidden min-h-0 min-w-0 border-r border-border lg:flex lg:flex-col">
             <div className="border-b border-border px-4 py-3">
               <p className="font-display text-lg italic">Destination</p>
@@ -142,6 +143,10 @@ export function Studio() {
             })}
           </nav>
         </div>
+
+        {/* Rich Art Gallery Showcase & In-Depth SEO Section */}
+        <ArtShowcase />
+
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>
     </TooltipProvider>

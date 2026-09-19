@@ -18,13 +18,18 @@ function makeCanvas(): HTMLCanvasElement {
 const HOOKS = [
   "Scan me. I dare you.",
   "Your cat, now teleporting to phones.",
-  "QR codes, but make them art.",
-  "Ugly QRs are a choice. Choose again.",
-  "Point. Shoot. Teleport.",
   "The Mona Lisa of machine-readable squares.",
-  "Made with love & error correction H.",
-  "Warning: may cause excessive scanning.",
-  "Art your camera understands.",
+  "Ugly QRs are a choice. Choose again.",
+  "Zero trackers. 100% on-device. Zero middleman.",
+  "Because life is too short for boring barcodes.",
+  "Point. Shoot. Teleport.",
+  "Made with love & error correction level H.",
+  "High fashion for internet links.",
+  "Warning: may cause excessive camera scanning.",
+  "Art your phone camera understands in 0.02 seconds.",
+  "Forever static. No expiring links. No paywalls.",
+  "Proof that algorithms can have good taste.",
+  "From canvas to camera with zero friction.",
 ];
 
 /** Quirky one-liners that keep the empty space charming. */
