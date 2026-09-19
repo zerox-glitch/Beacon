@@ -166,6 +166,42 @@ input[type="color"]::-webkit-color-swatch {
   animation: word-in 0.45s ease both;
 }
 
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, -28px, 0) scale(1.12);
+  }
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.13;
+  animation: orb-drift 15s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  50% {
+    opacity: 0.38;
+    transform: translateY(-12px) rotate(var(--rot, 0deg));
+  }
+}
+
+.ambient-bit {
+  position: absolute;
+  display: block;
+  animation: twinkle 8s ease-in-out infinite;
+}
+
 .hero-glow {
   background:
     radial-gradient(60% 140% at 12% 0%, rgb(236 232 223 / 0.09), transparent 60%),

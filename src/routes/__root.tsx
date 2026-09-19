@@ -13,7 +13,8 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "QRWho — turn any picture into a working QR code. 152 presets, live styling, PNG export.",
+        content:
+          "QRWho — QR codes, but make them art. Turn any picture into a working code. 152 presets, live styling, PNG export. Scan me, I dare you.",
       },
       { name: "theme-color", content: "#0c0c0b" },
     ],

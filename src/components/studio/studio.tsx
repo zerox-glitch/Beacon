@@ -2,6 +2,7 @@ import { ImageIcon, LayoutGrid, Palette, Sparkles, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
+import { AmbientArt } from "@/components/studio/ambient-art";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
@@ -103,7 +104,8 @@ export function Studio() {
             </ScrollArea>
           </aside>
 
-          <main className="min-h-0 min-w-0 overflow-x-hidden bg-bg">
+          <main className="relative min-h-0 min-w-0 overflow-x-hidden bg-bg">
+            <AmbientArt />
             <QrStage />
           </main>
 

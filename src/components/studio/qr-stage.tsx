@@ -15,6 +15,37 @@ function makeCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
 }
 
+const HOOKS = [
+  "Scan me. I dare you.",
+  "Your cat, now teleporting to phones.",
+  "QR codes, but make them art.",
+  "Ugly QRs are a choice. Choose again.",
+  "Point. Shoot. Teleport.",
+  "The Mona Lisa of machine-readable squares.",
+  "Made with love & error correction H.",
+  "Warning: may cause excessive scanning.",
+  "Art your camera understands.",
+];
+
+/** Quirky one-liners that keep the empty space charming. */
+function HookLine() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = window.setInterval(() => setI((v) => (v + 1) % HOOKS.length), 4200);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <p
+      key={i}
+      className="word-in min-h-5 font-display text-sm italic text-muted"
+      aria-live="polite"
+    >
+      {HOOKS[i]}
+    </p>
+  );
+}
+
 export function QrStage() {
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
@@ -343,6 +374,7 @@ export function QrStage() {
       <p className="max-w-[420px] px-2 text-center text-xs text-subtle">
         Phone cameras read the mark. Picture mode keeps finder eyes solid so scans stay reliable.
       </p>
+      <HookLine />
     </div>
   );
 }
