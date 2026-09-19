@@ -175,7 +175,7 @@ function drawModuleShape(
       return;
     case "dots":
       ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.46, 0, Math.PI * 2);
+      ctx.arc(cx, cy, s * 0.48, 0, Math.PI * 2);
       ctx.fill();
       return;
     case "diamond":
@@ -502,6 +502,7 @@ export function renderQr(
     ctx.fillRect(0, 0, px, px);
   }
 
+  // Draw background photo layer
   if (pictured && opts.art && (style.imageMode === "paint" || style.imageMode === "backdrop")) {
     ctx.save();
     ctx.beginPath();
@@ -525,7 +526,7 @@ export function renderQr(
   }
 
   const sampled =
-    pictured && opts.art && (style.imageMode === "mosaic" || style.imageMode === "halftone")
+    pictured && opts.art
       ? sampleGrid(opts.art, qr.size)
       : null;
 
@@ -550,14 +551,25 @@ export function renderQr(
   const fill = makeFill(ctx, style, origin, origin, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
+  // Render QR matrix modules
   for (let y = 0; y < qr.size; y++) {
     for (let x = 0; x < qr.size; x++) {
       const type = qr.types[y]![x]!;
-      if (type === QrCodeDataType.Position) continue;
+      // Skip finder pattern 8x8 regions (handled cleanly with guaranteed contrast below)
+      if (
+        (x < 8 && y < 8) ||
+        (x >= qr.size - 8 && y < 8) ||
+        (x < 8 && y >= qr.size - 8)
+      ) {
+        continue;
+      }
+
       const dark = isDark(qr, x, y);
       const px0 = origin + x * cell;
       const py0 = origin + y * cell;
       const pad = cell * gap * 0.5;
+
+      // Protected structural patterns (Timing, Alignment, Function)
       const protectedPattern =
         type === QrCodeDataType.Function ||
         type === QrCodeDataType.Timing ||
@@ -570,6 +582,7 @@ export function renderQr(
       }
 
       const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
+      const L = sampled ? lumAt(sampled.data, qr.size, x, y) : (dark ? 0 : 1);
 
       if (style.imageMode === "mosaic" && sampled) {
         const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
@@ -593,9 +606,8 @@ export function renderQr(
       }
 
       if (style.imageMode === "halftone" && sampled) {
-        const L = lumAt(sampled.data, qr.size, x, y);
-        const minR = dark ? cell * 0.22 : cell * 0.02;
-        const maxR = dark ? cell * 0.48 : cell * 0.18;
+        const minR = dark ? cell * 0.26 : cell * 0.02;
+        const maxR = dark ? cell * 0.49 : cell * 0.16;
         const radius = minR + (maxR - minR) * (1 - L);
         ctx.fillStyle = dark ? fill : bg;
         ctx.beginPath();
@@ -605,16 +617,32 @@ export function renderQr(
       }
 
       if (style.imageMode === "paint" && opts.art) {
-        const scale = dark ? Math.max(0.25, Math.min(0.95, style.dotScale)) : Math.max(0.15, style.dotScale * 0.65);
-        const ds = cell * scale * (1 - gap);
-        const dx = px0 + (cell - ds) / 2;
-        const dy = py0 + (cell - ds) / 2;
-        ctx.fillStyle = dark ? fill : style.bg;
-        const markerShape: ModuleShape =
-          style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
-            ? "dots"
-            : style.moduleShape;
-        drawModuleShape(ctx, dx, dy, ds, markerShape, undefined, grid);
+        if (!dark) {
+          // AI Adaptive Light Module Wash: If background image is dark in this cell,
+          // wash the cell with style.bg so phone camera decoders reliably see a 0-bit
+          if (L < 0.72) {
+            ctx.fillStyle = style.bg;
+            ctx.fillRect(px0, py0, cell, cell);
+          }
+          // Optional faint light dot
+          const ds = cell * 0.26 * (1 - gap);
+          ctx.fillStyle = style.bg;
+          ctx.beginPath();
+          ctx.arc(px0 + cell / 2, py0 + cell / 2, ds / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Dark module: solid dot with user-selected shape
+          const scale = Math.max(0.68, style.dotScale);
+          const ds = cell * scale * (1 - gap);
+          const dx = px0 + (cell - ds) / 2;
+          const dy = py0 + (cell - ds) / 2;
+          ctx.fillStyle = fill;
+          const markerShape: ModuleShape =
+            style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
+              ? "dots"
+              : style.moduleShape;
+          drawModuleShape(ctx, dx, dy, ds, markerShape, undefined, grid);
+        }
         continue;
       }
 
@@ -626,6 +654,7 @@ export function renderQr(
         }
         continue;
       }
+
       const accent =
         style.accentShape && style.accentColor && !style.accentOnLight && cellHash(x, y) % 6 === 0;
       ctx.fillStyle = accent ? style.accentColor! : fill;
@@ -653,26 +682,39 @@ export function renderQr(
     }
   }
 
-  const eyeBg = style.imageMode === "paint" && opts.art ? style.bg : bg || style.bg;
+  // Draw 8x8 finder patterns + clean separator
   const corners: [number, number][] = [
     [0, 0],
     [qr.size - 7, 0],
     [0, qr.size - 7],
   ];
+
   for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+
+    // Clear 8x8 area (7x7 finder pattern + 1-cell separator) with pure background color
+    const sepX = ex === 0 ? ox : ox - cell;
+    const sepY = ey === 0 ? oy : oy - cell;
+    const sepW = cell * 8;
+    const sepH = cell * 8;
+    ctx.fillStyle = style.bg;
+    ctx.fillRect(sepX, sepY, sepW, sepH);
+
     drawEye(
       ctx,
-      origin + ex * cell,
-      origin + ey * cell,
+      ox,
+      oy,
       cell,
       style.eyeShape,
       style.ballShape,
       style.eyeColor,
       style.ballColor,
-      eyeBg,
+      style.bg,
     );
   }
 
+  // Draw Center Logo
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
   if (logoImg) {
     const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
