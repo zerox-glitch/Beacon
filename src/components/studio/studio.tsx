@@ -1,4 +1,13 @@
-import { ImageIcon, LayoutGrid, Palette, Sparkles, Type } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  ImageIcon,
+  LayoutGrid,
+  Palette,
+  Sparkles,
+  Type,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
@@ -14,16 +23,15 @@ import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-const MOBILE_TABS = [
-  { id: "content", label: "Link", icon: Type },
-  { id: "image", label: "Image", icon: ImageIcon },
-  { id: "presets", label: "Presets", icon: LayoutGrid },
-  { id: "design", label: "Design", icon: Palette },
+const STUDIO_TABS = [
+  { id: "content" as const, label: "Destination", icon: Type, hint: "Link, WiFi, vCard" },
+  { id: "presets" as const, label: "Presets", icon: LayoutGrid, hint: "178 styles" },
+  { id: "design" as const, label: "Design", icon: Palette, hint: "Colors & Shapes" },
+  { id: "image" as const, label: "Picture", icon: ImageIcon, hint: "Photo & Logo" },
 ] as const;
 
-const ROTATING_WORDS = ["picture", "menu", "link", "Wi-Fi", "event", "contact"];
+const ROTATING_WORDS = ["picture", "menu", "link", "Wi-Fi", "event", "contact", "vCard"];
 
-/** A little life: the tagline cycles through what you can turn into a QR. */
 function RotatingWord() {
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -32,7 +40,7 @@ function RotatingWord() {
     return () => window.clearInterval(t);
   }, []);
   return (
-    <span key={i} className="word-in inline-block min-w-[3.6em] text-left text-fg">
+    <span key={i} className="word-in inline-block min-w-[3.6em] text-left text-fg font-medium">
       {ROTATING_WORDS[i]}
     </span>
   );
@@ -42,6 +50,7 @@ export function Studio() {
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
+  const [showcaseOpen, setShowcaseOpen] = useState(false);
 
   useEffect(() => {
     hydrateHistory();
@@ -50,24 +59,27 @@ export function Studio() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-dvh flex-col overflow-x-hidden bg-bg text-fg">
-        <header className="relative shrink-0 overflow-hidden border-b border-border bg-bg/80 px-4 py-3 backdrop-blur-md sm:px-6">
+        {/* Top Header */}
+        <header className="relative shrink-0 overflow-hidden border-b border-border bg-bg/85 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="hero-glow pointer-events-none absolute inset-0" aria-hidden />
           <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex items-center gap-3">
               <img
                 src="/logo.png"
                 alt="QRWho logo"
-                className="logo-float size-11 shrink-0 rounded-xl border border-border shadow-[0_0_28px_rgb(127_208_196/0.18)]"
+                className="logo-float size-10 shrink-0 rounded-xl border border-border shadow-[0_0_24px_rgb(127_208_196/0.2)]"
               />
               <div>
                 <h1 className="font-display text-2xl italic leading-none tracking-tight">
                   <span className="wordmark-shimmer">QRWho</span>
                 </h1>
                 <p className="mt-0.5 text-xs text-muted">
-                  Turn any <RotatingWord /> into a working QR — pick a vibe, watch it change
+                  Turn any <RotatingWord /> into a working QR code · 100% on-device & private
                 </p>
               </div>
             </div>
+
+            {/* Category Quick Chips */}
             <div className="flex flex-wrap items-center gap-1.5">
               {PRESET_CATEGORIES.filter((c) => c !== "All").map((c) => (
                 <button
@@ -81,112 +93,83 @@ export function Studio() {
                     useStudio.getState().setCategory(c);
                     useStudio.getState().applyPreset(pick.id);
                   }}
-                  className="chip-vibe h-8 rounded-full border border-border bg-elevated/70 px-3 text-xs font-medium text-muted backdrop-blur transition hover:-translate-y-0.5 hover:border-border-strong hover:text-fg active:scale-95"
+                  className="chip-vibe h-7.5 rounded-full border border-border bg-elevated/70 px-2.5 text-xs font-medium text-muted backdrop-blur transition hover:-translate-y-0.5 hover:border-border-strong hover:text-fg active:scale-95"
                 >
-                  <Sparkles className="mr-1 inline size-3" aria-hidden />
+                  <Sparkles className="mr-1 inline size-3 text-ok" aria-hidden />
                   {c}
                 </button>
               ))}
-              <span className="ml-1 text-xs tabular-nums text-subtle">{PRESETS.length} presets</span>
+              <span className="ml-1 text-xs tabular-nums text-subtle font-mono">
+                {PRESETS.length} presets
+              </span>
             </div>
           </div>
         </header>
 
-        <div className="grid min-h-[calc(100dvh-65px)] flex-1 grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
-          <aside className="hidden min-h-0 min-w-0 border-r border-border lg:flex lg:flex-col">
-            <div className="border-b border-border px-4 py-3">
-              <p className="font-display text-lg italic">Destination</p>
-              <p className="text-xs text-muted">What the code opens</p>
-            </div>
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="px-4 py-4">
-                <ContentPanel />
-              </div>
-            </ScrollArea>
-          </aside>
-
-          <main className="relative min-h-0 min-w-0 overflow-x-hidden">
+        {/* Main 2-Column Professional Studio Workspace */}
+        <div className="relative flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_440px] xl:grid-cols-[minmax(0,1fr)_480px]">
+          {/* Left Hero Canvas: Sticky QR Stage on Radiant Background Art */}
+          <main className="relative flex min-h-[580px] flex-1 flex-col items-center justify-center overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
             <AmbientArt />
             <QrStage />
           </main>
 
-          <aside className="hidden min-h-0 min-w-0 border-l border-border lg:flex lg:flex-col">
-            <RightDesktop />
+          {/* Right Column: Unified Studio Control Dock */}
+          <aside className="flex flex-col bg-elevated/40 lg:min-h-[calc(100dvh-65px)]">
+            {/* Control Tabs Header */}
+            <div className="grid grid-cols-4 border-b border-border bg-surface/80 p-1.5 backdrop-blur">
+              {STUDIO_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = mobileTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setMobileTab(tab.id)}
+                    className={cn(
+                      "flex h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
+                      active
+                        ? "bg-elevated text-fg shadow-sm border border-border/80 font-semibold"
+                        : "text-muted hover:text-fg hover:bg-surface/50",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    <span className="text-[11px] leading-none">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Control Panel Content */}
+            <ScrollArea className="flex-1">
+              <div className="p-5">
+                {mobileTab === "content" && <ContentPanel />}
+                {mobileTab === "presets" && <PresetGallery />}
+                {mobileTab === "design" && <DesignPanel />}
+                {mobileTab === "image" && <ImagePanel />}
+              </div>
+            </ScrollArea>
           </aside>
         </div>
 
-        <div className="border-t border-border lg:hidden">
-          <div className="max-h-[42dvh] overflow-y-auto px-4 py-4 scrollbar-thin">
-            {mobileTab === "content" && <ContentPanel />}
-            {mobileTab === "image" && <ImagePanel />}
-            {mobileTab === "presets" && <PresetGallery />}
-            {mobileTab === "design" && <DesignPanel />}
-          </div>
-          <nav className="grid grid-cols-4 border-t border-border">
-            {MOBILE_TABS.map((t) => {
-              const Icon = t.icon;
-              const on = mobileTab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setMobileTab(t.id)}
-                  className={cn(
-                    "flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium",
-                    on ? "text-fg" : "text-muted",
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {t.label}
-                </button>
-              );
-            })}
-          </nav>
+        {/* Expandable SEO & Art Gallery Showcase Footer */}
+        <div className="border-t border-border bg-surface/60">
+          <button
+            type="button"
+            onClick={() => setShowcaseOpen((v) => !v)}
+            className="flex w-full items-center justify-between px-6 py-4 text-xs font-medium text-muted hover:text-fg transition"
+          >
+            <span className="flex items-center gap-2">
+              <Globe className="size-4 text-ok" />
+              <span>Explore Art Directions, Business Use Cases & Enterprise Specs</span>
+            </span>
+            {showcaseOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+          {showcaseOpen && <ArtShowcase />}
         </div>
-
-        {/* Rich Art Gallery Showcase & In-Depth SEO Section */}
-        <ArtShowcase />
 
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>
     </TooltipProvider>
-  );
-}
-
-function RightDesktop() {
-  const tab = useStudio((s) => s.mobileTab);
-  const setTab = useStudio((s) => s.setMobileTab);
-  const desktopTabs = [
-    { id: "presets" as const, label: "Presets" },
-    { id: "design" as const, label: "Design" },
-    { id: "image" as const, label: "Image" },
-  ];
-  const current = desktopTabs.some((t) => t.id === tab) ? tab : "presets";
-
-  return (
-    <>
-      <div className="flex gap-1 border-b border-border p-2">
-        {desktopTabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "h-10 flex-1 rounded-md text-sm font-medium",
-              current === t.id ? "bg-surface text-fg" : "text-muted hover:text-fg",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="px-4 py-4">
-          {current === "presets" && <PresetGallery />}
-          {current === "design" && <DesignPanel />}
-          {current === "image" && <ImagePanel />}
-        </div>
-      </ScrollArea>
-    </>
   );
 }

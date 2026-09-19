@@ -90,8 +90,6 @@ function hexPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numbe
 }
 
 function heartPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number) {
-  // Solid two-lobe + wedge heart: keeps the module centre fully inked so
-  // decoders still read it as a dark cell.
   const r = s * 0.25;
   ctx.beginPath();
   ctx.arc(cx - s * 0.225, cy - s * 0.14, r, 0, Math.PI * 2);
@@ -351,8 +349,6 @@ function drawEye(
 ) {
   const s = cell * 7;
   if (eyeShape === "target") {
-    // Exact 1:1:3:1:1 finder ratio in cell units (ring 1, gap 1, core 3)
-    // so scanners lock on like a classic square eye.
     ctx.fillStyle = eyeColor;
     ctx.beginPath();
     ctx.arc(ox + s / 2, oy + s / 2, s * 0.5, 0, Math.PI * 2);
@@ -375,8 +371,6 @@ function drawEye(
   const by = oy + cell * 2;
   drawLayer(ctx, bx, by, ball, ballShape, ballColor);
   if (eyeShape === "ticks") {
-    // Registration-mark bumps biting *inward* from the ring so the outer
-    // 7x7 silhouette stays a perfect finder pattern for decoders.
     const t = cell * 1.35;
     const r = t * 0.3;
     ctx.fillStyle = eyeColor;
@@ -513,7 +507,10 @@ export function renderQr(
     ctx.beginPath();
     ctx.rect(origin, origin, body, body);
     ctx.clip();
-    ctx.globalAlpha = style.imageMode === "backdrop" ? style.imageOpacity : 1;
+    ctx.globalAlpha = Math.max(0.05, Math.min(1, style.imageOpacity));
+    const contrastVal = Math.max(0.2, Math.min(2, style.contrast * 1.5));
+    const brightVal = Math.max(0.5, Math.min(1.8, 1 + (style.contrast - 0.7) * 0.4));
+    ctx.filter = `contrast(${contrastVal}) brightness(${brightVal})`;
     coverDraw(
       ctx,
       opts.art,
@@ -561,15 +558,12 @@ export function renderQr(
       const px0 = origin + x * cell;
       const py0 = origin + y * cell;
       const pad = cell * gap * 0.5;
-      const ms = cell - pad * 2;
       const protectedPattern =
         type === QrCodeDataType.Function ||
         type === QrCodeDataType.Timing ||
         type === QrCodeDataType.Alignment;
 
       if (protectedPattern) {
-        // Timing / format / alignment stays solid in every mode: decoders lock
-        // onto these lines, so decorative module shapes never touch them.
         ctx.fillStyle = dark ? fill : style.bg;
         ctx.fillRect(px0, py0, cell, cell);
         continue;
@@ -580,6 +574,7 @@ export function renderQr(
       if (style.imageMode === "mosaic" && sampled) {
         const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
         ctx.fillStyle = mixToward(r, g, b, dark, style.contrast);
+        const ms = cell - pad * 2;
         drawModuleShape(
           ctx,
           px0 + pad,
@@ -610,7 +605,7 @@ export function renderQr(
       }
 
       if (style.imageMode === "paint" && opts.art) {
-        const scale = dark ? Math.max(0.5, style.dotScale) : Math.max(0.34, style.dotScale * 0.78);
+        const scale = dark ? Math.max(0.25, Math.min(0.95, style.dotScale)) : Math.max(0.15, style.dotScale * 0.65);
         const ds = cell * scale * (1 - gap);
         const dx = px0 + (cell - ds) / 2;
         const dy = py0 + (cell - ds) / 2;
@@ -643,11 +638,14 @@ export function renderQr(
               w: isDark(qr, x - 1, y),
             }
           : undefined;
+      const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+      const mSize = (cell - pad * 2) * dotWeight;
+      const mOffset = (cell - mSize) / 2;
       drawModuleShape(
         ctx,
-        px0 + pad,
-        py0 + pad,
-        ms,
+        px0 + mOffset,
+        py0 + mOffset,
+        mSize,
         accent ? style.accentShape! : style.moduleShape,
         neighbors,
         grid,

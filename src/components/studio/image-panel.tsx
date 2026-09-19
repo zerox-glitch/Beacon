@@ -1,4 +1,4 @@
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, Sliders, X } from "lucide-react";
 import { useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -23,9 +23,10 @@ export function ImagePanel() {
   const logoRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      {/* Upload Box */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Picture</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Upload Custom Image</p>
         <button
           type="button"
           onClick={() => artRef.current?.click()}
@@ -35,19 +36,28 @@ export function ImagePanel() {
             const file = e.dataTransfer.files?.[0];
             if (file?.type.startsWith("image/")) readFile(file, setImageUrl);
           }}
-          className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong bg-elevated px-4 py-6 text-center transition-colors hover:bg-surface"
+          className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong bg-elevated/70 px-4 py-6 text-center transition-all hover:border-accent hover:bg-surface"
         >
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt="Source"
-              className="h-24 w-24 rounded-md object-cover"
-            />
+            <div className="relative group">
+              <img
+                src={imageUrl}
+                alt="Source preview"
+                className="size-24 rounded-lg object-cover shadow-md border border-border"
+              />
+              <span className="absolute inset-0 flex items-center justify-center bg-bg/60 rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition">
+                Change Photo
+              </span>
+            </div>
           ) : (
-            <ImagePlus className="size-6 text-muted" />
+            <div className="flex size-12 items-center justify-center rounded-full bg-surface border border-border">
+              <ImagePlus className="size-6 text-ok" />
+            </div>
           )}
-          <span className="text-sm text-fg">Drop a photo or browse</span>
-          <span className="text-xs text-muted">Turns into a working QR code</span>
+          <span className="text-sm font-medium text-fg">
+            {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
+          </span>
+          <span className="text-xs text-muted">Blends your image into a working, scannable QR code</span>
         </button>
         <input
           ref={artRef}
@@ -61,29 +71,35 @@ export function ImagePanel() {
           }}
         />
         {imageUrl && (
-          <button
-            type="button"
-            className="mt-2 inline-flex h-9 items-center gap-1 rounded-sm px-2 text-xs text-muted hover:text-fg"
-            onClick={() => setImageUrl(null)}
-          >
-            <X className="size-3.5" />
-            Remove picture
-          </button>
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-danger hover:bg-danger/10 transition"
+              onClick={() => setImageUrl(null)}
+            >
+              <X className="size-3.5" />
+              Remove picture
+            </button>
+          </div>
         )}
       </div>
 
+      {/* Preset Sample Gallery */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Try a sample</p>
-        <div className="grid grid-cols-6 gap-1.5">
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try sample pictures</p>
+        <div className="grid grid-cols-6 gap-2">
           {SAMPLE_IMAGES.map((s) => (
             <button
               key={s.id}
               type="button"
               title={s.name}
-              onClick={() => setImageUrl(s.src)}
+              onClick={() => {
+                setImageUrl(s.src);
+                if (style.imageMode === "none") patchStyle({ imageMode: "paint" });
+              }}
               className={cn(
-                "aspect-square overflow-hidden rounded-md border",
-                imageUrl === s.src ? "border-accent" : "border-border",
+                "aspect-square overflow-hidden rounded-lg border transition-all active:scale-95",
+                imageUrl === s.src ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
               )}
             >
               <img src={s.src} alt={s.name} className="size-full object-cover" />
@@ -92,8 +108,9 @@ export function ImagePanel() {
         </div>
       </div>
 
+      {/* Picture Treatment Modes */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Picture treatment</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Picture Treatment Mode</p>
         <div className="grid grid-cols-3 gap-1.5">
           {IMAGE_MODES.map((m) => (
             <button
@@ -103,10 +120,10 @@ export function ImagePanel() {
               disabled={!imageUrl && m.id !== "none"}
               onClick={() => patchStyle({ imageMode: m.id })}
               className={cn(
-                "h-11 rounded-md border text-xs font-medium disabled:opacity-40",
+                "h-11 rounded-md border text-xs font-medium transition disabled:opacity-40 active:scale-95",
                 style.imageMode === m.id
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
+                  ? "border-accent bg-accent text-accent-fg font-semibold shadow-sm"
+                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
               )}
             >
               {m.label}
@@ -115,92 +132,100 @@ export function ImagePanel() {
         </div>
       </div>
 
-      {(style.imageMode === "paint" || style.imageMode === "halftone") && (
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <Label>Dot weight</Label>
-            <span className="text-xs tabular-nums text-subtle">
-              {Math.round(style.dotScale * 100)}%
-            </span>
+      {/* Picture Tuning Controls (ALWAYS VISIBLE & FUNCTIONAL WHEN IMAGE LOADED) */}
+      {imageUrl && style.imageMode !== "none" && (
+        <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
+          <p className="text-xs font-semibold tracking-wide text-fg flex items-center gap-1.5">
+            <Sliders className="size-3.5 text-ok" />
+            <span>Picture Tuning & Contrast</span>
+          </p>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Photo Opacity / Fade</Label>
+              <span className="text-xs font-medium tabular-nums text-fg">
+                {Math.round(style.imageOpacity * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.1}
+              max={1.0}
+              step={0.01}
+              value={[style.imageOpacity]}
+              onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.85 })}
+            />
+            <p className="mt-1 text-[11px] text-muted">Controls how much the photo shines through.</p>
           </div>
-          <Slider
-            min={0.28}
-            max={0.72}
-            step={0.01}
-            value={[style.dotScale]}
-            onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.46 })}
-          />
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Image Contrast</Label>
+              <span className="text-xs font-medium tabular-nums text-fg">
+                {Math.round(style.contrast * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.3}
+              max={1.0}
+              step={0.01}
+              value={[style.contrast]}
+              onValueChange={([v]) => patchStyle({ contrast: v ?? 0.72 })}
+            />
+            <p className="mt-1 text-[11px] text-muted">Sharpens edges for instant camera detection.</p>
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Dot Weight</Label>
+              <span className="text-xs font-medium tabular-nums text-fg">
+                {Math.round(style.dotScale * 100)}%
+              </span>
+            </div>
+            <Slider
+              min={0.25}
+              max={0.9}
+              step={0.01}
+              value={[style.dotScale]}
+              onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.56 })}
+            />
+            <p className="mt-1 text-[11px] text-muted">Thickness of the data dots over the picture.</p>
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <Label>Grid Detail (Version)</Label>
+              <span className="text-xs font-medium tabular-nums text-fg">{style.minVersion}</span>
+            </div>
+            <Slider
+              min={2}
+              max={12}
+              step={1}
+              value={[style.minVersion]}
+              onValueChange={([v]) => patchStyle({ minVersion: v ?? 6 })}
+            />
+            <p className="mt-1 text-[11px] text-muted">Higher grid density preserves finer photo details.</p>
+          </div>
         </div>
       )}
 
-      {style.imageMode === "mosaic" && (
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <Label>Contrast lock</Label>
-            <span className="text-xs tabular-nums text-subtle">
-              {Math.round(style.contrast * 100)}%
-            </span>
-          </div>
-          <Slider
-            min={0.35}
-            max={1}
-            step={0.01}
-            value={[style.contrast]}
-            onValueChange={([v]) => patchStyle({ contrast: v ?? 0.72 })}
-          />
-        </div>
-      )}
-
-      {style.imageMode === "backdrop" && (
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <Label>Photo opacity</Label>
-            <span className="text-xs tabular-nums text-subtle">
-              {Math.round(style.imageOpacity * 100)}%
-            </span>
-          </div>
-          <Slider
-            min={0.15}
-            max={1}
-            step={0.01}
-            value={[style.imageOpacity]}
-            onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.9 })}
-          />
-        </div>
-      )}
-
+      {/* Center Logo */}
       <div>
-        <div className="mb-1 flex items-center justify-between">
-          <Label>Detail (version)</Label>
-          <span className="text-xs tabular-nums text-subtle">{style.minVersion}</span>
-        </div>
-        <Slider
-          min={2}
-          max={12}
-          step={1}
-          value={[style.minVersion]}
-          onValueChange={([v]) => patchStyle({ minVersion: v ?? 6 })}
-        />
-        <p className="mt-1 text-xs text-subtle">Higher detail keeps more of the photo.</p>
-      </div>
-
-      <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center logo</p>
-        <div className="flex items-center gap-2">
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center Logo / Icon</p>
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => logoRef.current?.click()}
-            className="flex size-14 items-center justify-center overflow-hidden rounded-md border border-border bg-elevated"
+            className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-elevated transition hover:border-accent"
           >
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="size-full object-cover" />
+              <img src={logoUrl} alt="Logo preview" className="size-full object-cover" />
             ) : (
-              <ImagePlus className="size-4 text-muted" />
+              <ImagePlus className="size-5 text-muted" />
             )}
           </button>
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center justify-between">
-              <Label>Logo size</Label>
+              <Label>Logo Scale</Label>
               <span className="text-xs tabular-nums text-subtle">
                 {Math.round(style.logoScale * 100)}%
               </span>
@@ -216,7 +241,7 @@ export function ImagePanel() {
           {logoUrl && (
             <button
               type="button"
-              className="size-9 text-muted hover:text-fg"
+              className="size-9 rounded-md text-muted hover:text-danger hover:bg-danger/10 flex items-center justify-center transition"
               onClick={() => setLogoUrl(null)}
               aria-label="Remove logo"
             >

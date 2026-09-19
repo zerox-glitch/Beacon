@@ -58,6 +58,18 @@ const BG_MOODS: { id: StageBgMood; label: string; icon: string }[] = [
   { id: "waves", label: "Waves", icon: "🌊" },
 ];
 
+const TRENDING_ART = [
+  { id: "art-ukiyo", name: "Ukiyo Wave", icon: "🌊" },
+  { id: "art-cyberpunk", name: "Cyberpunk", icon: "⚡" },
+  { id: "art-royal", name: "Royal Gold", icon: "👑" },
+  { id: "art-sakura", name: "Sakura", icon: "🌸" },
+  { id: "art-matcha", name: "Matcha", icon: "🍵" },
+  { id: "art-solarpunk", name: "Solarpunk", icon: "✨" },
+  { id: "arcade-dash", name: "Arcade", icon: "🕹️" },
+  { id: "art-neon-fungi", name: "Neon Fungi", icon: "🍄" },
+  { id: "art-mono", name: "Mono Luxe", icon: "🕶️" },
+];
+
 export function QrStage() {
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
@@ -400,6 +412,37 @@ export function QrStage() {
           </Button>
         )}
       </div>
+
+      {/* Quick Art Presets Bar directly on stage */}
+      <div className="w-full max-w-[520px]">
+        <div className="flex items-center justify-between px-1 mb-1.5">
+          <span className="text-[11px] font-medium text-muted flex items-center gap-1">
+            <Sparkles className="size-3 text-ok" />
+            <span>Instant Art Styles:</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => useStudio.getState().setMobileTab("presets")}
+            className="text-[11px] font-medium text-ok hover:underline"
+          >
+            Browse all {PRESETS.length} →
+          </button>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {TRENDING_ART.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => useStudio.getState().applyPreset(t.id)}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface/80 px-2.5 py-1 text-xs font-medium text-fg backdrop-blur transition hover:border-accent hover:bg-elevated active:scale-95 shadow-sm"
+            >
+              <span>{t.icon}</span>
+              <span>{t.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <p className="max-w-[420px] px-2 text-center text-xs text-subtle">
         Phone cameras read the mark. Picture mode keeps finder eyes solid so scans stay reliable.
       </p>

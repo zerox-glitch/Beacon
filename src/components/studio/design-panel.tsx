@@ -6,7 +6,6 @@ import {
   MODULE_SHAPES,
   type EccLevel,
   type GradientType,
-  type ModuleShape,
 } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
@@ -42,6 +41,7 @@ export function DesignPanel() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Module Shapes */}
       <section>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Module shape</p>
         <div className="grid grid-cols-4 gap-1.5">
@@ -51,10 +51,10 @@ export function DesignPanel() {
               type="button"
               onClick={() => patch({ moduleShape: s.id })}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium",
+                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
                 style.moduleShape === s.id
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
+                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
+                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
               )}
             >
               {s.label}
@@ -63,8 +63,9 @@ export function DesignPanel() {
         </div>
       </section>
 
+      {/* Finder Eyes Outer */}
       <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Finder eyes</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Finder eyes (outer)</p>
         <div className="grid grid-cols-4 gap-1.5">
           {EYE_SHAPES.map((s) => (
             <button
@@ -72,10 +73,10 @@ export function DesignPanel() {
               type="button"
               onClick={() => patch({ eyeShape: s.id })}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium",
+                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
                 style.eyeShape === s.id
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
+                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
+                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
               )}
             >
               {s.label}
@@ -84,8 +85,9 @@ export function DesignPanel() {
         </div>
       </section>
 
+      {/* Finder Eye Balls Center */}
       <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Eye balls</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Eye balls (center)</p>
         <div className="grid grid-cols-4 gap-1.5">
           {EYE_SHAPES.map((s) => (
             <button
@@ -93,10 +95,10 @@ export function DesignPanel() {
               type="button"
               onClick={() => patch({ ballShape: s.id })}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium",
+                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
                 style.ballShape === s.id
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
+                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
+                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
               )}
             >
               {s.label}
@@ -105,135 +107,83 @@ export function DesignPanel() {
         </div>
       </section>
 
-      <section className="grid gap-2">
-        <p className="text-xs font-medium tracking-wide text-muted">Colors</p>
-        <ColorField label="Modules" value={style.fg} onChange={(fg) => patch({ fg })} />
-        <ColorField label="Background" value={style.bg} onChange={(bg) => patch({ bg })} />
-        <ColorField label="Eyes" value={style.eyeColor} onChange={(eyeColor) => patch({ eyeColor })} />
-        <ColorField label="Balls" value={style.ballColor} onChange={(ballColor) => patch({ ballColor })} />
-        <ColorField
-          label="Gradient to"
-          value={style.gradientTo}
-          onChange={(gradientTo) => patch({ gradientTo })}
-        />
-      </section>
+      {/* Geometry Tuning: Dot Weight & Contrast (ALWAYS VISIBLE & WORKING) */}
+      <section className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
+        <p className="text-xs font-semibold tracking-wide text-fg">Geometry & Weight</p>
 
-      <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Accent pop</p>
-        <div className="grid grid-cols-5 gap-1.5">
-          {([null, "cross", "dots", "dash", "diag"] as (ModuleShape | null)[]).map((s) => (
-            <button
-              key={s ?? "none"}
-              type="button"
-              onClick={() => patch({ accentShape: s ?? undefined, accentColor: style.accentColor ?? "#b3271c" })}
-              className={cn(
-                "h-11 rounded-md border text-[11px] font-medium capitalize",
-                (style.accentShape ?? null) === s
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
-              )}
-            >
-              {s ?? "None"}
-            </button>
-          ))}
-        </div>
-        {style.accentShape ? (
-          <div className="mt-2 grid gap-2">
-            <ColorField
-              label="Accent color"
-              value={style.accentColor ?? "#b3271c"}
-              onChange={(accentColor) => patch({ accentColor })}
-            />
-            <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
-              Decorate light cells
-              <Switch
-                checked={Boolean(style.accentOnLight)}
-                onCheckedChange={(accentOnLight) => patch({ accentOnLight })}
-              />
-            </label>
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Dot weight</Label>
+            <span className="text-xs font-medium tabular-nums text-fg">
+              {Math.round(style.dotScale * 100)}%
+            </span>
           </div>
-        ) : null}
-      </section>
-
-      <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Gradient</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {(["none", "linear", "diagonal", "radial"] as GradientType[]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => patch({ gradientType: g })}
-              className={cn(
-                "h-11 rounded-md border text-[11px] font-medium capitalize",
-                style.gradientType === g
-                  ? "border-accent bg-accent text-accent-fg"
-                  : "border-border bg-elevated text-muted hover:text-fg",
-              )}
-            >
-              {g === "none" ? "Solid" : g}
-            </button>
-          ))}
+          <Slider
+            min={0.25}
+            max={0.95}
+            step={0.01}
+            value={[style.dotScale]}
+            onValueChange={([v]) => patch({ dotScale: v ?? 0.56 })}
+          />
+          <p className="mt-1 text-[11px] text-muted">Adjusts the size of the QR modules.</p>
         </div>
-      </section>
 
-      {pictured && (
-        <section className="grid gap-4 rounded-lg border border-border bg-elevated/50 p-3">
-          <p className="text-xs font-medium tracking-wide text-fg">Picture tuning</p>
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Contrast</Label>
+            <span className="text-xs font-medium tabular-nums text-fg">
+              {Math.round(style.contrast * 100)}%
+            </span>
+          </div>
+          <Slider
+            min={0.3}
+            max={1.0}
+            step={0.01}
+            value={[style.contrast]}
+            onValueChange={([v]) => patch({ contrast: v ?? 0.72 })}
+          />
+          <p className="mt-1 text-[11px] text-muted">Boosts color separation and camera readability.</p>
+        </div>
+
+        {pictured && (
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <Label>Photo fade</Label>
-              <span className="text-xs tabular-nums text-subtle">
+              <Label>Photo opacity / fade</Label>
+              <span className="text-xs font-medium tabular-nums text-fg">
                 {Math.round(style.imageOpacity * 100)}%
               </span>
             </div>
             <Slider
-              min={0.15}
-              max={1}
+              min={0.1}
+              max={1.0}
               step={0.01}
               value={[style.imageOpacity]}
-              onValueChange={([v]) => patch({ imageOpacity: v ?? 0.9 })}
+              onValueChange={([v]) => patch({ imageOpacity: v ?? 0.85 })}
             />
-            <p className="mt-1 text-xs text-subtle">Lower = code stands out more.</p>
+            <p className="mt-1 text-[11px] text-muted">Lower values help the code pop from the photo.</p>
           </div>
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Dot weight</Label>
-              <span className="text-xs tabular-nums text-subtle">
-                {Math.round(style.dotScale * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.28}
-              max={0.72}
-              step={0.01}
-              value={[style.dotScale]}
-              onValueChange={([v]) => patch({ dotScale: v ?? 0.56 })}
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Contrast</Label>
-              <span className="text-xs tabular-nums text-subtle">
-                {Math.round(style.contrast * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.35}
-              max={1}
-              step={0.01}
-              value={[style.contrast]}
-              onValueChange={([v]) => patch({ contrast: v ?? 0.72 })}
-            />
-            <p className="mt-1 text-xs text-subtle">Used by the Mosaic treatment.</p>
-          </div>
-        </section>
-      )}
+        )}
 
-      <section className="grid gap-4">
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <Label>Quiet zone</Label>
-            <span className="text-xs tabular-nums text-subtle">{style.quietZone}</span>
+            <Label>Module gap</Label>
+            <span className="text-xs font-medium tabular-nums text-fg">
+              {Math.round(style.moduleGap * 100)}%
+            </span>
+          </div>
+          <Slider
+            min={0}
+            max={0.3}
+            step={0.01}
+            value={[style.moduleGap]}
+            onValueChange={([v]) => patch({ moduleGap: v ?? 0 })}
+          />
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <Label>Quiet zone margin</Label>
+            <span className="text-xs font-medium tabular-nums text-fg">{style.quietZone} cells</span>
           </div>
           <Slider
             min={1}
@@ -243,23 +193,51 @@ export function DesignPanel() {
             onValueChange={([v]) => patch({ quietZone: v ?? 2 })}
           />
         </div>
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <Label>Module gap</Label>
-            <span className="text-xs tabular-nums text-subtle">
-              {Math.round(style.moduleGap * 100)}%
-            </span>
+      </section>
+
+      {/* Colors & Gradient */}
+      <section className="grid gap-2.5">
+        <p className="text-xs font-medium tracking-wide text-muted">Color Palette</p>
+        <ColorField label="Modules" value={style.fg} onChange={(fg) => patch({ fg })} />
+        <ColorField label="Background" value={style.bg} onChange={(bg) => patch({ bg })} />
+        <ColorField label="Eyes" value={style.eyeColor} onChange={(eyeColor) => patch({ eyeColor })} />
+        <ColorField label="Balls" value={style.ballColor} onChange={(ballColor) => patch({ ballColor })} />
+        
+        <div className="mt-2">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Gradient</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {(["none", "linear", "diagonal", "radial"] as GradientType[]).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => patch({ gradientType: g })}
+                className={cn(
+                  "h-10 rounded-md border text-[11px] font-medium capitalize transition active:scale-95",
+                  style.gradientType === g
+                    ? "border-accent bg-accent text-accent-fg font-semibold"
+                    : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+                )}
+              >
+                {g === "none" ? "Solid" : g}
+              </button>
+            ))}
           </div>
-          <Slider
-            min={0}
-            max={0.28}
-            step={0.01}
-            value={[style.moduleGap]}
-            onValueChange={([v]) => patch({ moduleGap: v ?? 0 })}
-          />
+          {style.gradientType !== "none" && (
+            <div className="mt-2">
+              <ColorField
+                label="Gradient to"
+                value={style.gradientTo}
+                onChange={(gradientTo) => patch({ gradientTo })}
+              />
+            </div>
+          )}
         </div>
+      </section>
+
+      {/* Error Correction & Transparency */}
+      <section className="grid gap-3">
         <div>
-          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Error correction</p>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Error correction level</p>
           <div className="grid grid-cols-4 gap-1.5">
             {(["L", "M", "Q", "H"] as EccLevel[]).map((e) => (
               <button
@@ -268,29 +246,30 @@ export function DesignPanel() {
                 disabled={pictured}
                 onClick={() => patch({ ecc: e })}
                 className={cn(
-                  "h-11 rounded-md border text-xs font-medium disabled:opacity-40",
+                  "h-10 rounded-md border text-xs font-medium transition disabled:opacity-50",
                   pictured
                     ? e === "H"
-                      ? "border-accent bg-accent text-accent-fg"
+                      ? "border-accent bg-accent text-accent-fg font-semibold"
                       : "border-border bg-elevated text-muted"
                     : style.ecc === e
-                      ? "border-accent bg-accent text-accent-fg"
-                      : "border-border bg-elevated text-muted",
+                      ? "border-accent bg-accent text-accent-fg font-semibold"
+                      : "border-border bg-elevated text-muted hover:text-fg",
                 )}
               >
-                {e}
+                {e} {e === "H" && "(Max)"}
               </button>
             ))}
           </div>
           {pictured && (
-            <p className="mt-1 text-xs text-subtle">
-              Auto-locked to H while a picture is on — it carries the code through the art.
+            <p className="mt-1 text-[11px] text-subtle">
+              Auto-locked to H for photo embedding to guarantee camera decoding.
             </p>
           )}
         </div>
+
         <label
           className={cn(
-            "flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm",
+            "flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm transition",
             pictured && "opacity-50",
           )}
         >
@@ -301,11 +280,6 @@ export function DesignPanel() {
             onCheckedChange={(transparentBg) => patch({ transparentBg })}
           />
         </label>
-        {pictured && (
-          <p className="-mt-2 text-xs text-subtle">
-            Transparency needs the picture off — a see-through photo would hide the code.
-          </p>
-        )}
       </section>
     </div>
   );
