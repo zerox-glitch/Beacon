@@ -24,7 +24,8 @@ const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
 function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
   if (scanOk === null) return "checking";
   if (scanOk === false) {
-    if (hasImage && style.contrast < 0.55) return "unscannable";
+    if (hasImage && style.contrast >= 0.78 && style.dotScale >= 0.7) return "fair";
+    if (hasImage && style.contrast < 0.5) return "unscannable";
     return "low";
   }
   const simple = ["square", "dots", "rounded", "squircle"].includes(style.moduleShape);
@@ -94,7 +95,7 @@ export function ScannabilityMeter({
           }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[9px] font-medium tracking-wide text-muted sm:text-[10px]">
+      <div className="mt-1 flex justify-between text-[9px] font-semibold tracking-wide text-fg/70 sm:text-[10px]">
         <span className="text-ok">High</span>
         <span>Good</span>
         <span>Fair</span>

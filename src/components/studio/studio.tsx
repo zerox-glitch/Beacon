@@ -21,6 +21,26 @@ import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
+const HOOK_WORDS = ["picture", "link", "Wi-Fi", "location", "contact", "menu", "event"];
+
+function RotatingHook() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setI((n) => (n + 1) % HOOK_WORDS.length), 2600);
+    return () => window.clearInterval(id);
+  }, []);
+  const word = HOOK_WORDS[i]!;
+  return (
+    <p className="mt-0.5 truncate text-[11px] text-fg/85 sm:text-xs">
+      Turn any{" "}
+      <span key={word} className="word-in inline-block font-semibold text-ok">
+        {word}
+      </span>{" "}
+      into a working QR
+    </p>
+  );
+}
+
 const STUDIO_TABS = [
   { id: "content" as const, label: "Link", icon: Type },
   { id: "presets" as const, label: "Presets", icon: LayoutGrid },
@@ -42,7 +62,7 @@ export function Studio() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-dvh flex-col overflow-x-hidden bg-bg text-fg">
-        <header className="relative shrink-0 border-b border-border bg-bg/90 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
+        <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -55,9 +75,7 @@ export function Studio() {
                 <h1 className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
                   <span className="wordmark-shimmer">QRWho</span>
                 </h1>
-                <p className="mt-0.5 hidden truncate text-xs text-muted sm:block">
-                  Turn any picture into a working QR code · on-device & private
-                </p>
+                <RotatingHook />
               </div>
             </div>
 
@@ -74,7 +92,7 @@ export function Studio() {
                     useStudio.getState().setCategory(c);
                     useStudio.getState().applyPreset(pick.id);
                   }}
-                  className="h-7 rounded-full border border-border bg-elevated/70 px-2.5 text-xs font-medium text-muted transition hover:border-border-strong hover:text-fg"
+                  className="h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg"
                 >
                   {c}
                 </button>

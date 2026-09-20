@@ -73,13 +73,13 @@ export const useStudio = create<StudioState>((set, get) => ({
   imageUrl: DEFAULT_ART_URL,
   logoUrl: null,
   presetId: "art-alpine-summit",
-  category: "Gallery",
-  stageBg: "vibrant",
+  category: "Art",
+  stageBg: "cosmic",
   scanText: null,
   scanOk: null,
   error: null,
   history: [],
-  mobileTab: "content",
+  mobileTab: "presets",
   setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind } })),
   patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch } })),
   patchStyle: (patch) =>
@@ -90,14 +90,30 @@ export const useStudio = create<StudioState>((set, get) => ({
   applyPreset: (id) => {
     const preset = getPreset(id);
     if (!preset) return;
-    const pictured = Boolean(preset.artUrl);
+    const current = get();
+    if (preset.artUrl) {
+      set({
+        presetId: id,
+        imageUrl: preset.artUrl,
+        style: {
+          ...preset.style,
+          imageMode: preset.style.imageMode || "paint",
+        },
+      });
+      return;
+    }
+    const keepPhoto = Boolean(current.imageUrl) && current.imageUrl !== DEFAULT_ART_URL;
+    const nextMode = keepPhoto
+      ? current.style.imageMode === "none"
+        ? "paint"
+        : current.style.imageMode
+      : "none";
     set({
       presetId: id,
       style: {
         ...preset.style,
-        imageMode: pictured ? preset.style.imageMode || "paint" : "none",
+        imageMode: nextMode,
       },
-      ...(pictured && preset.artUrl ? { imageUrl: preset.artUrl } : {}),
     });
   },
   setImageUrl: (url) =>

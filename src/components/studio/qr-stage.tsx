@@ -12,7 +12,6 @@ import {
 import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
@@ -42,7 +41,10 @@ export function QrStage() {
   const [preview, setPreview] = useState("");
   const [dragging, setDragging] = useState(false);
   const [fixing, setFixing] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const setImageUrl = useStudio((s) => s.setImageUrl);
+  const stageBg = useStudio((s) => s.stageBg);
+  const setStageBg = useStudio((s) => s.setStageBg);
 
   function onDropImage(e: React.DragEvent<HTMLDivElement>) {
     setDragging(false);
@@ -223,9 +225,31 @@ export function QrStage() {
   }
 
   const paper = style.bg;
+  const moods = [
+    { id: "cosmic" as const, label: "Night" },
+    { id: "waves" as const, label: "Tide" },
+    { id: "vibrant" as const, label: "Neon" },
+    { id: "minimal" as const, label: "Ink" },
+  ];
 
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-5">
+    <div className="relative z-10 flex w-full flex-col items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-5">
+      <div className="flex gap-1 rounded-full border border-white/20 bg-bg/90 p-1 shadow-lg backdrop-blur">
+        {moods.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setStageBg(m.id)}
+            className={
+              stageBg === m.id
+                ? "h-8 rounded-full bg-accent px-3 text-[11px] font-semibold text-accent-fg"
+                : "h-8 rounded-full px-3 text-[11px] font-medium text-fg/85 hover:bg-white/10 hover:text-fg"
+            }
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
       <div
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
@@ -235,7 +259,15 @@ export function QrStage() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDropImage}
-        className="qr-mat relative w-full max-w-[210px] rounded-2xl p-2.5 sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]"
+        onPointerMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          const pxn = (e.clientX - r.left) / r.width - 0.5;
+          const pyn = (e.clientY - r.top) / r.height - 0.5;
+          setTilt({ x: pyn * -7, y: pxn * 9 });
+        }}
+        onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+        className="qr-mat relative w-full max-w-[210px] rounded-2xl p-2.5 transition duration-200 will-change-transform sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]"
+        style={{ transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
       >
         <div
           ref={innerRef}
@@ -288,74 +320,74 @@ export function QrStage() {
         fixing={fixing}
       />
 
-      <div className="flex w-full max-w-[210px] flex-wrap items-center justify-center gap-1.5 rounded-xl border border-border-strong bg-elevated p-1.5 sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
-        <Button onClick={onDownload} size="sm" className="h-9 px-3 text-xs font-semibold sm:text-sm">
-          <Download className="mr-1 size-3.5" />
-          PNG
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={onDownloadSvg}
-          size="sm"
-          className="h-9 border-border-strong bg-surface px-3 text-xs font-semibold text-fg sm:text-sm"
+      <div className="action-bar z-10 flex w-full max-w-[210px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
+        <button
+          type="button"
+          onClick={onDownload}
+          className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-3 text-sm font-bold text-accent-fg shadow-md transition hover:brightness-110 active:scale-[0.97] sm:flex-none sm:px-4"
         >
-          <FileCode2 className="mr-1 size-3.5" />
+          <Download className="size-4" />
+          Save PNG
+        </button>
+        <button
+          type="button"
+          onClick={onDownloadSvg}
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-bold text-fg transition hover:bg-white/20 active:scale-[0.97]"
+        >
+          <FileCode2 className="size-4" />
           SVG
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
+        </button>
+        <button
+          type="button"
           onClick={onAutoFix}
           disabled={fixing}
           className={cn(
-            "h-9 border-border-strong bg-surface px-3 text-xs font-semibold text-fg sm:text-sm",
-            scanOk === false && "border-warn bg-warn/15 text-warn",
+            "inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition active:scale-[0.97] disabled:opacity-60",
+            scanOk === false
+              ? "border-warn bg-warn text-bg"
+              : "border-white/25 bg-white/10 text-fg hover:bg-white/20",
           )}
         >
-          {fixing ? <Loader2 className="mr-1 size-3.5 animate-spin" /> : <Wand2 className="mr-1 size-3.5" />}
+          {fixing ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
           {fixing ? "Tuning…" : "Fix scan"}
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
+        </button>
+        <button
+          type="button"
           onClick={onCopyImage}
-          className="size-9 border border-border-strong bg-surface text-fg"
+          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
           aria-label="Copy image"
         >
-          {copied ? <Check className="size-3.5 text-ok" /> : <ImageDown className="size-3.5" />}
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
+          {copied ? <Check className="size-4 text-ok" /> : <ImageDown className="size-4" />}
+        </button>
+        <button
+          type="button"
           onClick={onCopyPayload}
-          className="size-9 border border-border-strong bg-surface text-fg"
+          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
           aria-label="Copy destination"
         >
-          <Copy className="size-3.5" />
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
+          <Copy className="size-4" />
+        </button>
+        <button
+          type="button"
           onClick={onPrint}
-          className="hidden size-9 border border-border-strong bg-surface text-fg sm:inline-flex"
+          className="hidden size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97] sm:inline-flex"
           aria-label="Print"
         >
-          <Printer className="size-3.5" />
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
+          <Printer className="size-4" />
+        </button>
+        <button
+          type="button"
           onClick={surprise}
-          className="size-9 border border-border-strong bg-surface text-fg"
+          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
           aria-label="Surprise preset"
         >
-          <Shuffle className="size-3.5" />
-        </Button>
+          <Shuffle className="size-4" />
+        </button>
       </div>
 
       <div className="w-full max-w-[210px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
-        <p className="mb-1.5 px-0.5 text-[10px] font-medium tracking-wide text-muted sm:text-[11px]">
-          QR Art gallery
+        <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
+          Steal a look — parrot, geisha, nebula
         </p>
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
           {GALLERY_PRESETS.map((p) => (

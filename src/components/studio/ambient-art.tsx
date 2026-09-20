@@ -51,58 +51,51 @@ export function AmbientArt() {
   const stageBg = useStudio((s) => s.stageBg);
 
   const bgImage =
-    stageBg === "cosmic"
-      ? "/bg-art.jpg"
-      : stageBg === "waves"
-        ? "/bg-waves.jpg"
-        : "/bg-vibrant-art.jpg";
+    stageBg === "waves"
+      ? "/bg-waves.jpg"
+      : stageBg === "vibrant"
+        ? "/bg-vibrant-art.jpg"
+        : stageBg === "minimal"
+          ? "/bg-studio.jpg"
+          : "/bg-art.jpg";
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {/* High-definition vibrant generative artwork backdrop */}
-      <div
-        className="stage-art-canvas"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-        }}
-      />
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <div className="stage-art-canvas" style={{ backgroundImage: `url(${bgImage})` }} />
+        <div className="stage-art-overlay" />
+        <div className="ambient-grid absolute inset-0 opacity-20" />
+        <div className="ambient-constellation absolute inset-0 opacity-25" />
 
-      {/* Layered vibrant neon aurora illumination */}
-      <div className="stage-art-overlay" />
+        <div className="absolute left-3 top-3 size-8 border-l border-t border-white/20 sm:left-6 sm:top-6" />
+        <div className="absolute right-3 top-3 size-8 border-r border-t border-white/20 sm:right-6 sm:top-6" />
+        <div className="absolute bottom-3 left-3 size-8 border-l border-b border-white/20 sm:bottom-6 sm:left-6" />
+        <div className="absolute bottom-3 right-3 size-8 border-r border-b border-white/20 sm:bottom-6 sm:right-6" />
 
-      <div className="ambient-grid absolute inset-0 opacity-25" />
-      <div className="ambient-constellation absolute inset-0 opacity-20" />
+        <div className="absolute left-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
+          <Sparkles className="size-3.5 text-ok" />
+          <span>178 styles · still a real QR</span>
+        </div>
 
-      <div className="absolute left-3 top-3 size-8 border-l border-t border-ok/15 sm:left-6 sm:top-6" />
-      <div className="absolute right-3 top-3 size-8 border-r border-t border-ok/15 sm:right-6 sm:top-6" />
-      <div className="absolute bottom-3 left-3 size-8 border-l border-b border-ok/15 sm:bottom-6 sm:left-6" />
-      <div className="absolute bottom-3 right-3 size-8 border-r border-b border-ok/15 sm:bottom-6 sm:right-6" />
+        <div className="absolute right-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
+          <ShieldCheck className="size-3.5 text-ok" />
+          <span>Level H scannable</span>
+        </div>
 
-      {/* Floating decorative studio badges */}
-      <div className="absolute left-4 top-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
-        <Sparkles className="size-3.5 text-ok" />
-        <span>Generative Matrix · 178 Styles</span>
+        <div className="absolute bottom-4 left-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
+          <Lock className="size-3.5 text-ok" />
+          <span>On-device · never uploaded</span>
+        </div>
+
+        <div className="absolute bottom-4 right-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
+          <Palette className="size-3.5 text-ok" />
+          <span>2048px PNG + SVG</span>
+        </div>
+
+        {BITS.map((b, i) => (
+          <span key={i} className="ambient-bit" style={bitStyle(b)} />
+        ))}
       </div>
-
-      <div className="absolute right-4 top-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
-        <ShieldCheck className="size-3.5 text-ok" />
-        <span>Level H Scannable</span>
-      </div>
-
-      <div className="absolute bottom-4 left-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
-        <Lock className="size-3.5 text-muted" />
-        <span>100% Client-Side Privacy</span>
-      </div>
-
-      <div className="absolute bottom-4 right-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
-        <Palette className="size-3.5 text-muted" />
-        <span>2048px PNG + Vector SVG</span>
-      </div>
-
-      {/* Twinkling micro-glyphs */}
-      {BITS.map((b, i) => (
-        <span key={i} className="ambient-bit" style={bitStyle(b)} />
-      ))}
     </div>
   );
 }
