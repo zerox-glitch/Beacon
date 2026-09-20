@@ -154,7 +154,7 @@ export function ImagePanel() {
               value={[style.imageOpacity]}
               onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.85 })}
             />
-            <p className="mt-1 text-[11px] text-muted">Controls how much the photo shines through.</p>
+            <p className="mt-1 text-[11px] text-muted">How much of the original photo to keep vs. push toward scan contrast.</p>
           </div>
 
           <div>
@@ -171,7 +171,7 @@ export function ImagePanel() {
               value={[style.contrast]}
               onValueChange={([v]) => patchStyle({ contrast: v ?? 0.72 })}
             />
-            <p className="mt-1 text-[11px] text-muted">Sharpens edges for instant camera detection.</p>
+            <p className="mt-1 text-[11px] text-muted">Separates dark bits from light bits. Fix scan raises this.</p>
           </div>
 
           <div>

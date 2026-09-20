@@ -5,7 +5,7 @@ import type { Payload, QrStyle } from "./types";
 export type EncodedQr = QrCodeGenerateResult;
 
 export function encodePayload(payload: Payload, style: QrStyle): EncodedQr {
-  const text = buildPayload(payload).trim() || "https://grok.com";
+  const text = buildPayload(payload).trim() || "https://qrwho.vercel.app";
   const pictured = style.imageMode !== "none";
   return encode(text, {
     ecc: pictured ? "H" : style.ecc,

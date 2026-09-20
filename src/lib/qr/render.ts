@@ -408,15 +408,61 @@ function rgbAt(data: Uint8ClampedArray, size: number, x: number, y: number): [nu
   return [data[i]!, data[i + 1]!, data[i + 2]!];
 }
 
-function mixToward(r: number, g: number, b: number, dark: boolean, amount: number): string {
-  const t = Math.min(1, Math.max(0, amount));
-  if (dark) {
-    return `rgb(${Math.round(r * (1 - t))},${Math.round(g * (1 - t))},${Math.round(b * (1 - t))})`;
+function clamp(n: number, a: number, b: number): number {
+  return Math.min(b, Math.max(a, n));
+}
+
+function rgbStr(r: number, g: number, b: number): string {
+  return `rgb(${Math.round(clamp(r, 0, 255))},${Math.round(clamp(g, 0, 255))},${Math.round(clamp(b, 0, 255))})`;
+}
+
+function luma(r: number, g: number, b: number): number {
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+/** Shift a photo color to a target luminance while keeping its hue. */
+function setLuminance(r: number, g: number, b: number, target: number): [number, number, number] {
+  const L = luma(r, g, b);
+  const t = clamp(target, 0, 1);
+  if (L < 0.0008) {
+    const v = t * 255;
+    return [v, v, v];
   }
-  const rr = Math.round(r + (255 - r) * t);
-  const gg = Math.round(g + (255 - g) * t);
-  const bb = Math.round(b + (255 - b) * t);
-  return `rgb(${rr},${gg},${bb})`;
+  if (t <= L) {
+    const k = t / L;
+    return [r * k, g * k, b * k];
+  }
+  const k = (t - L) / (1 - L);
+  return [r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k];
+}
+
+/**
+ * Image-QR color: the photo stays visible, dark/light bits are forced into
+ * scannable luminance bands. `contrast` widens the gap; `fidelity` (opacity)
+ * keeps more of the original photo.
+ */
+function mapModuleColor(
+  r: number,
+  g: number,
+  b: number,
+  dark: boolean,
+  contrast: number,
+  fidelity: number,
+): string {
+  const C = clamp(contrast, 0.25, 1);
+  const F = clamp(fidelity, 0.12, 1);
+  if (dark) {
+    const target = 0.08 + F * (0.28 - C * 0.16);
+    const [nr, ng, nb] = setLuminance(r, g, b, target);
+    return rgbStr(nr, ng, nb);
+  }
+  const target = 0.94 - F * (0.2 - C * 0.08);
+  const [nr, ng, nb] = setLuminance(r, g, b, target);
+  return rgbStr(nr, ng, nb);
+}
+
+function isFinderCell(x: number, y: number, size: number): boolean {
+  return (x < 8 && y < 8) || (x >= size - 8 && y < 8) || (x < 8 && y >= size - 8);
 }
 
 function makeFill(
@@ -494,7 +540,9 @@ export function renderQr(
   const origin = qz * cell;
   const body = qr.size * cell;
   const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
-  const bg = style.transparentBg ? "rgba(0,0,0,0)" : style.bg;
+  const mode = pictured ? style.imageMode : "none";
+  const fidelity = clamp(style.imageOpacity, 0.12, 1);
+  const contrast = clamp(style.contrast, 0.25, 1);
 
   ctx.clearRect(0, 0, px, px);
   if (!style.transparentBg) {
@@ -502,16 +550,15 @@ export function renderQr(
     ctx.fillRect(0, 0, px, px);
   }
 
-  // Draw background photo layer
-  if (pictured && opts.art && (style.imageMode === "paint" || style.imageMode === "backdrop")) {
+  const sampled = pictured && opts.art ? sampleGrid(opts.art, qr.size) : null;
+
+  // Picture + Backdrop: full-res photo is the canvas of the code.
+  if ((mode === "paint" || mode === "backdrop" || mode === "halftone") && opts.art) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(origin, origin, body, body);
     ctx.clip();
-    ctx.globalAlpha = Math.max(0.05, Math.min(1, style.imageOpacity));
-    const contrastVal = Math.max(0.2, Math.min(2, style.contrast * 1.5));
-    const brightVal = Math.max(0.5, Math.min(1.8, 1 + (style.contrast - 0.7) * 0.4));
-    ctx.filter = `contrast(${contrastVal}) brightness(${brightVal})`;
+    ctx.globalAlpha = mode === "halftone" ? Math.max(0.18, fidelity * 0.4) : fidelity;
     coverDraw(
       ctx,
       opts.art,
@@ -525,164 +572,184 @@ export function renderQr(
     ctx.restore();
   }
 
-  const sampled =
-    pictured && opts.art
-      ? sampleGrid(opts.art, qr.size)
-      : null;
+  // Picture mode: keep photo detail, push each cell into a scannable band.
+  if (mode === "paint") {
+    const darkA = 0.28 + contrast * 0.42 * (1.15 - fidelity * 0.35);
+    const lightA = 0.28 + contrast * 0.42 * (1.15 - fidelity * 0.35);
+    for (let y = 0; y < qr.size; y++) {
+      for (let x = 0; x < qr.size; x++) {
+        if (isFinderCell(x, y, qr.size)) continue;
+        const dark = isDark(qr, x, y);
+        const px0 = origin + x * cell;
+        const py0 = origin + y * cell;
+        const type = qr.types[y]![x]!;
+        const protectedPattern =
+          type === QrCodeDataType.Function ||
+          type === QrCodeDataType.Timing ||
+          type === QrCodeDataType.Alignment;
+        const a = Math.min(0.88, (protectedPattern ? 1.2 : 1) * (dark ? darkA : lightA));
+        ctx.globalCompositeOperation = dark ? "multiply" : "screen";
+        ctx.fillStyle = dark ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
+        ctx.fillRect(px0, py0, cell, cell);
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
 
-  if (style.imageMode === "mosaic" && sampled && opts.art) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(origin, origin, body, body);
-    ctx.clip();
-    coverDraw(
-      ctx,
-      sampled.canvas,
-      origin,
-      origin,
-      body,
-      body,
-      qr.size,
-      qr.size,
-    );
-    ctx.restore();
+    // Extra lock dots only when the user (or Fix Scan) cranks weight high.
+    const scale = clamp(style.dotScale, 0.45, 0.96);
+    if (scale >= 0.8 && sampled) {
+      const ds = cell * scale;
+      for (let y = 0; y < qr.size; y++) {
+        for (let x = 0; x < qr.size; x++) {
+          if (isFinderCell(x, y, qr.size)) continue;
+          if (!isDark(qr, x, y)) continue;
+          const type = qr.types[y]![x]!;
+          if (
+            type === QrCodeDataType.Function ||
+            type === QrCodeDataType.Timing ||
+            type === QrCodeDataType.Alignment
+          ) {
+            continue;
+          }
+          const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
+          ctx.fillStyle = mapModuleColor(r, g, b, true, contrast, fidelity);
+          const dx = origin + x * cell + (cell - ds) / 2;
+          const dy = origin + y * cell + (cell - ds) / 2;
+          const marker: ModuleShape =
+            style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
+              ? "dots"
+              : style.moduleShape;
+          ctx.globalAlpha = 0.55 + contrast * 0.25;
+          drawModuleShape(ctx, dx, dy, ds, marker, undefined, { gx: x, gy: y, size: qr.size });
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
   }
 
   const fill = makeFill(ctx, style, origin, origin, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
-  // Render QR matrix modules
-  for (let y = 0; y < qr.size; y++) {
-    for (let x = 0; x < qr.size; x++) {
-      const type = qr.types[y]![x]!;
-      // Skip finder pattern 8x8 regions (handled cleanly with guaranteed contrast below)
-      if (
-        (x < 8 && y < 8) ||
-        (x >= qr.size - 8 && y < 8) ||
-        (x < 8 && y >= qr.size - 8)
-      ) {
-        continue;
-      }
+  if (mode !== "paint") {
+    for (let y = 0; y < qr.size; y++) {
+      for (let x = 0; x < qr.size; x++) {
+        if (isFinderCell(x, y, qr.size)) continue;
 
-      const dark = isDark(qr, x, y);
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
-      const pad = cell * gap * 0.5;
+        const type = qr.types[y]![x]!;
+        const dark = isDark(qr, x, y);
+        const px0 = origin + x * cell;
+        const py0 = origin + y * cell;
+        const pad = cell * gap * 0.5;
+        const protectedPattern =
+          type === QrCodeDataType.Function ||
+          type === QrCodeDataType.Timing ||
+          type === QrCodeDataType.Alignment;
+        const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
+        const L = sampled ? lumAt(sampled.data, qr.size, x, y) : dark ? 0 : 1;
 
-      // Protected structural patterns (Timing, Alignment, Function)
-      const protectedPattern =
-        type === QrCodeDataType.Function ||
-        type === QrCodeDataType.Timing ||
-        type === QrCodeDataType.Alignment;
-
-      if (protectedPattern) {
-        ctx.fillStyle = dark ? fill : style.bg;
-        ctx.fillRect(px0, py0, cell, cell);
-        continue;
-      }
-
-      const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
-      const L = sampled ? lumAt(sampled.data, qr.size, x, y) : (dark ? 0 : 1);
-
-      if (style.imageMode === "mosaic" && sampled) {
-        const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-        ctx.fillStyle = mixToward(r, g, b, dark, style.contrast);
-        const ms = cell - pad * 2;
-        drawModuleShape(
-          ctx,
-          px0 + pad,
-          py0 + pad,
-          ms,
-          style.moduleShape,
-          {
-            n: isDark(qr, x, y - 1),
-            e: isDark(qr, x + 1, y),
-            s: isDark(qr, x, y + 1),
-            w: isDark(qr, x - 1, y),
-          },
-          grid,
-        );
-        continue;
-      }
-
-      if (style.imageMode === "halftone" && sampled) {
-        const minR = dark ? cell * 0.26 : cell * 0.02;
-        const maxR = dark ? cell * 0.49 : cell * 0.16;
-        const radius = minR + (maxR - minR) * (1 - L);
-        ctx.fillStyle = dark ? fill : bg;
-        ctx.beginPath();
-        ctx.arc(px0 + cell / 2, py0 + cell / 2, Math.max(0.4, radius), 0, Math.PI * 2);
-        ctx.fill();
-        continue;
-      }
-
-      if (style.imageMode === "paint" && opts.art) {
-        if (!dark) {
-          // AI Adaptive Light Module Wash: If background image is dark in this cell,
-          // wash the cell with style.bg so phone camera decoders reliably see a 0-bit
-          if (L < 0.72) {
-            ctx.fillStyle = style.bg;
-            ctx.fillRect(px0, py0, cell, cell);
-          }
-          // Optional faint light dot
-          const ds = cell * 0.26 * (1 - gap);
-          ctx.fillStyle = style.bg;
-          ctx.beginPath();
-          ctx.arc(px0 + cell / 2, py0 + cell / 2, ds / 2, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          // Dark module: solid dot with user-selected shape
-          const scale = Math.max(0.68, style.dotScale);
-          const ds = cell * scale * (1 - gap);
-          const dx = px0 + (cell - ds) / 2;
-          const dy = py0 + (cell - ds) / 2;
-          ctx.fillStyle = fill;
-          const markerShape: ModuleShape =
-            style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
-              ? "dots"
-              : style.moduleShape;
-          drawModuleShape(ctx, dx, dy, ds, markerShape, undefined, grid);
-        }
-        continue;
-      }
-
-      if (!dark) {
-        if (style.accentShape && style.accentColor && style.accentOnLight) {
-          ctx.fillStyle = style.accentColor;
-          const ds = cell * 0.3;
-          drawModuleShape(ctx, px0 + (cell - ds) / 2, py0 + (cell - ds) / 2, ds, style.accentShape, undefined, grid);
-        }
-        continue;
-      }
-
-      const accent =
-        style.accentShape && style.accentColor && !style.accentOnLight && cellHash(x, y) % 6 === 0;
-      ctx.fillStyle = accent ? style.accentColor! : fill;
-      const neighbors =
-        style.moduleShape === "fluid" && !accent
-          ? {
+        if (mode === "mosaic" && sampled) {
+          const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
+          ctx.fillStyle = mapModuleColor(r, g, b, dark, contrast, fidelity);
+          const tileGap = Math.max(pad, cell * 0.04);
+          const ms = cell - tileGap * 2;
+          drawModuleShape(
+            ctx,
+            px0 + tileGap,
+            py0 + tileGap,
+            ms,
+            style.moduleShape === "fluid" ? "square" : style.moduleShape,
+            {
               n: isDark(qr, x, y - 1),
               e: isDark(qr, x + 1, y),
               s: isDark(qr, x, y + 1),
               w: isDark(qr, x - 1, y),
-            }
-          : undefined;
-      const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
-      const mSize = (cell - pad * 2) * dotWeight;
-      const mOffset = (cell - mSize) / 2;
-      drawModuleShape(
-        ctx,
-        px0 + mOffset,
-        py0 + mOffset,
-        mSize,
-        accent ? style.accentShape! : style.moduleShape,
-        neighbors,
-        grid,
-      );
+            },
+            grid,
+          );
+          continue;
+        }
+
+        if (mode === "halftone" && sampled) {
+          const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
+          const minR = dark ? cell * 0.28 : cell * 0.04;
+          const maxR = dark ? cell * 0.48 * clamp(style.dotScale, 0.5, 1) * 1.15 : cell * 0.16;
+          const radius = minR + (maxR - minR) * (dark ? 1 - L * 0.35 : 1 - L);
+          ctx.fillStyle = mapModuleColor(r, g, b, dark, contrast, fidelity);
+          ctx.beginPath();
+          ctx.arc(px0 + cell / 2, py0 + cell / 2, Math.max(0.5, radius), 0, Math.PI * 2);
+          ctx.fill();
+          continue;
+        }
+
+        if (mode === "backdrop") {
+          if (protectedPattern) {
+            ctx.fillStyle = dark ? fill : style.bg;
+            ctx.globalAlpha = dark ? 0.92 : 0.55;
+            ctx.fillRect(px0, py0, cell, cell);
+            ctx.globalAlpha = 1;
+            continue;
+          }
+          if (!dark) continue;
+          const scale = clamp(style.dotScale, 0.45, 0.92);
+          const ds = cell * scale * (1 - gap);
+          ctx.fillStyle = fill;
+          ctx.globalAlpha = 0.82 + contrast * 0.15;
+          drawModuleShape(
+            ctx,
+            px0 + (cell - ds) / 2,
+            py0 + (cell - ds) / 2,
+            ds,
+            style.moduleShape,
+            undefined,
+            grid,
+          );
+          ctx.globalAlpha = 1;
+          continue;
+        }
+
+        if (protectedPattern) {
+          ctx.fillStyle = dark ? fill : style.bg;
+          ctx.fillRect(px0, py0, cell, cell);
+          continue;
+        }
+
+        if (!dark) {
+          if (style.accentShape && style.accentColor && style.accentOnLight) {
+            ctx.fillStyle = style.accentColor;
+            const ds = cell * 0.3;
+            drawModuleShape(ctx, px0 + (cell - ds) / 2, py0 + (cell - ds) / 2, ds, style.accentShape, undefined, grid);
+          }
+          continue;
+        }
+
+        const accent =
+          style.accentShape && style.accentColor && !style.accentOnLight && cellHash(x, y) % 6 === 0;
+        ctx.fillStyle = accent ? style.accentColor! : fill;
+        const neighbors =
+          style.moduleShape === "fluid" && !accent
+            ? {
+                n: isDark(qr, x, y - 1),
+                e: isDark(qr, x + 1, y),
+                s: isDark(qr, x, y + 1),
+                w: isDark(qr, x - 1, y),
+              }
+            : undefined;
+        const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+        const mSize = (cell - pad * 2) * dotWeight;
+        const mOffset = (cell - mSize) / 2;
+        drawModuleShape(
+          ctx,
+          px0 + mOffset,
+          py0 + mOffset,
+          mSize,
+          accent ? style.accentShape! : style.moduleShape,
+          neighbors,
+          grid,
+        );
+      }
     }
   }
 
-  // Draw 8x8 finder patterns + clean separator
   const corners: [number, number][] = [
     [0, 0],
     [qr.size - 7, 0],
@@ -692,15 +759,10 @@ export function renderQr(
   for (const [ex, ey] of corners) {
     const ox = origin + ex * cell;
     const oy = origin + ey * cell;
-
-    // Clear 8x8 area (7x7 finder pattern + 1-cell separator) with pure background color
     const sepX = ex === 0 ? ox : ox - cell;
     const sepY = ey === 0 ? oy : oy - cell;
-    const sepW = cell * 8;
-    const sepH = cell * 8;
     ctx.fillStyle = style.bg;
-    ctx.fillRect(sepX, sepY, sepW, sepH);
-
+    ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
     drawEye(
       ctx,
       ox,
@@ -714,7 +776,6 @@ export function renderQr(
     );
   }
 
-  // Draw Center Logo
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
   if (logoImg) {
     const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));

@@ -673,6 +673,28 @@ const ART_PRESETS: Preset[] = [
       gradientTo: "#eab308",
     },
   }),
+  art({
+    id: "art-alpine-summit",
+    name: "Alpine Summit",
+    category: "Art",
+    featured: true,
+    style: {
+      moduleShape: "square",
+      eyeShape: "square",
+      ballShape: "square",
+      fg: "#0f172a",
+      bg: "#f4efe6",
+      eyeColor: "#0f172a",
+      ballColor: "#0f172a",
+      imageMode: "paint",
+      imageOpacity: 0.96,
+      contrast: 0.74,
+      dotScale: 0.52,
+      moduleGap: 0.03,
+      quietZone: 3,
+      minVersion: 7,
+    },
+  }),
 ];
 
 export const PRESETS: Preset[] = [...buildPresets(), ...ART_PRESETS];
@@ -687,10 +709,10 @@ export function getPreset(id: string): Preset | undefined {
 }
 
 export const SAMPLE_IMAGES: { id: string; name: string; src: string }[] = [
-  { id: "ink", name: "Ink", src: "/samples/ink.jpg" },
+  { id: "mountain", name: "Summit", src: "/samples/mountain.jpg" },
   { id: "peony", name: "Peony", src: "/samples/peony.jpg" },
   { id: "cat", name: "Tabby", src: "/samples/cat.jpg" },
   { id: "lake", name: "Lake", src: "/samples/lake.jpg" },
-  { id: "arch", name: "Stairs", src: "/samples/arch.jpg" },
+  { id: "parrot", name: "Parrot", src: "/samples/parrot.jpg" },
   { id: "waves", name: "Waves", src: "/samples/waves.jpg" },
 ];

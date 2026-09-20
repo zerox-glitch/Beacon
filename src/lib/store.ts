@@ -43,7 +43,7 @@ interface StudioState {
   hydrateHistory: () => void;
 }
 
-const HISTORY_KEY = "beacon-history-v1";
+const HISTORY_KEY = "qrwho-history-v1";
 
 function persist(history: HistoryItem[]) {
   try {
@@ -57,29 +57,12 @@ function persist(history: HistoryItem[]) {
   }
 }
 
-// Default initial state: Alpine Summit Peak AI Artwork
 export const useStudio = create<StudioState>((set, get) => ({
   payload: {
     ...emptyPayload(),
     url: "https://qrwho.vercel.app",
   },
-  style: {
-    ...DEFAULT_STYLE,
-    moduleShape: "dots",
-    eyeShape: "square",
-    ballShape: "square",
-    fg: "#0f172a",
-    bg: "#f8fafc",
-    eyeColor: "#0f172a",
-    ballColor: "#0f172a",
-    imageMode: "paint",
-    imageOpacity: 0.88,
-    contrast: 0.85,
-    dotScale: 0.72,
-    moduleGap: 0.02,
-    quietZone: 3,
-    ecc: "H",
-  },
+  style: { ...DEFAULT_STYLE },
   imageUrl: "/samples/mountain.jpg",
   logoUrl: null,
   presetId: "art-alpine-summit",

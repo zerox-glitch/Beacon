@@ -3,6 +3,9 @@ node_modules/
 .github_repo
 .env
 .env.*
-.vercel/output/
+.vercel/
+.grok/
+grok-workspace.zip
 screenshots/
 .node_modules.lock
+dist/
