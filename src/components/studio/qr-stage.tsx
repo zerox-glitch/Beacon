@@ -288,12 +288,17 @@ export function QrStage() {
         fixing={fixing}
       />
 
-      <div className="flex w-full max-w-[420px] flex-wrap items-center justify-center gap-1.5">
+      <div className="flex w-full max-w-[210px] flex-wrap items-center justify-center gap-1.5 rounded-xl border border-border-strong bg-elevated p-1.5 sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
         <Button onClick={onDownload} size="sm" className="h-9 px-3 text-xs font-semibold sm:text-sm">
           <Download className="mr-1 size-3.5" />
           PNG
         </Button>
-        <Button variant="secondary" onClick={onDownloadSvg} size="sm" className="h-9 px-3 text-xs sm:text-sm">
+        <Button
+          variant="secondary"
+          onClick={onDownloadSvg}
+          size="sm"
+          className="h-9 border-border-strong bg-surface px-3 text-xs font-semibold text-fg sm:text-sm"
+        >
           <FileCode2 className="mr-1 size-3.5" />
           SVG
         </Button>
@@ -303,23 +308,47 @@ export function QrStage() {
           onClick={onAutoFix}
           disabled={fixing}
           className={cn(
-            "h-9 px-3 text-xs font-semibold sm:text-sm",
-            scanOk === false && "border border-warn text-warn",
+            "h-9 border-border-strong bg-surface px-3 text-xs font-semibold text-fg sm:text-sm",
+            scanOk === false && "border-warn bg-warn/15 text-warn",
           )}
         >
           {fixing ? <Loader2 className="mr-1 size-3.5 animate-spin" /> : <Wand2 className="mr-1 size-3.5" />}
           {fixing ? "Tuning…" : "Fix scan"}
         </Button>
-        <Button variant="ghost" size="icon" onClick={onCopyImage} className="size-9" aria-label="Copy image">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={onCopyImage}
+          className="size-9 border border-border-strong bg-surface text-fg"
+          aria-label="Copy image"
+        >
           {copied ? <Check className="size-3.5 text-ok" /> : <ImageDown className="size-3.5" />}
         </Button>
-        <Button variant="ghost" size="icon" onClick={onCopyPayload} className="size-9" aria-label="Copy destination">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={onCopyPayload}
+          className="size-9 border border-border-strong bg-surface text-fg"
+          aria-label="Copy destination"
+        >
           <Copy className="size-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={onPrint} className="hidden size-9 sm:inline-flex" aria-label="Print">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={onPrint}
+          className="hidden size-9 border border-border-strong bg-surface text-fg sm:inline-flex"
+          aria-label="Print"
+        >
           <Printer className="size-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={surprise} className="size-9" aria-label="Surprise preset">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={surprise}
+          className="size-9 border border-border-strong bg-surface text-fg"
+          aria-label="Surprise preset"
+        >
           <Shuffle className="size-3.5" />
         </Button>
       </div>

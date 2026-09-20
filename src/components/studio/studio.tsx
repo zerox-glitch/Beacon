@@ -33,6 +33,7 @@ export function Studio() {
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
   const [showcaseOpen, setShowcaseOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(true);
 
   useEffect(() => {
     hydrateHistory();
@@ -88,8 +89,34 @@ export function Studio() {
             <QrStage />
           </main>
 
-          <aside className="flex max-h-[46dvh] min-h-0 flex-col border-t border-border bg-elevated/40 lg:max-h-none lg:min-h-[calc(100dvh-57px)] lg:border-t-0">
-            <div className="sticky top-0 z-20 grid grid-cols-4 border-b border-border bg-surface/90 p-1 backdrop-blur">
+          <aside
+            className={cn(
+              "flex min-h-0 flex-col border-t border-border bg-elevated lg:min-h-[calc(100dvh-57px)] lg:border-t-0",
+              sheetOpen ? "max-h-[52dvh] lg:max-h-none" : "lg:max-h-none",
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setSheetOpen((v) => !v)}
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-2 border-b border-border-strong lg:hidden",
+                sheetOpen ? "bg-surface text-fg" : "bg-accent text-accent-fg",
+              )}
+              aria-expanded={sheetOpen}
+            >
+              <span className={cn("h-1.5 w-11 rounded-full", sheetOpen ? "bg-fg/70" : "bg-accent-fg/80")} />
+              <span className="text-xs font-semibold tracking-wide">
+                {sheetOpen ? "Close studio" : "Open presets & design"}
+              </span>
+              {sheetOpen ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+            </button>
+
+            <div
+              className={cn(
+                "sticky top-0 z-20 grid grid-cols-4 border-b border-border bg-surface p-1",
+                !sheetOpen && "hidden lg:grid",
+              )}
+            >
               {STUDIO_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = mobileTab === tab.id;
@@ -97,12 +124,15 @@ export function Studio() {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setMobileTab(tab.id)}
+                    onClick={() => {
+                      setSheetOpen(true);
+                      setMobileTab(tab.id);
+                    }}
                     className={cn(
                       "flex h-11 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
                       active
-                        ? "border border-border/80 bg-elevated font-semibold text-fg shadow-sm"
-                        : "text-muted hover:bg-surface/50 hover:text-fg",
+                        ? "border border-border-strong bg-elevated font-semibold text-fg shadow-sm"
+                        : "text-fg/75 hover:bg-surface-hover hover:text-fg",
                     )}
                   >
                     <Icon className="size-3.5 sm:size-4" />
@@ -112,7 +142,12 @@ export function Studio() {
               })}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin sm:p-5">
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin sm:p-5",
+                !sheetOpen && "hidden lg:block",
+              )}
+            >
               {mobileTab === "content" && <ContentPanel />}
               {mobileTab === "presets" && <PresetGallery />}
               {mobileTab === "design" && <DesignPanel />}

@@ -697,7 +697,7 @@ const ART_PRESETS: Preset[] = [
       imageMode: "paint",
       imageOpacity: 0.96,
       contrast: 0.74,
-      dotScale: 0.52,
+      dotScale: 0.7,
       moduleGap: 0.03,
       quietZone: 3,
       minVersion: 7,

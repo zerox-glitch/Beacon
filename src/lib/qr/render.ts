@@ -35,6 +35,31 @@ function coverDraw(
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 
+/** Photo aligned to the QR body so filling a module reveals that tile of the image. */
+function makePhotoPattern(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  origin: number,
+  body: number,
+): CanvasPattern | null {
+  const size = Math.max(32, Math.round(body));
+  const off = document.createElement("canvas");
+  off.width = size;
+  off.height = size;
+  const ox = off.getContext("2d");
+  if (!ox) return null;
+  ox.imageSmoothingEnabled = true;
+  ox.imageSmoothingQuality = "high";
+  coverDraw(ox, img, 0, 0, size, size, img.naturalWidth, img.naturalHeight);
+  const pat = ctx.createPattern(off, "no-repeat");
+  if (!pat) return null;
+  const m = new DOMMatrix();
+  m.translateSelf(origin, origin);
+  if (size !== body) m.scaleSelf(body / size, body / size);
+  pat.setTransform(m);
+  return pat;
+}
+
 function roundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -572,9 +597,11 @@ export function renderQr(
   }
 
   const sampled = pictured && opts.art ? sampleGrid(opts.art, qr.size) : null;
+  const fill = makeFill(ctx, style, origin, origin, body, body);
+  const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
-  // Picture + Backdrop: full-res photo is the canvas of the code.
-  if ((mode === "paint" || mode === "backdrop" || mode === "halftone") && opts.art) {
+  // Backdrop / Halftone: photo sits behind the mark.
+  if ((mode === "backdrop" || mode === "halftone") && opts.art) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(origin, origin, body, body);
@@ -593,74 +620,71 @@ export function renderQr(
     ctx.restore();
   }
 
-  // Picture mode: luminance-map the photo (what phone cameras need), then
-  // stamp the active preset's module shapes so a style + photo mix instead
-  // of collapsing into a generic square photo-QR.
-  if (mode === "paint") {
-    const darkA = 0.36 + contrast * 0.5 * (1.1 - fidelity * 0.28);
-    const lightA = 0.34 + contrast * 0.48 * (1.1 - fidelity * 0.28);
+  // Picture: photo lives only inside the dots. Light cells stay paper.
+  if (mode === "paint" && opts.art) {
+    const pat = makePhotoPattern(ctx, opts.art, origin, body);
+    const bgRgb = parseHex(style.bg);
+    const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+    const lightPaper = bgLum >= 0.45 ? style.bg : "#f2eee6";
+    const scale = clamp(style.dotScale, 0.5, 0.98);
+    const ds = cell * scale * (1 - gap);
+    const inset = (cell - ds) / 2;
+    const darken = clamp(0.2 + contrast * 0.55 * (1.15 - fidelity * 0.4), 0.16, 0.8);
+    const decorative = style.moduleShape !== "square";
+
+    if (bgLum < 0.45) {
+      for (let y = 0; y < qr.size; y++) {
+        for (let x = 0; x < qr.size; x++) {
+          if (isFinderCell(x, y, qr.size) || isDark(qr, x, y)) continue;
+          ctx.fillStyle = lightPaper;
+          ctx.fillRect(origin + x * cell, origin + y * cell, cell, cell);
+        }
+      }
+    }
+
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {
-        if (isFinderCell(x, y, qr.size)) continue;
-        const dark = isDark(qr, x, y);
-        const px0 = origin + x * cell;
-        const py0 = origin + y * cell;
+        if (isFinderCell(x, y, qr.size) || !isDark(qr, x, y)) continue;
         const type = qr.types[y]![x]!;
         const protectedPattern =
           type === QrCodeDataType.Function ||
           type === QrCodeDataType.Timing ||
           type === QrCodeDataType.Alignment;
-        const a = Math.min(0.93, (protectedPattern ? 1.22 : 1) * (dark ? darkA : lightA));
-        ctx.globalCompositeOperation = dark ? "multiply" : "screen";
-        ctx.fillStyle = dark ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
-        ctx.fillRect(px0, py0, cell, cell);
-      }
-    }
-    ctx.globalCompositeOperation = "source-over";
+        const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
+        const px0 = origin + x * cell;
+        const py0 = origin + y * cell;
+        const [r, g, b] = sampled ? rgbAt(sampled.data, qr.size, x, y) : [20, 20, 20];
+        const fallback = mapModuleColor(r, g, b, true, contrast, fidelity);
+        const accent =
+          Boolean(style.accentShape && style.accentColor && !style.accentOnLight) &&
+          cellHash(x, y) % 6 === 0;
+        const shape: ModuleShape = accent
+          ? style.accentShape!
+          : protectedPattern
+            ? "square"
+            : style.moduleShape;
+        const ox = protectedPattern ? px0 : px0 + inset;
+        const oy = protectedPattern ? py0 : py0 + inset;
+        const s = protectedPattern ? cell : ds;
+        const photoFill: string | CanvasPattern = accent ? style.accentColor! : (pat ?? fallback);
 
-    const decorative = style.moduleShape !== "square";
-    const scale = clamp(style.dotScale, 0.45, 0.96);
-    // Squares at default weight stay a photo mosaic (Alpine / gallery). Any
-    // other module shape — or a cranked Fix Scan weight — paints the preset.
-    if (sampled && (decorative || scale >= 0.8)) {
-      const ds = cell * clamp(decorative ? Math.max(scale, 0.68) : scale, 0.5, 0.94);
-      const pad = (cell - ds) / 2;
-      for (let y = 0; y < qr.size; y++) {
-        for (let x = 0; x < qr.size; x++) {
-          if (isFinderCell(x, y, qr.size)) continue;
-          if (!isDark(qr, x, y)) continue;
-          const type = qr.types[y]![x]!;
-          if (
-            type === QrCodeDataType.Function ||
-            type === QrCodeDataType.Timing ||
-            type === QrCodeDataType.Alignment
-          ) {
-            continue;
-          }
-          const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-          const mapped = mapModuleColor(r, g, b, true, contrast, fidelity);
-          const accent =
-            Boolean(style.accentShape && style.accentColor && !style.accentOnLight) &&
-            cellHash(x, y) % 6 === 0;
-          ctx.fillStyle = accent
-            ? style.accentColor!
-            : tintWithPreset(mapped, style.fg, decorative ? 0.36 : 0.1);
-          drawModuleShape(
-            ctx,
-            origin + x * cell + pad,
-            origin + y * cell + pad,
-            ds,
-            accent ? style.accentShape! : style.moduleShape,
-            undefined,
-            { gx: x, gy: y, size: qr.size },
-          );
+        ctx.fillStyle = photoFill;
+        if (protectedPattern) ctx.fillRect(px0, py0, cell, cell);
+        else drawModuleShape(ctx, ox, oy, s, shape, undefined, grid);
+        ctx.globalCompositeOperation = "multiply";
+        ctx.fillStyle = `rgba(0,0,0,${darken})`;
+        if (protectedPattern) ctx.fillRect(px0, py0, cell, cell);
+        else drawModuleShape(ctx, ox, oy, s, shape, undefined, grid);
+        ctx.globalCompositeOperation = "source-over";
+        if (decorative && !accent && !protectedPattern) {
+          ctx.globalAlpha = 0.2;
+          ctx.fillStyle = tintWithPreset(fallback, style.fg, 0.55);
+          drawModuleShape(ctx, ox, oy, s, shape, undefined, grid);
+          ctx.globalAlpha = 1;
         }
       }
     }
   }
-
-  const fill = makeFill(ctx, style, origin, origin, body, body);
-  const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
   if (mode !== "paint") {
     for (let y = 0; y < qr.size; y++) {

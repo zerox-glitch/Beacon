@@ -150,7 +150,7 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Picture", hint: "Photo fills modules in the current style; luminance is forced for scan" },
+  { id: "paint", label: "Picture", hint: "Photo shows only inside the dots; paper stays clean for scan" },
   { id: "mosaic", label: "Mosaic", hint: "Each tile samples the photo" },
   { id: "halftone", label: "Halftone", hint: "Dots sized from the photo" },
   { id: "backdrop", label: "Backdrop", hint: "Photo sits behind the mark" },
@@ -206,7 +206,7 @@ export const DEFAULT_STYLE: QrStyle = {
   moduleGap: 0.03,
   imageMode: "paint",
   imageOpacity: 0.96,
-  dotScale: 0.52,
+  dotScale: 0.7,
   contrast: 0.74,
   logoScale: 0.22,
   minVersion: 7,

@@ -58,7 +58,7 @@ export function ImagePanel() {
             {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
           </span>
           <span className="text-xs text-muted">
-            Mixes with the style you picked — modules keep their shape and finder colors
+            Photo fills only the dots — style shape and finder colors stay, paper stays scannable
           </span>
         </button>
         <input
@@ -90,10 +90,9 @@ export function ImagePanel() {
       <div>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try sample pictures</p>
         <p className="mb-2 text-[11px] leading-snug text-subtle">
-          A sample or upload keeps the current style. Each module is the photo forced into a dark or
-          light band (hue stays); finders stay solid geometry. Phones read this more reliably than
-          the in-browser checker — there is no private decoder, and generative QR Art is not in this
-          client.
+          A sample or upload keeps the current style. The picture shows only where the dots are;
+          light cells stay paper. Fix scan will raise or lower dot size, contrast, opacity, and
+          grid detail until a camera can lock.
         </p>
         <div className="grid grid-cols-6 gap-2">
           {SAMPLE_IMAGES.map((s) => (

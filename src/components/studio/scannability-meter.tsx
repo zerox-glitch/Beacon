@@ -1,4 +1,5 @@
 import { Loader2, Wand2 } from "lucide-react";
+import { scanAdvice } from "@/lib/qr/autofix";
 import { cn } from "@/lib/utils";
 import { type QrStyle } from "@/lib/qr/types";
 
@@ -34,6 +35,15 @@ function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Ba
   return "low";
 }
 
+function adviceText(style: QrStyle, hasImage: boolean): string | null {
+  const { raise, lower } = scanAdvice(style, hasImage);
+  const bits: string[] = [];
+  if (raise.length) bits.push(`increase ${raise.join(", ")}`);
+  if (lower.length) bits.push(`decrease ${lower.join(", ")}`);
+  if (!bits.length) return null;
+  return `To lock: ${bits.join("; ")}.`;
+}
+
 export function ScannabilityMeter({
   scanOk,
   style,
@@ -44,9 +54,11 @@ export function ScannabilityMeter({
   const band = readBand(scanOk, style, hasImage);
   const active = BANDS.find((b) => b.id === band) ?? BANDS[2]!;
   const checking = band === "checking";
+  const needsTune = band === "low" || band === "unscannable";
+  const hint = needsTune ? adviceText(style, hasImage) : null;
 
   return (
-    <div className="w-full max-w-[210px] rounded-xl border border-border/80 bg-surface/80 p-2 sm:max-w-[300px] sm:p-2.5 md:max-w-[380px] lg:max-w-[420px]">
+    <div className="w-full max-w-[210px] rounded-xl border border-border-strong bg-elevated p-2 sm:max-w-[300px] sm:p-2.5 md:max-w-[380px] lg:max-w-[420px]">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <span
@@ -63,9 +75,9 @@ export function ScannabilityMeter({
           disabled={fixing}
           className={cn(
             "flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50",
-            band === "low" || band === "unscannable"
+            needsTune
               ? "bg-warn text-bg hover:bg-warn/90"
-              : "border border-border bg-elevated text-fg hover:bg-surface",
+              : "border border-border-strong bg-surface text-fg hover:bg-surface-hover",
           )}
         >
           {fixing ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />}
@@ -89,10 +101,11 @@ export function ScannabilityMeter({
         <span>Low</span>
         <span className="text-danger">Unscannable</span>
       </div>
-      {hasImage ? (
+      {hint ? (
+        <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>
+      ) : hasImage ? (
         <p className="mt-1.5 text-[10px] leading-snug text-subtle">
-          Picture codes map luminance into dark/light bands and keep solid finders. Phone cameras
-          beat this checker — we do not run a hidden decoder.
+          Photo sits only in the dots. Phone cameras beat this checker — no hidden decoder.
         </p>
       ) : null}
     </div>
