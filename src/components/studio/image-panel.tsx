@@ -57,7 +57,9 @@ export function ImagePanel() {
           <span className="text-sm font-medium text-fg">
             {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
           </span>
-          <span className="text-xs text-muted">Blends your image into a working, scannable QR code</span>
+          <span className="text-xs text-muted">
+            Mixes with the style you picked — modules keep their shape and finder colors
+          </span>
         </button>
         <input
           ref={artRef}
@@ -87,16 +89,19 @@ export function ImagePanel() {
       {/* Preset Sample Gallery */}
       <div>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try sample pictures</p>
+        <p className="mb-2 text-[11px] leading-snug text-subtle">
+          A sample or upload keeps the current style. Each module is the photo forced into a dark or
+          light band (hue stays); finders stay solid geometry. Phones read this more reliably than
+          the in-browser checker — there is no private decoder, and generative QR Art is not in this
+          client.
+        </p>
         <div className="grid grid-cols-6 gap-2">
           {SAMPLE_IMAGES.map((s) => (
             <button
               key={s.id}
               type="button"
               title={s.name}
-              onClick={() => {
-                setImageUrl(s.src);
-                if (style.imageMode === "none") patchStyle({ imageMode: "paint" });
-              }}
+              onClick={() => setImageUrl(s.src)}
               className={cn(
                 "aspect-square overflow-hidden rounded-lg border transition-all active:scale-95",
                 imageUrl === s.src ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",

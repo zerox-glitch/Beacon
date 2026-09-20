@@ -89,6 +89,12 @@ export function ScannabilityMeter({
         <span>Low</span>
         <span className="text-danger">Unscannable</span>
       </div>
+      {hasImage ? (
+        <p className="mt-1.5 text-[10px] leading-snug text-subtle">
+          Picture codes map luminance into dark/light bands and keep solid finders. Phone cameras
+          beat this checker — we do not run a hidden decoder.
+        </p>
+      ) : null}
     </div>
   );
 }

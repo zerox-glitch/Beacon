@@ -10,7 +10,7 @@ export function encodePayload(payload: Payload, style: QrStyle): EncodedQr {
   return encode(text, {
     ecc: pictured ? "H" : style.ecc,
     boostEcc: pictured,
-    minVersion: pictured ? Math.max(style.minVersion, 4) : 1,
+    minVersion: pictured ? Math.max(style.minVersion, 5) : 1,
     border: 0,
   });
 }

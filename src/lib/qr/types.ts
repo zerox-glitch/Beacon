@@ -150,7 +150,7 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Picture", hint: "Image shows through; dots carry the code" },
+  { id: "paint", label: "Picture", hint: "Photo fills modules in the current style; luminance is forced for scan" },
   { id: "mosaic", label: "Mosaic", hint: "Each tile samples the photo" },
   { id: "halftone", label: "Halftone", hint: "Dots sized from the photo" },
   { id: "backdrop", label: "Backdrop", hint: "Photo sits behind the mark" },
@@ -189,6 +189,8 @@ export function emptyPayload(): Payload {
     eventEnd: "",
   };
 }
+
+export const DEFAULT_ART_URL = "/samples/mountain.jpg";
 
 export const DEFAULT_STYLE: QrStyle = {
   moduleShape: "square",

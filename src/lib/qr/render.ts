@@ -451,14 +451,35 @@ function mapModuleColor(
 ): string {
   const C = clamp(contrast, 0.25, 1);
   const F = clamp(fidelity, 0.12, 1);
+  // Wide luminance split is what phone cameras need. Hue stays from the photo.
   if (dark) {
-    const target = 0.08 + F * (0.28 - C * 0.16);
+    const target = 0.1 + F * (0.16 - C * 0.08);
     const [nr, ng, nb] = setLuminance(r, g, b, target);
     return rgbStr(nr, ng, nb);
   }
-  const target = 0.94 - F * (0.2 - C * 0.08);
+  const target = 0.9 - F * (0.12 - C * 0.05);
   const [nr, ng, nb] = setLuminance(r, g, b, target);
   return rgbStr(nr, ng, nb);
+}
+
+function parseHex(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1]!, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Tint a photo-derived rgb() toward the preset foreground so style + picture mix. */
+function tintWithPreset(photoCss: string, fg: string, amount: number): string {
+  const pm = /^rgb\((\d+),(\d+),(\d+)\)$/.exec(photoCss);
+  const fgRgb = parseHex(fg);
+  if (!pm || !fgRgb) return photoCss;
+  const t = clamp(amount, 0, 1);
+  return rgbStr(
+    Number(pm[1]) * (1 - t) + fgRgb[0] * t,
+    Number(pm[2]) * (1 - t) + fgRgb[1] * t,
+    Number(pm[3]) * (1 - t) + fgRgb[2] * t,
+  );
 }
 
 function isFinderCell(x: number, y: number, size: number): boolean {
@@ -572,10 +593,12 @@ export function renderQr(
     ctx.restore();
   }
 
-  // Picture mode: keep photo detail, push each cell into a scannable band.
+  // Picture mode: luminance-map the photo (what phone cameras need), then
+  // stamp the active preset's module shapes so a style + photo mix instead
+  // of collapsing into a generic square photo-QR.
   if (mode === "paint") {
-    const darkA = 0.28 + contrast * 0.42 * (1.15 - fidelity * 0.35);
-    const lightA = 0.28 + contrast * 0.42 * (1.15 - fidelity * 0.35);
+    const darkA = 0.36 + contrast * 0.5 * (1.1 - fidelity * 0.28);
+    const lightA = 0.34 + contrast * 0.48 * (1.1 - fidelity * 0.28);
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {
         if (isFinderCell(x, y, qr.size)) continue;
@@ -587,7 +610,7 @@ export function renderQr(
           type === QrCodeDataType.Function ||
           type === QrCodeDataType.Timing ||
           type === QrCodeDataType.Alignment;
-        const a = Math.min(0.88, (protectedPattern ? 1.2 : 1) * (dark ? darkA : lightA));
+        const a = Math.min(0.93, (protectedPattern ? 1.22 : 1) * (dark ? darkA : lightA));
         ctx.globalCompositeOperation = dark ? "multiply" : "screen";
         ctx.fillStyle = dark ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`;
         ctx.fillRect(px0, py0, cell, cell);
@@ -595,10 +618,13 @@ export function renderQr(
     }
     ctx.globalCompositeOperation = "source-over";
 
-    // Extra lock dots only when the user (or Fix Scan) cranks weight high.
+    const decorative = style.moduleShape !== "square";
     const scale = clamp(style.dotScale, 0.45, 0.96);
-    if (scale >= 0.8 && sampled) {
-      const ds = cell * scale;
+    // Squares at default weight stay a photo mosaic (Alpine / gallery). Any
+    // other module shape — or a cranked Fix Scan weight — paints the preset.
+    if (sampled && (decorative || scale >= 0.8)) {
+      const ds = cell * clamp(decorative ? Math.max(scale, 0.68) : scale, 0.5, 0.94);
+      const pad = (cell - ds) / 2;
       for (let y = 0; y < qr.size; y++) {
         for (let x = 0; x < qr.size; x++) {
           if (isFinderCell(x, y, qr.size)) continue;
@@ -612,16 +638,22 @@ export function renderQr(
             continue;
           }
           const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-          ctx.fillStyle = mapModuleColor(r, g, b, true, contrast, fidelity);
-          const dx = origin + x * cell + (cell - ds) / 2;
-          const dy = origin + y * cell + (cell - ds) / 2;
-          const marker: ModuleShape =
-            style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
-              ? "dots"
-              : style.moduleShape;
-          ctx.globalAlpha = 0.55 + contrast * 0.25;
-          drawModuleShape(ctx, dx, dy, ds, marker, undefined, { gx: x, gy: y, size: qr.size });
-          ctx.globalAlpha = 1;
+          const mapped = mapModuleColor(r, g, b, true, contrast, fidelity);
+          const accent =
+            Boolean(style.accentShape && style.accentColor && !style.accentOnLight) &&
+            cellHash(x, y) % 6 === 0;
+          ctx.fillStyle = accent
+            ? style.accentColor!
+            : tintWithPreset(mapped, style.fg, decorative ? 0.36 : 0.1);
+          drawModuleShape(
+            ctx,
+            origin + x * cell + pad,
+            origin + y * cell + pad,
+            ds,
+            accent ? style.accentShape! : style.moduleShape,
+            undefined,
+            { gx: x, gy: y, size: qr.size },
+          );
         }
       }
     }

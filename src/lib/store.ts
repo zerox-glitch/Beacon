@@ -1,5 +1,12 @@
 import { create } from "zustand";
-import { DEFAULT_STYLE, emptyPayload, type Payload, type PayloadKind, type QrStyle } from "@/lib/qr/types";
+import {
+  DEFAULT_ART_URL,
+  DEFAULT_STYLE,
+  emptyPayload,
+  type Payload,
+  type PayloadKind,
+  type QrStyle,
+} from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
 
 export interface HistoryItem {
@@ -63,7 +70,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     url: "https://qrwho.vercel.app",
   },
   style: { ...DEFAULT_STYLE },
-  imageUrl: "/samples/mountain.jpg",
+  imageUrl: DEFAULT_ART_URL,
   logoUrl: null,
   presetId: "art-alpine-summit",
   category: "Gallery",

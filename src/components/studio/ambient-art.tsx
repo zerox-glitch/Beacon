@@ -15,24 +15,12 @@ interface Bit {
 
 /** Scattered QR-flavoured micro-glyphs that delicately twinkle across the canvas. */
 const BITS: Bit[] = [
-  { top: "12%", left: "6%", size: 14, kind: "sq", color: "#7fd0c4", rot: "8deg", dur: "7s", delay: "0s" },
-  { top: "20%", left: "12%", size: 8, kind: "dot", color: "#f3f0e8", rot: "0deg", dur: "9s", delay: "1.2s" },
-  { top: "8%", left: "22%", size: 16, kind: "ring", color: "#e06298", rot: "-6deg", dur: "8s", delay: "0.6s" },
-  { top: "14%", left: "80%", size: 12, kind: "sq", color: "#e08c00", rot: "14deg", dur: "7.5s", delay: "2s" },
-  { top: "10%", left: "92%", size: 9, kind: "dot", color: "#7fd0c4", rot: "0deg", dur: "6.5s", delay: "0.9s" },
-  { top: "26%", left: "88%", size: 18, kind: "ring", color: "#f3f0e8", rot: "4deg", dur: "10s", delay: "1.6s" },
-  { top: "34%", left: "4%", size: 10, kind: "dash", color: "#e06298", rot: "-14deg", dur: "8.5s", delay: "0.3s" },
-  { top: "50%", left: "6%", size: 8, kind: "dot", color: "#e08c00", rot: "0deg", dur: "7s", delay: "2.4s" },
-  { top: "66%", left: "5%", size: 15, kind: "ring", color: "#7fd0c4", rot: "10deg", dur: "9.5s", delay: "1s" },
-  { top: "80%", left: "8%", size: 12, kind: "sq", color: "#f3f0e8", rot: "-8deg", dur: "8s", delay: "0.5s" },
-  { top: "90%", left: "18%", size: 8, kind: "dot", color: "#e06298", rot: "0deg", dur: "6s", delay: "1.8s" },
-  { top: "92%", left: "52%", size: 12, kind: "dash", color: "#7fd0c4", rot: "6deg", dur: "9s", delay: "0.2s" },
-  { top: "86%", left: "76%", size: 9, kind: "dot", color: "#f3f0e8", rot: "0deg", dur: "7.5s", delay: "2.8s" },
-  { top: "78%", left: "90%", size: 15, kind: "sq", color: "#e08c00", rot: "12deg", dur: "8.5s", delay: "1.4s" },
-  { top: "56%", left: "94%", size: 8, kind: "dot", color: "#e06298", rot: "0deg", dur: "6.5s", delay: "0.7s" },
-  { top: "38%", left: "92%", size: 11, kind: "dash", color: "#f3f0e8", rot: "-10deg", dur: "9s", delay: "2.2s" },
-  { top: "24%", left: "74%", size: 7, kind: "dot", color: "#7fd0c4", rot: "0deg", dur: "7s", delay: "1.1s" },
-  { top: "28%", left: "20%", size: 7, kind: "dot", color: "#e08c00", rot: "0deg", dur: "8s", delay: "0.4s" },
+  { top: "14%", left: "7%", size: 10, kind: "sq", color: "#7fd0c4", rot: "8deg", dur: "9s", delay: "0s" },
+  { top: "12%", left: "88%", size: 8, kind: "dot", color: "#f3f0e8", rot: "0deg", dur: "11s", delay: "1.6s" },
+  { top: "48%", left: "5%", size: 9, kind: "ring", color: "#e06298", rot: "-6deg", dur: "10s", delay: "0.8s" },
+  { top: "82%", left: "10%", size: 10, kind: "dash", color: "#e08c00", rot: "12deg", dur: "12s", delay: "2.2s" },
+  { top: "86%", left: "86%", size: 8, kind: "sq", color: "#7fd0c4", rot: "-8deg", dur: "10s", delay: "0.4s" },
+  { top: "42%", left: "93%", size: 7, kind: "dot", color: "#f3f0e8", rot: "0deg", dur: "11s", delay: "1.1s" },
 ];
 
 function bitStyle(b: Bit): CSSProperties {
@@ -61,7 +49,6 @@ function bitStyle(b: Bit): CSSProperties {
 
 export function AmbientArt() {
   const stageBg = useStudio((s) => s.stageBg);
-  const applyPreset = useStudio((s) => s.applyPreset);
 
   const bgImage =
     stageBg === "cosmic"
@@ -83,17 +70,13 @@ export function AmbientArt() {
       {/* Layered vibrant neon aurora illumination */}
       <div className="stage-art-overlay" />
 
-      {/* Crisp geometric dot matrix grid */}
-      <div className="ambient-grid absolute inset-0 opacity-80" />
+      <div className="ambient-grid absolute inset-0 opacity-25" />
+      <div className="ambient-constellation absolute inset-0 opacity-20" />
 
-      {/* Radiant starlight constellation layer */}
-      <div className="ambient-constellation absolute inset-0 opacity-70" />
-
-      {/* Elegant architectural blueprint framing lines */}
-      <div className="absolute left-3 top-3 size-10 border-l-2 border-t-2 border-ok/40 sm:left-6 sm:top-6" />
-      <div className="absolute right-3 top-3 size-10 border-r-2 border-t-2 border-ok/40 sm:right-6 sm:top-6" />
-      <div className="absolute bottom-3 left-3 size-10 border-l-2 border-b-2 border-ok/40 sm:bottom-6 sm:left-6" />
-      <div className="absolute bottom-3 right-3 size-10 border-r-2 border-b-2 border-ok/40 sm:bottom-6 sm:right-6" />
+      <div className="absolute left-3 top-3 size-8 border-l border-t border-ok/15 sm:left-6 sm:top-6" />
+      <div className="absolute right-3 top-3 size-8 border-r border-t border-ok/15 sm:right-6 sm:top-6" />
+      <div className="absolute bottom-3 left-3 size-8 border-l border-b border-ok/15 sm:bottom-6 sm:left-6" />
+      <div className="absolute bottom-3 right-3 size-8 border-r border-b border-ok/15 sm:bottom-6 sm:right-6" />
 
       {/* Floating decorative studio badges */}
       <div className="absolute left-4 top-4 hidden sm:flex items-center gap-2 rounded-full border border-border/80 bg-surface/85 px-3 py-1 text-xs text-muted shadow-xl backdrop-blur">
