@@ -1,6 +1,5 @@
-import { Cpu, Eye, Lock, Palette, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
+import { Lock, Palette, ShieldCheck, Sparkles } from "lucide-react";
 import type { CSSProperties } from "react";
-import { PRESETS } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 
 interface Bit {

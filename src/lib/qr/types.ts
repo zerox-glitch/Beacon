@@ -110,6 +110,8 @@ export interface Preset {
   name: string;
   category: string;
   featured?: boolean;
+  /** When set, applying this preset loads this picture into the QR. */
+  artUrl?: string;
   style: QrStyle;
 }
 

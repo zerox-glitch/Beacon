@@ -84,9 +84,7 @@ export function Studio() {
 
         <div className="relative flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
           <main className="relative flex shrink-0 flex-col items-center justify-center overflow-hidden border-b border-border lg:min-h-0 lg:border-b-0 lg:border-r">
-            <div className="hidden lg:contents">
-              <AmbientArt />
-            </div>
+            <AmbientArt />
             <QrStage />
           </main>
 

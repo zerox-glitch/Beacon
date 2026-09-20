@@ -66,7 +66,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   imageUrl: "/samples/mountain.jpg",
   logoUrl: null,
   presetId: "art-alpine-summit",
-  category: "Art",
+  category: "Gallery",
   stageBg: "vibrant",
   scanText: null,
   scanOk: null,
@@ -83,39 +83,36 @@ export const useStudio = create<StudioState>((set, get) => ({
   applyPreset: (id) => {
     const preset = getPreset(id);
     if (!preset) return;
-    const current = get();
-    const keepMode =
-      preset.style.imageMode === "none"
-        ? current.imageUrl ? "paint" : "none"
-        : current.imageUrl && current.style.imageMode !== "none"
-          ? current.style.imageMode
-          : current.imageUrl
-            ? "paint"
-            : preset.style.imageMode;
+    const pictured = Boolean(preset.artUrl);
     set({
       presetId: id,
       style: {
         ...preset.style,
-        imageMode: keepMode,
-        minVersion: current.style.minVersion,
-        dotScale: current.style.dotScale,
-        contrast: current.style.contrast,
-        logoScale: current.style.logoScale,
-        quietZone: current.style.quietZone,
-        transparentBg: current.style.transparentBg,
-        ecc: current.style.ecc,
+        imageMode: pictured ? preset.style.imageMode || "paint" : "none",
       },
+      ...(pictured && preset.artUrl ? { imageUrl: preset.artUrl } : {}),
     });
   },
   setImageUrl: (url) =>
-    set((s) => ({
-      imageUrl: url,
-      style: {
-        ...s.style,
-        imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
-      },
-    })),
-  setLogoUrl: (url) => set({ logoUrl: url }),
+    set((s) => {
+      if (s.imageUrl?.startsWith("blob:") && s.imageUrl !== url) {
+        URL.revokeObjectURL(s.imageUrl);
+      }
+      return {
+        imageUrl: url,
+        style: {
+          ...s.style,
+          imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
+        },
+      };
+    }),
+  setLogoUrl: (url) =>
+    set((s) => {
+      if (s.logoUrl?.startsWith("blob:") && s.logoUrl !== url) {
+        URL.revokeObjectURL(s.logoUrl);
+      }
+      return { logoUrl: url };
+    }),
   setCategory: (category) => set({ category }),
   setStageBg: (stageBg) => set({ stageBg }),
   setScan: (scanOk, scanText) => set({ scanOk, scanText }),

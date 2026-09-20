@@ -1,39 +1,40 @@
 import { encode } from "uqr";
 import { useEffect, useState } from "react";
-import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
+import { GALLERY_PRESETS, PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
 import { renderQr } from "@/lib/qr/render";
-import type { QrStyle } from "@/lib/qr/types";
+import type { Preset, QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 
-const THUMB = encode("BEACON", { ecc: "M", border: 0 });
+const THUMB = encode("QRWHO", { ecc: "M", border: 0 });
 
 function PresetThumb({
-  style,
+  preset,
   active,
-  name,
   delay,
   onPick,
 }: {
-  style: QrStyle;
+  preset: Preset;
   active: boolean;
-  name: string;
   delay: number;
   onPick: () => void;
 }) {
   const [src, setSrc] = useState("");
+  const style = preset.style;
+
   useEffect(() => {
+    if (preset.artUrl) return;
     const canvas = document.createElement("canvas");
     const thumbStyle: QrStyle = { ...style, imageMode: "none", quietZone: 1, transparentBg: false };
     renderQr(canvas, THUMB, thumbStyle, { pixelSize: 96, exportScale: true });
     setSrc(canvas.toDataURL("image/png"));
-  }, [style]);
+  }, [style, preset.artUrl]);
 
   return (
     <button
       type="button"
       onClick={onPick}
-      title={name}
+      title={preset.name}
       style={{ animationDelay: `${delay}ms` }}
       className={cn(
         "preset-pop group flex min-w-0 flex-col gap-1.5 rounded-md border p-1.5 text-left transition-all duration-150",
@@ -41,11 +42,20 @@ function PresetThumb({
         active ? "border-accent bg-surface" : "border-border bg-elevated hover:border-border-strong",
       )}
     >
-      <div className="aspect-square overflow-hidden rounded-sm" style={{ background: style.bg }}>
-        {src ? <img src={src} alt="" className="size-full" /> : null}
+      <div className="relative aspect-square overflow-hidden rounded-sm" style={{ background: style.bg }}>
+        {preset.artUrl ? (
+          <>
+            <img src={preset.artUrl} alt="" className="size-full object-cover" />
+            <span className="pointer-events-none absolute left-1 top-1 size-3 rounded-[2px] border-2 border-white/90" />
+            <span className="pointer-events-none absolute right-1 top-1 size-3 rounded-[2px] border-2 border-white/90" />
+            <span className="pointer-events-none absolute bottom-1 left-1 size-3 rounded-[2px] border-2 border-white/90" />
+          </>
+        ) : src ? (
+          <img src={src} alt="" className="size-full" />
+        ) : null}
       </div>
       <span className="truncate px-0.5 text-[10px] leading-tight text-muted group-hover:text-fg">
-        {name}
+        {preset.name}
       </span>
     </button>
   );
@@ -79,13 +89,30 @@ export function PresetGallery() {
           </button>
         ))}
       </div>
-      <p className="text-xs text-subtle tabular-nums">{list.length} presets</p>
+
+      {category === "All" && (
+        <div>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">QR Art gallery</p>
+          <div className="grid grid-cols-4 gap-2">
+            {GALLERY_PRESETS.slice(0, 8).map((p, i) => (
+              <PresetThumb
+                key={p.id}
+                preset={p}
+                delay={i * 16}
+                active={presetId === p.id}
+                onPick={() => applyPreset(p.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs tabular-nums text-subtle">{list.length} presets</p>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
         {list.map((p, i) => (
           <PresetThumb
             key={p.id}
-            style={p.style}
-            name={p.name}
+            preset={p}
             delay={Math.min(i, 23) * 16}
             active={presetId === p.id}
             onPick={() => applyPreset(p.id)}

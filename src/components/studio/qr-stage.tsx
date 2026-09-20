@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
-import { PRESETS } from "@/lib/qr/presets";
+import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
 import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { verifyQr } from "@/lib/qr/verify";
@@ -35,6 +35,7 @@ export function QrStage() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
   const scanOk = useStudio((s) => s.scanOk);
+  const presetId = useStudio((s) => s.presetId);
   const error = useStudio((s) => s.error);
   const [copied, setCopied] = useState(false);
   const [px, setPx] = useState(220);
@@ -321,6 +322,32 @@ export function QrStage() {
         <Button variant="ghost" size="icon" onClick={surprise} className="size-9" aria-label="Surprise preset">
           <Shuffle className="size-3.5" />
         </Button>
+      </div>
+
+      <div className="w-full max-w-[210px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
+        <p className="mb-1.5 px-0.5 text-[10px] font-medium tracking-wide text-muted sm:text-[11px]">
+          QR Art gallery
+        </p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {GALLERY_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              title={p.name}
+              onClick={() => useStudio.getState().applyPreset(p.id)}
+              className={cn(
+                "relative size-12 shrink-0 overflow-hidden rounded-md border sm:size-14",
+                presetId === p.id ? "border-accent ring-1 ring-accent/50" : "border-border",
+              )}
+            >
+              {p.artUrl ? (
+                <img src={p.artUrl} alt={p.name} className="size-full object-cover" />
+              ) : (
+                <span className="block size-full" style={{ background: p.style.bg }} />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

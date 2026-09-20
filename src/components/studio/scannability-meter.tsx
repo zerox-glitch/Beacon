@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, Wand2, Zap } from "lucide-react";
+import { Loader2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type QrStyle } from "@/lib/qr/types";
 
@@ -10,6 +10,30 @@ interface ScannabilityMeterProps {
   fixing: boolean;
 }
 
+type Band = "checking" | "high" | "good" | "fair" | "low" | "unscannable";
+
+const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
+  { id: "high", label: "High", pos: 8, color: "#7dba7a" },
+  { id: "good", label: "Good", pos: 30, color: "#a3c46a" },
+  { id: "fair", label: "Fair", pos: 52, color: "#c4b45a" },
+  { id: "low", label: "Low", pos: 74, color: "#c47a3a" },
+  { id: "unscannable", label: "Unscannable", pos: 94, color: "#c45c4a" },
+];
+
+function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
+  if (scanOk === null) return "checking";
+  if (scanOk === false) {
+    if (hasImage && style.contrast < 0.55) return "unscannable";
+    return "low";
+  }
+  const simple = ["square", "dots", "rounded", "squircle"].includes(style.moduleShape);
+  if (!hasImage && simple) return "high";
+  if (!hasImage) return "good";
+  if (style.contrast >= 0.78 && style.imageOpacity <= 0.88) return "good";
+  if (style.contrast >= 0.62) return "fair";
+  return "low";
+}
+
 export function ScannabilityMeter({
   scanOk,
   style,
@@ -17,35 +41,21 @@ export function ScannabilityMeter({
   onAutoFix,
   fixing,
 }: ScannabilityMeterProps) {
-  let score = 70;
-  let statusText = "Checking…";
-  let colorClass = "text-muted";
-  let barGradient = "from-muted/40 to-muted";
-
-  if (scanOk === true) {
-    score = hasImage ? (style.contrast >= 0.7 ? 96 : 90) : 98;
-    statusText = `${score}% ready`;
-    colorClass = "text-ok";
-    barGradient = "from-ok/80 to-ok";
-  } else if (scanOk === false) {
-    score = 38;
-    statusText = "Needs tune";
-    colorClass = "text-warn";
-    barGradient = "from-warn/80 to-warn";
-  }
+  const band = readBand(scanOk, style, hasImage);
+  const active = BANDS.find((b) => b.id === band) ?? BANDS[2]!;
+  const checking = band === "checking";
 
   return (
     <div className="w-full max-w-[210px] rounded-xl border border-border/80 bg-surface/80 p-2 sm:max-w-[300px] sm:p-2.5 md:max-w-[380px] lg:max-w-[420px]">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          {scanOk === true ? (
-            <CheckCircle2 className="size-4 shrink-0 text-ok" />
-          ) : scanOk === false ? (
-            <AlertTriangle className="size-4 shrink-0 animate-pulse text-warn" />
-          ) : (
-            <Zap className="size-4 shrink-0 text-muted" />
-          )}
-          <span className={cn("truncate text-xs font-semibold tabular-nums", colorClass)}>{statusText}</span>
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ background: checking ? "#6a6760" : active.color }}
+          />
+          <span className="truncate text-xs font-semibold" style={{ color: checking ? undefined : active.color }}>
+            {checking ? "Reading…" : active.label}
+          </span>
         </div>
         <button
           type="button"
@@ -53,7 +63,7 @@ export function ScannabilityMeter({
           disabled={fixing}
           className={cn(
             "flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50",
-            scanOk === false
+            band === "low" || band === "unscannable"
               ? "bg-warn text-bg hover:bg-warn/90"
               : "border border-border bg-elevated text-fg hover:bg-surface",
           )}
@@ -62,18 +72,22 @@ export function ScannabilityMeter({
           <span>Fix scan</span>
         </button>
       </div>
-      <div className="relative h-1.5 w-full overflow-hidden rounded-full border border-border/50 bg-elevated">
-        <div
-          className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-500", barGradient)}
-          style={{ width: `${score}%` }}
+
+      <div className="relative h-2 w-full rounded-full scan-hue-track">
+        <span
+          className="scan-hue-mark"
+          style={{
+            left: `${checking ? 50 : active.pos}%`,
+            background: checking ? "#8c8880" : active.color,
+          }}
         />
       </div>
-      <div className="mt-1 hidden items-center justify-between font-mono text-[10px] text-muted sm:flex">
-        <span className="flex items-center gap-1">
-          <ShieldCheck className="size-3 text-ok" />
-          ECC {style.ecc}
-        </span>
-        <span>Raises contrast, keeps your picture</span>
+      <div className="mt-1 flex justify-between text-[9px] font-medium tracking-wide text-muted sm:text-[10px]">
+        <span className="text-ok">High</span>
+        <span>Good</span>
+        <span>Fair</span>
+        <span>Low</span>
+        <span className="text-danger">Unscannable</span>
       </div>
     </div>
   );
