@@ -12,6 +12,7 @@ import {
   Smartphone,
   Wand2,
 } from "lucide-react";
+import { autoSafetyBoost } from "@/lib/qr/art/optimizer";
 import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -21,8 +22,8 @@ import { tryEncodePayload } from "@/lib/qr/encode";
 import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
-import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
-import { inspectRenderedQr } from "@/lib/qr/scan-engine";
+import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
+import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,8 @@ export function QrStage() {
   const setImageUrl = useStudio((s) => s.setImageUrl);
   const caption = useStudio((s) => s.caption);
   const frame = useStudio((s) => s.frame);
+  const rendering = useStudio((s) => s.rendering);
+  const boostRef = useRef(0);
 
   function onDropImage(e: React.DragEvent<HTMLDivElement>) {
     setDragging(false);
@@ -77,11 +80,13 @@ export function QrStage() {
 
   useEffect(() => {
     let cancelled = false;
+    useStudio.getState().setRendering(true);
     const handle = window.setTimeout(async () => {
       const encoded = tryEncodePayload(payload, style);
       if (!encoded.ok) {
         useStudio.getState().setError(encoded.error);
         useStudio.getState().setScan(null, null);
+        useStudio.getState().setRendering(false);
         return;
       }
       useStudio.getState().setError(null);
@@ -89,13 +94,32 @@ export function QrStage() {
       const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
       if (cancelled) return;
       const canvas = workRef.current;
-      if (!canvas) return;
-      renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
+      if (!canvas) {
+        useStudio.getState().setRendering(false);
+        return;
+      }
+      const expected = buildPayload(payload).trim() || null;
+      const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
       try {
-        const report = await inspectRenderedQr(canvas, buildPayload(payload).trim() || null);
-        if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
+        if (pictured) {
+          const { boost, report } = await autoSafetyBoost(canvas, payload, style, {
+            pixelSize: px,
+            art,
+            logo,
+            expected,
+          });
+          boostRef.current = report.ok ? boost : 0;
+          if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
+        } else {
+          boostRef.current = 0;
+          renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
+          const report = await inspectRenderedQr(canvas, expected);
+          if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
+        }
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
+      } finally {
+        if (!cancelled) useStudio.getState().setRendering(false);
       }
     }, 80);
     return () => {
@@ -110,14 +134,42 @@ export function QrStage() {
     const canvas = makeCanvas();
     const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
     const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
-    renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
+    const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
+    if (pictured) {
+      const expected = buildPayload(payload).trim() || null;
+      renderQr(canvas, encoded.qr, style, {
+        pixelSize: size,
+        art,
+        logo,
+        exportScale: true,
+        kernelBoost: boostRef.current,
+      });
+      const report = await inspectRenderedQr(canvas, expected);
+      if (!report.ok) {
+        await autoSafetyBoost(canvas, payload, style, {
+          pixelSize: size,
+          art,
+          logo,
+          expected,
+        });
+      }
+    } else {
+      renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
+    }
     return finishExport(canvas, { frame, caption, paper: style.bg });
   }
 
   async function onDownload() {
     try {
       const canvas = await renderExport(2048);
-      downloadCanvasPng(canvas, "qrwho-qr.png");
+      const expected = buildPayload(payload).trim() || null;
+      const blob = await canvasPngBlob(canvas);
+      const pngReport = await inspectPngBlob(blob, expected);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "qrwho-qr.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
       const thumb = workRef.current?.toDataURL("image/jpeg", 0.6) ?? "";
       useStudio.getState().pushHistory({
         label: payloadLabel(payload),
@@ -128,7 +180,8 @@ export function QrStage() {
         caption,
         frame,
       });
-      toast.success("PNG saved (2048px)");
+      if (pngReport.ok) toast.success("PNG saved (2048px) — jsQR read native / 480 / 360");
+      else toast.error("PNG saved, but jsQR could not read the file. Try Fix scan before print.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     }
@@ -259,6 +312,12 @@ export function QrStage() {
           style={{ background: paper }}
         >
           <canvas ref={workRef} className="block size-full" aria-label="QR code preview" />
+          {rendering && (
+            <div className="absolute inset-0 flex items-center justify-center bg-bg/55 text-xs font-semibold tracking-wide text-fg">
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Rendering…
+            </div>
+          )}
           {dragging && (
             <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-accent/60 bg-bg/70 p-4 text-center text-xs font-medium text-fg">
               Drop picture to style code

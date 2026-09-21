@@ -359,6 +359,10 @@ export function ArtShowcase() {
             <span>100% Free & Open</span>
             <span>·</span>
             <span>Error Correction ISO/IEC 18004</span>
+            <span>·</span>
+            <a href="/lab" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Weaver lab
+            </a>
           </div>
         </footer>
       </div>

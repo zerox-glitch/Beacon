@@ -91,3 +91,34 @@ export async function inspectRenderedQr(
 
   return { decoded, ok, contrast, quietZoneOk, finderOk, notes };
 }
+
+/** Decode a downloaded PNG blob at native size, then 480 and 360 via verifyQr. */
+export async function inspectPngBlob(blob: Blob, expected?: string | null): Promise<ScanReport> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Could not read PNG"));
+      i.src = url;
+    });
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const cx = c.getContext("2d", { willReadFrequently: true });
+    if (!cx) {
+      return {
+        decoded: null,
+        ok: false,
+        contrast: 0,
+        quietZoneOk: false,
+        finderOk: false,
+        notes: ["Could not read PNG pixels"],
+      };
+    }
+    cx.drawImage(img, 0, 0);
+    return inspectRenderedQr(c, expected);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

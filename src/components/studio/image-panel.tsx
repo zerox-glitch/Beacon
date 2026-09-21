@@ -1,7 +1,11 @@
-import { ImagePlus, Sliders, X } from "lucide-react";
-import { useRef } from "react";
+import { ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { analyzeImage, smartArtPatch } from "@/lib/qr/art/analyzer";
+import { WEAVE_PRESETS } from "@/lib/qr/art/weave-presets";
+import { loadImage } from "@/lib/qr/render";
 import { IMAGE_MODES } from "@/lib/qr/types";
 import { SAMPLE_IMAGES } from "@/lib/qr/presets";
 import { cn } from "@/lib/utils";
@@ -25,6 +29,25 @@ export function ImagePanel() {
   const logoRef = useRef<HTMLInputElement>(null);
   const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
   const strength = style.artisticStrength ?? 0.42;
+  const smartArt = useStudio((s) => s.smartArt);
+  const setSmartArt = useStudio((s) => s.setSmartArt);
+
+  useEffect(() => {
+    if (!smartArt || !imageUrl) return;
+    let cancelled = false;
+    loadImage(imageUrl)
+      .then((img) => {
+        if (cancelled) return;
+        const suggestion = smartArtPatch(analyzeImage(img));
+        useStudio.getState().patchStyle(suggestion.patch);
+      })
+      .catch(() => {
+        /* keep current knobs */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [smartArt, imageUrl]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,6 +157,40 @@ export function ImagePanel() {
           {IMAGE_MODES.find((m) => m.id === style.imageMode)?.hint}
         </p>
       </div>
+
+      {imageUrl && (
+        <div>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave look</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {WEAVE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                title={p.hint}
+                onClick={() => patchStyle(p.patch)}
+                className="h-10 rounded-md border border-border bg-elevated px-1 text-[10px] font-semibold text-muted transition hover:border-border-strong hover:text-fg active:scale-95"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {imageUrl && (
+        <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-ok" />
+            Smart Art
+          </span>
+          <Switch checked={smartArt} onCheckedChange={setSmartArt} />
+        </label>
+      )}
+      {smartArt && imageUrl && (
+        <p className="text-[11px] leading-snug text-subtle">
+          Reads luma, contrast, edges and color in this browser, then picks a weave. Not a model.
+        </p>
+      )}
 
       {pictured && (
         <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">

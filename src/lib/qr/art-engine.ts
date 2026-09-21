@@ -1,3 +1,4 @@
+import { kernelFrac as sizedKernel, kernelTarget, surroundTarget } from "./art/kernel";
 import type { EncodedQr } from "./encode";
 import { cellRole, isDark, isProtectedRole } from "./structure";
 import type { ImageMode, QrStyle } from "./types";
@@ -107,26 +108,6 @@ function parseHex(hex: string): [number, number, number] | null {
 /** Strength 0 = SAFE (big kernel, strong bits). 1 = ARTISTIC (smaller kernel, more photo). */
 export function artisticStrength(style: QrStyle): number {
   return clamp(style.artisticStrength ?? 0.42, 0, 1);
-}
-
-/** Center of each module that scanners sample. Never below one-third of the cell. */
-function kernelFrac(strength: number, contrast: number): number {
-  const raw = 0.58 - strength * 0.2 - (1 - contrast) * 0.04;
-  return clamp(raw, 0.34, 0.62);
-}
-
-function kernelTarget(dark: boolean, strength: number, contrast: number): number {
-  if (dark) return clamp(0.04 + strength * 0.08 * (1.1 - contrast), 0.03, 0.16);
-  return clamp(0.96 - strength * 0.06 * (1.1 - contrast), 0.84, 0.98);
-}
-
-function surroundTarget(photoL: number, dark: boolean, strength: number): number {
-  if (dark) {
-    const safe = Math.min(photoL, 0.26);
-    return clamp(safe + (photoL - safe) * strength * 0.9, 0, 0.68);
-  }
-  const safe = Math.max(photoL, 0.8);
-  return clamp(safe + (photoL - safe) * strength * 0.9, 0.32, 1);
 }
 
 const BAYER4 = [
@@ -293,7 +274,7 @@ function drawKernel(
       ctx.fill();
       ctx.restore();
       if (fx === "shadow") return;
-    } else if (fx === "glow" && strength > 0.55) {
+    } else if (fx === "glow" && strength > 0.38) {
       ctx.save();
       ctx.shadowColor = color;
       ctx.shadowBlur = r * 0.8;
@@ -340,6 +321,7 @@ export function renderArtisticQr(
   cell: number,
   px: number,
   fill: string | CanvasGradient,
+  kernelBoost = 0,
 ) {
   const mode = weaveMode(style.imageMode);
   if (!mode) return;
@@ -350,7 +332,15 @@ export function renderArtisticQr(
   const gap = Math.max(0, Math.min(0.2, style.moduleGap));
   const atlasN = Math.max(qr.size * 8, 64);
   const atlas = atlasFor(art, atlasN);
-  const kFrac = kernelFrac(strength, contrast);
+  const version = Math.max(1, Math.round((qr.size - 17) / 4));
+  const kFrac = sizedKernel({
+    strength,
+    contrast,
+    version,
+    cellPx: cell,
+    quietZone: style.quietZone,
+    boost: kernelBoost,
+  });
   const duo = mode === "duotone" || mode === "mono" ? duotonePair(atlas) : null;
   const inkHex = parseHex(style.fg) ?? [20, 20, 22];
   const useImageGrad = style.gradientType === "image";
@@ -382,7 +372,8 @@ export function renderArtisticQr(
         continue;
       }
 
-      const inset = cell * gap * 0.5;
+      const scale = clamp(style.dotScale, 0.5, 1);
+      const inset = cell * (gap * 0.5 + (1 - scale) * 0.1);
       const ox = px0 + inset;
       const oy = py0 + inset;
       const s = cell - inset * 2;
@@ -417,8 +408,8 @@ export function renderArtisticQr(
 
       if (mode === "blend") {
         const target = dark
-          ? clamp(0.06 + (1 - contrast) * 0.08 + strength * 0.06, 0.04, 0.2)
-          : clamp(0.93 - (1 - contrast) * 0.06 - strength * 0.04, 0.8, 0.97);
+          ? clamp(0.05 + (1 - contrast) * 0.06 + strength * 0.1, 0.04, 0.28)
+          : clamp(0.94 - (1 - contrast) * 0.05 - strength * 0.06, 0.72, 0.98);
         const [nr, ng, nb] = setLuminance(photo[0], photo[1], photo[2], target);
         ctx.save();
         clipModule(ctx, ox, oy, s, style.moduleShape);
@@ -469,7 +460,8 @@ export function renderArtisticQr(
       const sTarget = surroundTarget(L, dark, strength);
       const [sr, sg, sb] = setLuminance(photo[0], photo[1], photo[2], sTarget);
       ctx.fillStyle = rgbStr(sr, sg, sb);
-      ctx.globalAlpha = clamp(0.22 + (1 - strength) * 0.35, 0.18, 0.62);
+      const fade = clamp(style.imageOpacity, 0.2, 1);
+      ctx.globalAlpha = clamp(0.08 + (1 - strength) * 0.26 + (1 - fade) * 0.18, 0.04, 0.42);
       ctx.fillRect(ox, oy, s, s);
       ctx.globalAlpha = 1;
       ctx.restore();

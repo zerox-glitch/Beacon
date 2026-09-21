@@ -101,7 +101,14 @@ export function ScannabilityMeter({
         <span className="text-danger">Fail</span>
       </div>
       {notes.length > 0 && (
-        <p className="mt-1.5 text-[10px] leading-snug text-ok">Changed: {notes.join(" · ")}</p>
+        <p
+          className={cn(
+            "mt-1.5 text-[10px] leading-snug",
+            notes[0]?.startsWith("Unable") ? "text-danger" : "text-ok",
+          )}
+        >
+          {notes[0]?.startsWith("Unable") ? notes.join(" · ") : `Changed: ${notes.join(" · ")}`}
+        </p>
       )}
       {hint ? (
         <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>

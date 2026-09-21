@@ -43,6 +43,8 @@ interface StudioState {
   frame: FrameKind;
   useCase: UseCaseId | null;
   lastFixNotes: string[];
+  smartArt: boolean;
+  rendering: boolean;
   setKind: (kind: PayloadKind) => void;
   patchPayload: (patch: Partial<Payload>) => void;
   patchStyle: (patch: Partial<QrStyle>) => void;
@@ -58,6 +60,8 @@ interface StudioState {
   setFrame: (frame: FrameKind) => void;
   applyUseCase: (id: UseCaseId) => void;
   setFixNotes: (notes: string[]) => void;
+  setSmartArt: (smartArt: boolean) => void;
+  setRendering: (rendering: boolean) => void;
   pushHistory: (item: Omit<HistoryItem, "id" | "createdAt">) => void;
   loadHistoryItem: (id: string) => void;
   deleteHistoryItem: (id: string) => void;
@@ -99,6 +103,8 @@ export const useStudio = create<StudioState>((set, get) => ({
   frame: "none",
   useCase: null,
   lastFixNotes: [],
+  smartArt: false,
+  rendering: false,
   setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind } })),
   patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch } })),
   patchStyle: (patch) =>
@@ -171,6 +177,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     }));
   },
   setFixNotes: (lastFixNotes) => set({ lastFixNotes }),
+  setSmartArt: (smartArt) => set({ smartArt }),
+  setRendering: (rendering) => set({ rendering }),
   pushHistory: (item) => {
     const entry: HistoryItem = {
       ...item,

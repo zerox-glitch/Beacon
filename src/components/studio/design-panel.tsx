@@ -219,12 +219,33 @@ export function DesignPanel() {
             <span className="text-xs font-medium tabular-nums text-fg">{style.quietZone} cells</span>
           </div>
           <Slider
-            min={1}
+            min={2}
             max={6}
             step={1}
             value={[style.quietZone]}
-            onValueChange={([v]) => patch({ quietZone: v ?? 2 })}
+            onValueChange={([v]) => patch({ quietZone: v ?? 3 })}
           />
+        </div>
+      </section>
+
+      <section>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Kernel effect</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {QR_EFFECTS.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => patch({ effect: e.id })}
+              className={cn(
+                "h-10 rounded-md border text-[11px] font-medium transition active:scale-95",
+                style.effect === e.id
+                  ? "border-accent bg-accent text-accent-fg font-semibold"
+                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+              )}
+            >
+              {e.label}
+            </button>
+          ))}
         </div>
       </section>
 

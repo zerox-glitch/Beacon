@@ -5,6 +5,34 @@ import type { EyeShape, ModuleShape, QrStyle } from "./types";
 
 export const imageCache = new Map<string, HTMLImageElement>();
 
+const MAX_IMAGE_EDGE = 1600;
+
+function downsampleImage(img: HTMLImageElement): Promise<HTMLImageElement> {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const edge = Math.max(w, h);
+  if (edge <= MAX_IMAGE_EDGE) return Promise.resolve(img);
+  const scale = MAX_IMAGE_EDGE / edge;
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w * scale));
+  c.height = Math.max(1, Math.round(h * scale));
+  const cx = c.getContext("2d");
+  if (!cx) return Promise.resolve(img);
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = "high";
+  cx.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((resolve) => {
+    const out = new Image();
+    out.onload = () => resolve(out);
+    out.onerror = () => resolve(img);
+    try {
+      out.src = c.toDataURL("image/jpeg", 0.9);
+    } catch {
+      resolve(img);
+    }
+  });
+}
+
 export function loadImage(url: string): Promise<HTMLImageElement> {
   const hit = imageCache.get(url);
   if (hit?.complete && hit.naturalWidth > 0) return Promise.resolve(hit);
@@ -12,8 +40,15 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      imageCache.set(url, img);
-      resolve(img);
+      downsampleImage(img)
+        .then((ready) => {
+          imageCache.set(url, ready);
+          resolve(ready);
+        })
+        .catch(() => {
+          imageCache.set(url, img);
+          resolve(img);
+        });
     };
     img.onerror = () => reject(new Error("Could not load image"));
     img.src = url;
@@ -34,31 +69,6 @@ function coverDraw(
   const dw = iw * scale;
   const dh = ih * scale;
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-}
-
-/** Photo aligned to the QR body so filling a module reveals that tile of the image. */
-function makePhotoPattern(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  origin: number,
-  body: number,
-): CanvasPattern | null {
-  const size = Math.max(32, Math.round(body));
-  const off = document.createElement("canvas");
-  off.width = size;
-  off.height = size;
-  const ox = off.getContext("2d");
-  if (!ox) return null;
-  ox.imageSmoothingEnabled = true;
-  ox.imageSmoothingQuality = "high";
-  coverDraw(ox, img, 0, 0, size, size, img.naturalWidth, img.naturalHeight);
-  const pat = ctx.createPattern(off, "no-repeat");
-  if (!pat) return null;
-  const m = new DOMMatrix();
-  m.translateSelf(origin, origin);
-  if (size !== body) m.scaleSelf(body / size, body / size);
-  pat.setTransform(m);
-  return pat;
 }
 
 function roundedRect(
@@ -417,35 +427,8 @@ function drawEye(
   }
 }
 
-function sampleGrid(
-  img: HTMLImageElement,
-  size: number,
-): { data: Uint8ClampedArray; canvas: HTMLCanvasElement } {
-  const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
-  const cx = c.getContext("2d", { willReadFrequently: true });
-  if (!cx) throw new Error("canvas");
-  coverDraw(cx, img, 0, 0, size, size, img.naturalWidth, img.naturalHeight);
-  return { data: cx.getImageData(0, 0, size, size).data, canvas: c };
-}
-
-function lumAt(data: Uint8ClampedArray, size: number, x: number, y: number): number {
-  const i = (y * size + x) * 4;
-  return (data[i]! * 0.2126 + data[i + 1]! * 0.7152 + data[i + 2]! * 0.0722) / 255;
-}
-
-function rgbAt(data: Uint8ClampedArray, size: number, x: number, y: number): [number, number, number] {
-  const i = (y * size + x) * 4;
-  return [data[i]!, data[i + 1]!, data[i + 2]!];
-}
-
 function clamp(n: number, a: number, b: number): number {
   return Math.min(b, Math.max(a, n));
-}
-
-function rgbStr(r: number, g: number, b: number): string {
-  return `rgb(${Math.round(clamp(r, 0, 255))},${Math.round(clamp(g, 0, 255))},${Math.round(clamp(b, 0, 255))})`;
 }
 
 function luma(r: number, g: number, b: number): number {
@@ -453,46 +436,6 @@ function luma(r: number, g: number, b: number): number {
 }
 
 /** Shift a photo color to a target luminance while keeping its hue. */
-function setLuminance(r: number, g: number, b: number, target: number): [number, number, number] {
-  const L = luma(r, g, b);
-  const t = clamp(target, 0, 1);
-  if (L < 0.0008) {
-    const v = t * 255;
-    return [v, v, v];
-  }
-  if (t <= L) {
-    const k = t / L;
-    return [r * k, g * k, b * k];
-  }
-  const k = (t - L) / (1 - L);
-  return [r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k];
-}
-
-/**
- * Image-QR color: the photo stays visible, dark/light bits are forced into
- * scannable luminance bands. `contrast` widens the gap; `fidelity` (opacity)
- * keeps more of the original photo.
- */
-function mapModuleColor(
-  r: number,
-  g: number,
-  b: number,
-  dark: boolean,
-  contrast: number,
-  fidelity: number,
-): string {
-  const C = clamp(contrast, 0.35, 1);
-  const F = clamp(fidelity, 0.2, 1);
-  if (dark) {
-    const target = 0.05 + F * (0.12 - C * 0.06);
-    const [nr, ng, nb] = setLuminance(r, g, b, clamp(target, 0.04, 0.22));
-    return rgbStr(nr, ng, nb);
-  }
-  const target = 0.94 - F * (0.06 - C * 0.03);
-  const [nr, ng, nb] = setLuminance(r, g, b, clamp(target, 0.82, 0.97));
-  return rgbStr(nr, ng, nb);
-}
-
 function parseHex(hex: string): [number, number, number] | null {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return null;
@@ -501,18 +444,6 @@ function parseHex(hex: string): [number, number, number] | null {
 }
 
 /** Tint a photo-derived rgb() toward the preset foreground so style + picture mix. */
-function tintWithPreset(photoCss: string, fg: string, amount: number): string {
-  const pm = /^rgb\((\d+),(\d+),(\d+)\)$/.exec(photoCss);
-  const fgRgb = parseHex(fg);
-  if (!pm || !fgRgb) return photoCss;
-  const t = clamp(amount, 0, 1);
-  return rgbStr(
-    Number(pm[1]) * (1 - t) + fgRgb[0] * t,
-    Number(pm[2]) * (1 - t) + fgRgb[1] * t,
-    Number(pm[3]) * (1 - t) + fgRgb[2] * t,
-  );
-}
-
 function isFinderCell(x: number, y: number, size: number): boolean {
   return (x < 8 && y < 8) || (x >= size - 8 && y < 8) || (x < 8 && y >= size - 8);
 }
@@ -554,152 +485,6 @@ function inkOn(paperHex: string, preferred: string): string {
   return pL > 0.5 ? "#141412" : "#f4f1ea";
 }
 
-const atlasCache = new Map<string, { n: number; canvas: HTMLCanvasElement; data: Uint8ClampedArray }>();
-
-function atlasFor(img: HTMLImageElement, n: number) {
-  const key = `${img.src}|${n}|${img.naturalWidth}x${img.naturalHeight}`;
-  const hit = atlasCache.get(key);
-  if (hit) return hit;
-  const made = sampleGrid(img, n);
-  atlasCache.set(key, { n, canvas: made.canvas, data: made.data });
-  if (atlasCache.size > 12) {
-    const first = atlasCache.keys().next().value;
-    if (first) atlasCache.delete(first);
-  }
-  return atlasCache.get(key)!;
-}
-
-function isProtected(qr: EncodedQr, x: number, y: number): boolean {
-  const type = qr.types[y]![x]!;
-  return (
-    type === QrCodeDataType.Function ||
-    type === QrCodeDataType.Timing ||
-    type === QrCodeDataType.Alignment
-  );
-}
-
-function drawPictureModes(
-  ctx: CanvasRenderingContext2D,
-  qr: EncodedQr,
-  style: QrStyle,
-  art: HTMLImageElement,
-  mode: "paint" | "mosaic" | "halftone" | "backdrop",
-  origin: number,
-  body: number,
-  cell: number,
-  px: number,
-  paper: string,
-  _fill: string | CanvasGradient,
-  gap: number,
-  fidelity: number,
-  contrast: number,
-) {
-  const sampled = atlasFor(art, qr.size);
-  const scale = clamp(style.dotScale, 0.58, 0.96);
-  const ds = cell * scale * (1 - gap);
-  const inset = (cell - ds) / 2;
-  const darken = clamp(0.22 + contrast * 0.28 * (1.0 - fidelity * 0.35), 0.2, 0.55);
-
-  if (mode === "paint") {
-    const atlas = atlasFor(art, qr.size * 8);
-    const step = 8;
-    ctx.fillStyle = paper;
-    ctx.fillRect(0, 0, px, px);
-    for (let y = 0; y < qr.size; y++) {
-      for (let x = 0; x < qr.size; x++) {
-        if (isFinderCell(x, y, qr.size) || !isDark(qr, x, y)) continue;
-        const protectedPattern = isProtected(qr, x, y);
-        const px0 = origin + x * cell;
-        const py0 = origin + y * cell;
-        const ox = protectedPattern ? px0 : px0 + inset;
-        const oy = protectedPattern ? py0 : py0 + inset;
-        const s = protectedPattern ? cell : ds;
-        ctx.save();
-        if (!protectedPattern) {
-          roundedRect(ctx, ox, oy, s, s, s * 0.2, s * 0.2, s * 0.2, s * 0.2);
-          ctx.clip();
-        }
-        ctx.drawImage(atlas.canvas, x * step, y * step, step, step, ox, oy, s, s);
-        ctx.fillStyle = `rgba(0,0,0,${darken})`;
-        ctx.fillRect(ox, oy, s, s);
-        ctx.restore();
-      }
-    }
-    return;
-  }
-
-  if (mode === "mosaic") {
-    ctx.fillStyle = paper;
-    ctx.fillRect(0, 0, px, px);
-    const pad = cell * 0.035;
-    for (let y = 0; y < qr.size; y++) {
-      for (let x = 0; x < qr.size; x++) {
-        if (isFinderCell(x, y, qr.size)) continue;
-        const dark = isDark(qr, x, y);
-        const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-        ctx.fillStyle = mapModuleColor(r, g, b, dark, contrast, fidelity);
-        ctx.fillRect(origin + x * cell + pad, origin + y * cell + pad, cell - pad * 2, cell - pad * 2);
-      }
-    }
-    return;
-  }
-
-  if (mode === "halftone") {
-    ctx.fillStyle = paper;
-    ctx.fillRect(0, 0, px, px);
-    for (let y = 0; y < qr.size; y++) {
-      for (let x = 0; x < qr.size; x++) {
-        if (isFinderCell(x, y, qr.size)) continue;
-        const dark = isDark(qr, x, y);
-        const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-        const L = lumAt(sampled.data, qr.size, x, y);
-        const radius = dark
-          ? cell * (0.34 + clamp(style.dotScale, 0.5, 0.95) * 0.14)
-          : cell * 0.07 * (1 - L);
-        if (radius < 0.4) continue;
-        ctx.fillStyle = mapModuleColor(r, g, b, true, contrast, fidelity);
-        ctx.beginPath();
-        ctx.arc(origin + x * cell + cell / 2, origin + y * cell + cell / 2, radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    return;
-  }
-
-  ctx.fillStyle = paper;
-  ctx.fillRect(0, 0, px, px);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(origin, origin, body, body);
-  ctx.clip();
-  ctx.globalAlpha = clamp(fidelity * 0.7, 0.38, 0.82);
-  coverDraw(ctx, art, origin, origin, body, body, art.naturalWidth, art.naturalHeight);
-  ctx.restore();
-  const overlay = clamp(0.62 + contrast * 0.26, 0.58, 0.9);
-  const lift = clamp(0.42 + contrast * 0.2, 0.4, 0.7);
-  for (let y = 0; y < qr.size; y++) {
-    for (let x = 0; x < qr.size; x++) {
-      if (isFinderCell(x, y, qr.size)) continue;
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
-      if (!isDark(qr, x, y)) {
-        ctx.fillStyle = paper;
-        ctx.globalAlpha = lift;
-        ctx.fillRect(px0, py0, cell, cell);
-        ctx.globalAlpha = 1;
-        continue;
-      }
-      ctx.fillStyle = `rgba(10,10,12,${overlay})`;
-      if (isProtected(qr, x, y)) ctx.fillRect(px0, py0, cell, cell);
-      else drawModuleShape(ctx, px0 + inset, py0 + inset, ds, style.moduleShape, undefined, {
-        gx: x,
-        gy: y,
-        size: qr.size,
-      });
-    }
-  }
-}
-
 export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRenderingContext2D {
   const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
   canvas.width = Math.round(px * dpr);
@@ -723,6 +508,7 @@ export function renderQr(
     art?: HTMLImageElement | null;
     logo?: HTMLImageElement | null;
     exportScale?: boolean;
+    kernelBoost?: number;
   },
 ) {
   const px = opts.pixelSize;
@@ -741,15 +527,15 @@ export function renderQr(
       })()
     : prepareCanvas(canvas, px);
 
-  const qz = Math.max(0, Math.min(8, style.quietZone));
+  const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
+  const qz = pictured
+    ? Math.max(2, Math.min(8, style.quietZone))
+    : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
   const cell = px / total;
   const origin = qz * cell;
   const body = qr.size * cell;
-  const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
   const mode = pictured ? style.imageMode : "none";
-  const fidelity = clamp(style.imageOpacity, 0.12, 1);
-  const contrast = clamp(style.contrast, 0.25, 1);
 
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
@@ -773,7 +559,7 @@ export function renderQr(
       mode === "duotone" ||
       mode === "mono")
   ) {
-    renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
+    renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
   } else {
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {
