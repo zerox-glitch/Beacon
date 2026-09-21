@@ -22,8 +22,8 @@ import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
+import { inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
-import { verifyQr } from "@/lib/qr/verify";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -92,8 +92,8 @@ export function QrStage() {
       if (!canvas) return;
       renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
       try {
-        const decoded = await verifyQr(canvas);
-        if (!cancelled) useStudio.getState().setScan(Boolean(decoded), decoded);
+        const report = await inspectRenderedQr(canvas, buildPayload(payload).trim() || null);
+        if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
       }

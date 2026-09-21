@@ -24,17 +24,13 @@ const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
 
 function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
   if (scanOk === null) return "checking";
-  if (scanOk === false) {
-    if (hasImage && style.contrast >= 0.78 && style.dotScale >= 0.7) return "fair";
-    if (hasImage && style.contrast < 0.5) return "unscannable";
-    return "low";
-  }
+  if (scanOk === false) return "unscannable";
   const simple = ["square", "dots", "rounded", "squircle"].includes(style.moduleShape);
   if (!hasImage && simple) return "high";
   if (!hasImage) return "good";
-  if (style.contrast >= 0.78 && style.imageOpacity <= 0.88) return "good";
-  if (style.contrast >= 0.62) return "fair";
-  return "low";
+  if ((style.artisticStrength ?? 0.42) <= 0.45 && style.contrast >= 0.7) return "good";
+  if ((style.artisticStrength ?? 0.42) > 0.7) return "fair";
+  return "good";
 }
 
 function adviceText(style: QrStyle, hasImage: boolean): string | null {
@@ -111,7 +107,7 @@ export function ScannabilityMeter({
         <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>
       ) : hasImage ? (
         <p className="mt-1.5 text-[10px] leading-snug text-subtle">
-          Photo sits only in the dots. In-browser checker (jsQR) — phones can differ.
+          jsQR read this bitmap. Phone cameras can still differ — test before print.
         </p>
       ) : (
         <p className="mt-1.5 text-[10px] leading-snug text-subtle">

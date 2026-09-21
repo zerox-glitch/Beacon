@@ -93,6 +93,10 @@ export function exportQrSvg(qr: EncodedQr, style: QrStyle, viewBoxSize = 1000): 
       case "dots":
       case "bubbles":
         return `M ${cx} ${cy - r * 0.9} a ${r * 0.9} ${r * 0.9} 0 1 0 0.001 0 Z`;
+      case "hbar":
+        return roundedRectPath(x, y + s * 0.22, s, s * 0.56, s * 0.2, s * 0.2, s * 0.2, s * 0.2);
+      case "vbar":
+        return roundedRectPath(x + s * 0.22, y, s * 0.56, s, s * 0.2, s * 0.2, s * 0.2, s * 0.2);
       case "diamond":
         return `M ${cx} ${y} L ${x + s} ${cy} L ${cx} ${y + s} L ${x} ${cy} Z`;
       case "classy":

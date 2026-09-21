@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   EYE_SHAPES,
   MODULE_SHAPES,
+  QR_EFFECTS,
   type EccLevel,
   type GradientType,
 } from "@/lib/qr/types";
@@ -238,7 +239,7 @@ export function DesignPanel() {
         <div className="mt-2">
           <p className="mb-2 text-xs font-medium tracking-wide text-muted">Gradient</p>
           <div className="grid grid-cols-4 gap-1.5">
-            {(["none", "linear", "diagonal", "radial"] as GradientType[]).map((g) => (
+            {(["none", "linear", "diagonal", "radial", "image"] as GradientType[]).map((g) => (
               <button
                 key={g}
                 type="button"
@@ -250,7 +251,7 @@ export function DesignPanel() {
                     : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
                 )}
               >
-                {g === "none" ? "Solid" : g}
+                {g === "none" ? "Solid" : g === "image" ? "Photo" : g}
               </button>
             ))}
           </div>
@@ -294,9 +295,30 @@ export function DesignPanel() {
           </div>
           {pictured && (
             <p className="mt-1 text-[11px] text-subtle">
-              Auto-locked to H for photo embedding to guarantee camera decoding.
+              Photo weaves lock error correction to H. That is about codewords, not “30% of pixels.”
             </p>
           )}
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Mask pattern</p>
+          <div className="grid grid-cols-5 gap-1.5">
+            {([-1, 0, 1, 2, 3, 4, 5, 6, 7] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => patch({ maskPattern: m })}
+                className={cn(
+                  "h-9 rounded-md border text-[11px] font-medium",
+                  (style.maskPattern ?? -1) === m
+                    ? "border-accent bg-accent text-accent-fg font-semibold"
+                    : "border-border bg-elevated text-muted hover:text-fg",
+                )}
+              >
+                {m < 0 ? "Auto" : m}
+              </button>
+            ))}
+          </div>
         </div>
 
         <label

@@ -1,4 +1,5 @@
 import { QrCodeDataType } from "uqr";
+import { renderArtisticQr } from "./art-engine";
 import type { EncodedQr } from "./encode";
 import type { EyeShape, ModuleShape, QrStyle } from "./types";
 
@@ -202,6 +203,12 @@ function drawModuleShape(
       ctx.beginPath();
       ctx.arc(cx, cy, s * 0.48, 0, Math.PI * 2);
       ctx.fill();
+      return;
+    case "hbar":
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, 0);
+      return;
+    case "vbar":
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, Math.PI / 2);
       return;
     case "diamond":
       ctx.beginPath();
@@ -518,7 +525,7 @@ function makeFill(
   w: number,
   h: number,
 ): string | CanvasGradient {
-  if (style.gradientType === "none") return style.fg;
+  if (style.gradientType === "none" || style.gradientType === "image") return style.fg;
   if (style.gradientType === "radial") {
     const g = ctx.createRadialGradient(x0 + w / 2, y0 + h / 2, 0, x0 + w / 2, y0 + h / 2, w * 0.72);
     g.addColorStop(0, style.fg);
@@ -759,24 +766,14 @@ export function renderQr(
 
   if (
     opts.art &&
-    (mode === "paint" || mode === "mosaic" || mode === "halftone" || mode === "backdrop")
+    (mode === "paint" ||
+      mode === "mosaic" ||
+      mode === "halftone" ||
+      mode === "backdrop" ||
+      mode === "duotone" ||
+      mode === "mono")
   ) {
-    drawPictureModes(
-      ctx,
-      qr,
-      style,
-      opts.art,
-      mode,
-      origin,
-      body,
-      cell,
-      px,
-      paper,
-      fill,
-      gap,
-      fidelity,
-      contrast,
-    );
+    renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
   } else {
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {

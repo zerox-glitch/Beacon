@@ -12,6 +12,7 @@ export function encodePayload(payload: Payload, style: QrStyle): EncodedQr {
     boostEcc: pictured,
     minVersion: pictured ? Math.max(style.minVersion, 5) : 1,
     border: 0,
+    maskPattern: (style.maskPattern ?? -1) >= 0 ? style.maskPattern : undefined,
   });
 }
 

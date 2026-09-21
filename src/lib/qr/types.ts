@@ -34,7 +34,9 @@ export type ModuleShape =
   | "cross"
   | "diag"
   | "radial"
-  | "bubbles";
+  | "bubbles"
+  | "hbar"
+  | "vbar";
 
 export type EyeShape =
   | "square"
@@ -48,9 +50,19 @@ export type EyeShape =
   | "target"
   | "ticks";
 
-export type GradientType = "none" | "linear" | "radial" | "diagonal";
+export type GradientType = "none" | "linear" | "radial" | "diagonal" | "image";
 
-export type ImageMode = "none" | "logo" | "backdrop" | "mosaic" | "halftone" | "paint";
+export type ImageMode =
+  | "none"
+  | "logo"
+  | "backdrop"
+  | "mosaic"
+  | "halftone"
+  | "paint"
+  | "duotone"
+  | "mono";
+
+export type QrEffect = "none" | "shadow" | "glow" | "outline" | "emboss" | "extrude";
 
 export type EccLevel = "L" | "M" | "Q" | "H";
 
@@ -74,6 +86,11 @@ export interface QrStyle {
   minVersion: number;
   ecc: EccLevel;
   transparentBg: boolean;
+  /** 0 = SAFE (strong bits), 1 = ARTISTIC (more photo in each module). */
+  artisticStrength: number;
+  effect: QrEffect;
+  /** -1 = automatic mask. */
+  maskPattern: number;
   /** Optional secondary "pop" modules drawn in accentColor (e.g. red X over blue dashes). */
   accentShape?: ModuleShape;
   accentColor?: string;
@@ -140,6 +157,8 @@ export const MODULE_SHAPES: { id: ModuleShape; label: string }[] = [
   { id: "diag", label: "Streak" },
   { id: "radial", label: "Burst" },
   { id: "bubbles", label: "Bubbles" },
+  { id: "hbar", label: "H-bars" },
+  { id: "vbar", label: "V-bars" },
 ];
 
 export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
@@ -156,12 +175,22 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Picture", hint: "Photo shows only inside dark dots; light cells stay paper" },
-  { id: "mosaic", label: "Mosaic", hint: "Every cell is a photo tile, forced dark or light" },
-  { id: "halftone", label: "Halftone", hint: "Paper plus sized photo dots — no photo underneath" },
-  { id: "backdrop", label: "Backdrop", hint: "Faded photo behind solid dark modules" },
+  { id: "paint", label: "Photo QR", hint: "Photo woven into every module; the center of each dot is the bit cameras read" },
+  { id: "mosaic", label: "Color blend", hint: "Each module is a contrast-normalized sample of the photo" },
+  { id: "halftone", label: "Halftone", hint: "3×3 submodules: center is the QR bit, surround is a photo halftone" },
+  { id: "duotone", label: "Duotone", hint: "Photo remapped to two scannable tones, still woven into the modules" },
+  { id: "mono", label: "Mono ink", hint: "One ink. Dot size follows the photo — like a woodcut QR" },
   { id: "logo", label: "Logo", hint: "Center emblem only" },
   { id: "none", label: "None", hint: "Style only, no photo" },
+];
+
+export const QR_EFFECTS: { id: QrEffect; label: string }[] = [
+  { id: "none", label: "None" },
+  { id: "shadow", label: "Shadow" },
+  { id: "outline", label: "Outline" },
+  { id: "emboss", label: "Emboss" },
+  { id: "extrude", label: "3D" },
+  { id: "glow", label: "Glow" },
 ];
 
 export function emptyPayload(): Payload {
@@ -218,4 +247,7 @@ export const DEFAULT_STYLE: QrStyle = {
   minVersion: 7,
   ecc: "H",
   transparentBg: false,
+  artisticStrength: 0.42,
+  effect: "none",
+  maskPattern: -1,
 };

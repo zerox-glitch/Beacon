@@ -24,12 +24,13 @@ export function scanAdvice(style: QrStyle, hasImage: boolean): ScanAdvice {
     if (style.dotScale < 0.7) raise.push("dot size");
     return { raise, lower };
   }
+  if ((style.artisticStrength ?? 0.42) > 0.35) lower.push("artistic strength");
   if (style.dotScale < 0.78) raise.push("dot size");
   if (style.contrast < 0.82) raise.push("contrast");
   if (style.minVersion < 7) raise.push("grid detail");
   if (style.quietZone < 3) raise.push("quiet zone");
-  if (style.imageOpacity > 0.78) lower.push("photo opacity");
   if (style.moduleGap > 0.1) lower.push("module gap");
+  if (style.effect && style.effect !== "none") lower.push("effects");
   return { raise, lower };
 }
 
@@ -67,6 +68,24 @@ export async function autoFixScan(
 
   const trials: { patch: Partial<QrStyle>; note: string }[] = [];
 
+  if (pictured && (style.artisticStrength ?? 0.42) > 0.15) {
+    trials.push({
+      patch: { artisticStrength: Math.max(0, (style.artisticStrength ?? 0.42) - 0.28) },
+      note: "reduced artistic strength",
+    });
+  }
+  if (pictured && style.effect && style.effect !== "none") {
+    trials.push({
+      patch: { effect: "none" },
+      note: "removed effects on kernels",
+    });
+  }
+  if (pictured && !["square", "rounded", "dots", "squircle"].includes(style.moduleShape)) {
+    trials.push({
+      patch: { moduleShape: "square" },
+      note: "simplified module shapes",
+    });
+  }
   if (style.dotScale < 0.9) {
     trials.push({
       patch: { dotScale: Math.min(0.92, Math.max(style.dotScale + 0.18, 0.72)) },
@@ -132,6 +151,9 @@ export async function autoFixScan(
     {
       patch: {
         contrast: 0.96,
+        artisticStrength: pictured ? 0.12 : style.artisticStrength,
+        effect: "none",
+        moduleShape: pictured ? "square" : style.moduleShape,
         imageOpacity: pictured ? Math.min(style.imageOpacity, 0.5) : style.imageOpacity,
         dotScale: 0.88,
         moduleGap: Math.min(style.moduleGap, 0.05),
@@ -140,7 +162,7 @@ export async function autoFixScan(
         transparentBg: false,
         ecc: "H",
       },
-      note: "maximized bit separation — larger dots, more contrast, less opacity",
+      note: "restored protected modules and a safer weave",
     },
   ];
 

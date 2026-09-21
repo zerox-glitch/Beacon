@@ -9,8 +9,7 @@ export async function verifyQr(canvas: HTMLCanvasElement): Promise<string | null
   const hit = jsQR(native.data, width, height, { inversionAttempts: "attemptBoth" });
   if (hit) return hit.data;
 
-  if (width > 560) {
-    const s = 480;
+  const tryScale = (s: number): string | null => {
     const off = document.createElement("canvas");
     off.width = s;
     off.height = s;
@@ -20,7 +19,16 @@ export async function verifyQr(canvas: HTMLCanvasElement): Promise<string | null
     ox.drawImage(canvas, 0, 0, s, s);
     const img = ox.getImageData(0, 0, s, s);
     const scaled = jsQR(img.data, s, s, { inversionAttempts: "attemptBoth" });
-    if (scaled) return scaled.data;
+    return scaled?.data ?? null;
+  };
+
+  if (width > 560) {
+    const scaled = tryScale(480);
+    if (scaled) return scaled;
+  }
+  if (width > 400) {
+    const scaled = tryScale(360);
+    if (scaled) return scaled;
   }
 
   return null;

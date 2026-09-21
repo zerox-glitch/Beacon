@@ -12,6 +12,8 @@ function readFile(file: File, onUrl: (url: string) => void) {
   onUrl(url);
 }
 
+const WEAVE_MODES = IMAGE_MODES.filter((m) => m.id !== "logo");
+
 export function ImagePanel() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
@@ -21,12 +23,13 @@ export function ImagePanel() {
   const patchStyle = useStudio((s) => s.patchStyle);
   const artRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+  const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
+  const strength = style.artisticStrength ?? 0.42;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Upload Box */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Upload Custom Image</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Upload a picture</p>
         <button
           type="button"
           onClick={() => artRef.current?.click()}
@@ -58,7 +61,7 @@ export function ImagePanel() {
             {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
           </span>
           <span className="text-xs text-muted">
-            Photo fills only the dots. Rendered in this browser — nothing is uploaded, no cloud AI.
+            Woven into the QR in this browser — no upload, no AI models.
           </span>
         </button>
         <input
@@ -86,14 +89,8 @@ export function ImagePanel() {
         )}
       </div>
 
-      {/* Preset Sample Gallery */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try sample pictures</p>
-        <p className="mb-2 text-[11px] leading-snug text-subtle">
-          A sample or upload keeps the current style. The picture shows only where the dots are;
-          light cells stay paper. Fix scan will raise or lower dot size, contrast, opacity, and
-          grid detail until a camera can lock.
-        </p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try a sample</p>
         <div className="grid grid-cols-6 gap-2">
           {SAMPLE_IMAGES.map((s) => (
             <button
@@ -112,11 +109,10 @@ export function ImagePanel() {
         </div>
       </div>
 
-      {/* Picture Treatment Modes */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Picture Treatment Mode</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {IMAGE_MODES.map((m) => (
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {WEAVE_MODES.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -124,7 +120,7 @@ export function ImagePanel() {
               disabled={!imageUrl && m.id !== "none"}
               onClick={() => patchStyle({ imageMode: m.id })}
               className={cn(
-                "h-11 rounded-md border text-xs font-medium transition disabled:opacity-40 active:scale-95",
+                "h-11 rounded-md border px-2 text-xs font-medium transition disabled:opacity-40 active:scale-95",
                 style.imageMode === m.id
                   ? "border-accent bg-accent text-accent-fg font-semibold shadow-sm"
                   : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
@@ -134,87 +130,102 @@ export function ImagePanel() {
             </button>
           ))}
         </div>
+        <p className="mt-1.5 text-[11px] leading-snug text-subtle">
+          {IMAGE_MODES.find((m) => m.id === style.imageMode)?.hint}
+        </p>
       </div>
 
-      {/* Picture Tuning Controls (ALWAYS VISIBLE & FUNCTIONAL WHEN IMAGE LOADED) */}
-      {imageUrl && style.imageMode !== "none" && (
+      {pictured && (
         <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
           <p className="text-xs font-semibold tracking-wide text-fg flex items-center gap-1.5">
             <Sliders className="size-3.5 text-ok" />
-            <span>Picture Tuning & Contrast</span>
+            <span>Artistic strength</span>
           </p>
-
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Photo Opacity / Fade</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.imageOpacity * 100)}%
-              </span>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold tracking-wide">
+              <span className="text-ok">Safe</span>
+              <span className="tabular-nums text-fg">{Math.round(strength * 100)}%</span>
+              <span className="text-warn">Artistic</span>
             </div>
             <Slider
-              min={0.1}
-              max={1.0}
+              min={0}
+              max={1}
               step={0.01}
-              value={[style.imageOpacity]}
-              onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.85 })}
+              value={[strength]}
+              onValueChange={([v]) => patchStyle({ artisticStrength: v ?? 0.42 })}
             />
-            <p className="mt-1 text-[11px] text-muted">How much of the original photo to keep vs. push toward scan contrast.</p>
+            <p className="mt-1 text-[11px] text-muted">
+              Safe keeps a bigger machine-readable center in each module. Artistic lets more of the
+              photo into the surround — never past scan-safe limits.
+            </p>
           </div>
 
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Image Contrast</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.contrast * 100)}%
-              </span>
+          <details className="rounded-lg border border-border bg-surface/50 p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-fg">Advanced</summary>
+            <div className="mt-3 grid gap-4">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Contrast</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.contrast * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.3}
+                  max={1.0}
+                  step={0.01}
+                  value={[style.contrast]}
+                  onValueChange={([v]) => patchStyle({ contrast: v ?? 0.82 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Module scale</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.dotScale * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.45}
+                  max={0.96}
+                  step={0.01}
+                  value={[style.dotScale]}
+                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.78 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Quiet zone</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">{style.quietZone}</span>
+                </div>
+                <Slider
+                  min={2}
+                  max={6}
+                  step={1}
+                  value={[style.quietZone]}
+                  onValueChange={([v]) => patchStyle({ quietZone: v ?? 3 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Grid detail</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">{style.minVersion}</span>
+                </div>
+                <Slider
+                  min={5}
+                  max={12}
+                  step={1}
+                  value={[style.minVersion]}
+                  onValueChange={([v]) => patchStyle({ minVersion: v ?? 7 })}
+                />
+              </div>
             </div>
-            <Slider
-              min={0.3}
-              max={1.0}
-              step={0.01}
-              value={[style.contrast]}
-              onValueChange={([v]) => patchStyle({ contrast: v ?? 0.72 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Separates dark bits from light bits. Fix scan raises this.</p>
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Dot Weight</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.dotScale * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.45}
-              max={0.96}
-              step={0.01}
-              value={[style.dotScale]}
-              onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.78 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Thickness of the data dots over the picture.</p>
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Grid Detail (Version)</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">{style.minVersion}</span>
-            </div>
-            <Slider
-              min={2}
-              max={12}
-              step={1}
-              value={[style.minVersion]}
-              onValueChange={([v]) => patchStyle({ minVersion: v ?? 6 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Higher grid density preserves finer photo details.</p>
-          </div>
+          </details>
         </div>
       )}
 
-      {/* Center Logo */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center Logo / Icon</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center logo</p>
         <div className="flex items-center gap-3">
           <button
             type="button"
