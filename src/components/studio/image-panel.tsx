@@ -58,7 +58,7 @@ export function ImagePanel() {
             {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
           </span>
           <span className="text-xs text-muted">
-            Photo fills only the dots — style shape and finder colors stay, paper stays scannable
+            Photo fills only the dots. Rendered in this browser — nothing is uploaded, no cloud AI.
           </span>
         </button>
         <input

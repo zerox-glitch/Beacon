@@ -5,15 +5,20 @@ import {
   FileCode2,
   ImageDown,
   Loader2,
+  Minus,
+  Plus,
   Printer,
   Shuffle,
+  Smartphone,
   Wand2,
 } from "lucide-react";
 import { autoFixScan } from "@/lib/qr/autofix";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DestinationDock } from "@/components/studio/destination-dock";
 import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
+import { EXPORT_PRESETS, finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
@@ -42,9 +47,14 @@ export function QrStage() {
   const [dragging, setDragging] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
   const setImageUrl = useStudio((s) => s.setImageUrl);
   const stageBg = useStudio((s) => s.stageBg);
   const setStageBg = useStudio((s) => s.setStageBg);
+  const caption = useStudio((s) => s.caption);
+  const frame = useStudio((s) => s.frame);
 
   function onDropImage(e: React.DragEvent<HTMLDivElement>) {
     setDragging(false);
@@ -114,7 +124,7 @@ export function QrStage() {
     const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
     const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
     renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
-    return canvas;
+    return finishExport(canvas, { frame, caption, paper: style.bg });
   }
 
   async function onDownload() {
@@ -128,6 +138,8 @@ export function QrStage() {
         style: { ...style },
         imageUrl: imageUrl?.startsWith("blob:") ? null : imageUrl,
         thumb,
+        caption,
+        frame,
       });
       toast.success("PNG saved (2048px)");
     } catch (err) {
@@ -232,8 +244,26 @@ export function QrStage() {
     { id: "minimal" as const, label: "Ink" },
   ];
 
+  async function onExportPreset(id: string) {
+    const preset = EXPORT_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setExportOpen(false);
+    if (preset.kind === "svg") {
+      onDownloadSvg();
+      return;
+    }
+    try {
+      const canvas = await renderExport(preset.px);
+      downloadCanvasPng(canvas, `qrwho-${preset.px}.png`);
+      toast.success(`${preset.label} saved`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }
+
   return (
     <div className="relative z-10 flex w-full flex-col items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-5">
+      <DestinationDock />
       <div className="flex gap-1 rounded-full border border-white/20 bg-bg/90 p-1 shadow-lg backdrop-blur">
         {moods.map((m) => (
           <button
@@ -266,8 +296,14 @@ export function QrStage() {
           setTilt({ x: pyn * -7, y: pxn * 9 });
         }}
         onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-        className="qr-mat relative w-full max-w-[210px] rounded-2xl p-2.5 transition duration-200 will-change-transform sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]"
-        style={{ transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+        className={cn(
+          "qr-mat relative w-full max-w-[210px] p-2.5 transition duration-200 will-change-transform sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]",
+          frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
+        )}
+        style={{
+          transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${zoom})`,
+          background: frame === "none" ? undefined : paper,
+        }}
       >
         <div
           ref={innerRef}
@@ -290,6 +326,11 @@ export function QrStage() {
             </div>
           )}
         </div>
+        {caption.trim() ? (
+          <p className="mt-2 text-center text-[11px] font-bold tracking-[0.18em] text-fg sm:text-xs">
+            {caption.trim()}
+          </p>
+        ) : null}
         <div className="pointer-events-none absolute left-2 top-2 z-10 sm:left-4 sm:top-4">
           <span
             className={cn(
@@ -310,6 +351,36 @@ export function QrStage() {
             {scanOk ? "Scannable" : scanOk === false ? "Needs tune" : "Checking"}
           </span>
         </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={() => setZoom((z) => Math.max(0.82, z - 0.08))}
+          className="inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-bg/80 text-fg hover:bg-white/10"
+        >
+          <Minus className="size-3.5" />
+        </button>
+        <span className="min-w-10 text-center text-[11px] font-semibold tabular-nums text-fg/80">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          onClick={() => setZoom((z) => Math.min(1.2, z + 0.08))}
+          className="inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-bg/80 text-fg hover:bg-white/10"
+        >
+          <Plus className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTestOpen(true)}
+          className="ml-1 inline-flex h-8 items-center gap-1 rounded-full border border-white/20 bg-bg/80 px-2.5 text-[11px] font-semibold text-fg hover:bg-white/10"
+        >
+          <Smartphone className="size-3.5" />
+          Test on phone
+        </button>
       </div>
 
       <ScannabilityMeter
@@ -410,6 +481,45 @@ export function QrStage() {
           ))}
         </div>
       </div>
+
+      {testOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Test on phone"
+          onClick={() => setTestOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-bg p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="font-display text-xl italic">Point your camera here</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              This preview is the same bitmap Fix scan reads with jsQR in the browser. Phone cameras
+              can be stricter or more lenient — we do not guarantee every device.
+            </p>
+            {preview && (
+              <img
+                src={preview}
+                alt="QR preview for phone test"
+                className="mx-auto mt-4 w-56 rounded-xl"
+                style={{ background: paper }}
+              />
+            )}
+            {caption.trim() ? (
+              <p className="mt-2 text-center text-xs font-bold tracking-[0.18em]">{caption.trim()}</p>
+            ) : null}
+            <button
+              type="button"
+              className="mt-4 h-11 w-full rounded-xl bg-accent text-sm font-bold text-accent-fg"
+              onClick={() => setTestOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

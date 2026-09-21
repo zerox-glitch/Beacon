@@ -39,8 +39,40 @@ export function DesignPanel() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
 
+  const caption = useStudio((s) => s.caption);
+  const setCaption = useStudio((s) => s.setCaption);
+  const frame = useStudio((s) => s.frame);
+  const setFrame = useStudio((s) => s.setFrame);
+
   return (
     <div className="flex flex-col gap-6">
+      <section>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Frame & caption</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(["none", "soft", "ticket"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFrame(f)}
+              className={cn(
+                "h-10 rounded-md border text-[11px] font-semibold capitalize",
+                frame === f
+                  ? "border-accent bg-accent text-accent-fg"
+                  : "border-border bg-elevated text-muted hover:text-fg",
+              )}
+            >
+              {f === "none" ? "None" : f}
+            </button>
+          ))}
+        </div>
+        <input
+          value={caption}
+          placeholder='Optional · “SCAN ME”'
+          onChange={(e) => setCaption(e.target.value.slice(0, 24))}
+          className="mt-2 h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-accent/40"
+        />
+      </section>
+
       {/* Module Shapes */}
       <section>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Module shape</p>

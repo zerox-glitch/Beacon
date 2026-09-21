@@ -1,35 +1,12 @@
 import type { ReactNode } from "react";
-import {
-  CalendarDays,
-  Link2,
-  Mail,
-  MapPin,
-  MessageCircle,
-  MessageSquare,
-  Phone,
-  Type,
-  UserRound,
-  Wifi,
-} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { KIND_META, MORE_KINDS, PRIMARY_KINDS } from "@/lib/qr/kinds";
+import { USE_CASES } from "@/lib/qr/usecase";
 import type { PayloadKind } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
-
-const KINDS: { id: PayloadKind; label: string; icon: typeof Link2 }[] = [
-  { id: "url", label: "Link", icon: Link2 },
-  { id: "text", label: "Text", icon: Type },
-  { id: "phone", label: "Phone", icon: Phone },
-  { id: "sms", label: "SMS", icon: MessageSquare },
-  { id: "email", label: "Email", icon: Mail },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { id: "wifi", label: "Wi-Fi", icon: Wifi },
-  { id: "geo", label: "Place", icon: MapPin },
-  { id: "vcard", label: "Contact", icon: UserRound },
-  { id: "event", label: "Event", icon: CalendarDays },
-];
 
 function Field({
   label,
@@ -50,41 +27,115 @@ export function ContentPanel() {
   const payload = useStudio((s) => s.payload);
   const setKind = useStudio((s) => s.setKind);
   const patch = useStudio((s) => s.patchPayload);
+  const useCase = useStudio((s) => s.useCase);
+  const applyUseCase = useStudio((s) => s.applyUseCase);
+  const active = KIND_META.find((k) => k.id === payload.kind);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Opens</p>
-        <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-1.5">
-          {KINDS.map((k) => {
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">What are you creating?</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {PRIMARY_KINDS.map((k) => {
             const Icon = k.icon;
             const on = payload.kind === k.id;
             return (
               <button
                 key={k.id}
                 type="button"
-                title={k.label}
+                title={k.hint}
                 onClick={() => setKind(k.id)}
                 className={cn(
-                  "flex h-11 min-w-0 flex-col items-center justify-center overflow-hidden rounded-md border px-0.5 text-[10px] font-medium transition-colors",
+                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border px-1 text-[11px] font-semibold transition-colors",
                   on
                     ? "border-accent bg-accent text-accent-fg"
-                    : "border-border bg-elevated text-muted hover:bg-surface hover:text-fg",
+                    : "border-border bg-elevated text-fg/80 hover:bg-surface hover:text-fg",
                 )}
               >
-                <Icon className="mb-0.5 size-3.5" />
+                <Icon className="size-4" />
                 {k.label}
               </button>
             );
           })}
         </div>
+        <label className="mt-2 grid gap-1.5">
+          <span className="text-[11px] font-medium text-muted">More types</span>
+          <select
+            value={MORE_KINDS.some((k) => k.id === payload.kind) ? payload.kind : ""}
+            onChange={(e) => {
+              if (e.target.value) setKind(e.target.value as PayloadKind);
+            }}
+            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg"
+          >
+            <option value="">
+              {active && MORE_KINDS.some((k) => k.id === active.id)
+                ? active.label
+                : "Menu, PDF, review, payment…"}
+            </option>
+            {MORE_KINDS.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {payload.kind === "url" && (
-        <Field label="Website or any URL">
+      <div>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Where will it live?</p>
+        <div className="flex flex-wrap gap-1.5">
+          {USE_CASES.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              title={u.hint}
+              onClick={() => applyUseCase(u.id)}
+              className={cn(
+                "h-8 rounded-full border px-2.5 text-[11px] font-semibold",
+                useCase === u.id
+                  ? "border-accent bg-accent text-accent-fg"
+                  : "border-border bg-elevated text-fg/80 hover:text-fg",
+              )}
+            >
+              {u.label}
+            </button>
+          ))}
+        </div>
+        {useCase && (
+          <p className="mt-2 text-[11px] leading-snug text-muted">
+            {USE_CASES.find((u) => u.id === useCase)?.printNote}. Quiet zone, contrast, and error
+            correction were nudged for that surface — always verify with a phone.
+          </p>
+        )}
+      </div>
+
+      {(payload.kind === "url" ||
+        payload.kind === "pdf" ||
+        payload.kind === "menu" ||
+        payload.kind === "review" ||
+        payload.kind === "payment" ||
+        payload.kind === "app" ||
+        payload.kind === "social") && (
+        <Field
+          label={
+            payload.kind === "menu"
+              ? "Menu link"
+              : payload.kind === "pdf"
+                ? "PDF link"
+                : payload.kind === "review"
+                  ? "Review link"
+                  : payload.kind === "payment"
+                    ? "Payment link"
+                    : payload.kind === "app"
+                      ? "App store link"
+                      : payload.kind === "social"
+                        ? "Profile or bio link"
+                        : "Website or any URL"
+          }
+        >
           <Input
             value={payload.url}
-            placeholder="https://"
+            placeholder={KIND_META.find((k) => k.id === payload.kind)?.placeholder ?? "https://"}
             inputMode="url"
             autoCapitalize="off"
             onChange={(e) => patch({ url: e.target.value })}

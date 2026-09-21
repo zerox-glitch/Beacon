@@ -8,6 +8,8 @@ import {
   type QrStyle,
 } from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
+import type { FrameKind } from "@/lib/qr/finish";
+import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
 
 export interface HistoryItem {
   id: string;
@@ -17,9 +19,12 @@ export interface HistoryItem {
   style: QrStyle;
   imageUrl: string | null;
   thumb: string;
+  caption?: string;
+  frame?: FrameKind;
 }
 
 export type StageBgMood = "vibrant" | "cosmic" | "waves" | "minimal";
+export type StudioTab = "content" | "image" | "presets" | "design" | "library";
 
 interface StudioState {
   payload: Payload;
@@ -33,7 +38,11 @@ interface StudioState {
   scanOk: boolean | null;
   error: string | null;
   history: HistoryItem[];
-  mobileTab: "content" | "image" | "presets" | "design";
+  mobileTab: StudioTab;
+  caption: string;
+  frame: FrameKind;
+  useCase: UseCaseId | null;
+  lastFixNotes: string[];
   setKind: (kind: PayloadKind) => void;
   patchPayload: (patch: Partial<Payload>) => void;
   patchStyle: (patch: Partial<QrStyle>) => void;
@@ -44,9 +53,15 @@ interface StudioState {
   setStageBg: (stageBg: StageBgMood) => void;
   setScan: (ok: boolean | null, text: string | null) => void;
   setError: (error: string | null) => void;
-  setMobileTab: (tab: StudioState["mobileTab"]) => void;
+  setMobileTab: (tab: StudioTab) => void;
+  setCaption: (caption: string) => void;
+  setFrame: (frame: FrameKind) => void;
+  applyUseCase: (id: UseCaseId) => void;
+  setFixNotes: (notes: string[]) => void;
   pushHistory: (item: Omit<HistoryItem, "id" | "createdAt">) => void;
   loadHistoryItem: (id: string) => void;
+  deleteHistoryItem: (id: string) => void;
+  remixHistoryItem: (id: string) => void;
   hydrateHistory: () => void;
 }
 
@@ -79,7 +94,11 @@ export const useStudio = create<StudioState>((set, get) => ({
   scanOk: null,
   error: null,
   history: [],
-  mobileTab: "presets",
+  mobileTab: "content",
+  caption: "",
+  frame: "none",
+  useCase: null,
+  lastFixNotes: [],
   setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind } })),
   patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch } })),
   patchStyle: (patch) =>
@@ -141,6 +160,17 @@ export const useStudio = create<StudioState>((set, get) => ({
   setScan: (scanOk, scanText) => set({ scanOk, scanText }),
   setError: (error) => set({ error }),
   setMobileTab: (mobileTab) => set({ mobileTab }),
+  setCaption: (caption) => set({ caption }),
+  setFrame: (frame) => set({ frame }),
+  applyUseCase: (id) => {
+    const rec = useCaseById(id);
+    set((s) => ({
+      useCase: id,
+      caption: rec.caption,
+      style: { ...s.style, ...rec.patch },
+    }));
+  },
+  setFixNotes: (lastFixNotes) => set({ lastFixNotes }),
   pushHistory: (item) => {
     const entry: HistoryItem = {
       ...item,
@@ -159,6 +189,25 @@ export const useStudio = create<StudioState>((set, get) => ({
       style: item.style,
       imageUrl: item.imageUrl,
       presetId: null,
+      caption: item.caption ?? "",
+      frame: item.frame ?? "none",
+    });
+  },
+  deleteHistoryItem: (id) => {
+    const history = get().history.filter((h) => h.id !== id);
+    set({ history });
+    persist(history);
+  },
+  remixHistoryItem: (id) => {
+    const item = get().history.find((h) => h.id === id);
+    if (!item) return;
+    set({
+      style: item.style,
+      imageUrl: item.imageUrl,
+      caption: item.caption ?? "",
+      frame: item.frame ?? "none",
+      presetId: null,
+      mobileTab: "content",
     });
   },
   hydrateHistory: () => {

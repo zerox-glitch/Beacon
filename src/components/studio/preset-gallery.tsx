@@ -57,6 +57,9 @@ function PresetThumb({
       <span className="truncate px-0.5 text-[10px] leading-tight text-muted group-hover:text-fg">
         {preset.name}
       </span>
+      <span className="px-0.5 text-[9px] font-semibold uppercase tracking-wide text-ok opacity-0 group-hover:opacity-100">
+        Use template
+      </span>
     </button>
   );
 }
@@ -94,7 +97,7 @@ export function PresetGallery() {
         <div>
           <p className="mb-2 text-xs font-medium tracking-wide text-muted">QR Art gallery</p>
           <div className="grid grid-cols-4 gap-2">
-            {GALLERY_PRESETS.slice(0, 8).map((p, i) => (
+            {GALLERY_PRESETS.slice(0, 12).map((p, i) => (
               <PresetThumb
                 key={p.id}
                 preset={p}

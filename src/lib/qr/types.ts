@@ -8,7 +8,13 @@ export type PayloadKind =
   | "wifi"
   | "geo"
   | "vcard"
-  | "event";
+  | "event"
+  | "pdf"
+  | "menu"
+  | "review"
+  | "payment"
+  | "app"
+  | "social";
 
 export type ModuleShape =
   | "square"

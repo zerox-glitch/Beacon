@@ -312,3 +312,10 @@ input[type="color"]::-webkit-color-swatch {
     display: none;
   }
 }
+
+@media (max-width: 390px) {
+  .qr-mat {
+    max-width: 196px;
+    padding: 0.55rem;
+  }
+}

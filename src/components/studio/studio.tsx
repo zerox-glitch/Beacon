@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  FolderOpen,
   Globe,
   ImageIcon,
   LayoutGrid,
@@ -14,6 +15,7 @@ import { AmbientArt } from "@/components/studio/ambient-art";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
+import { LibraryPanel } from "@/components/studio/library-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,10 +44,11 @@ function RotatingHook() {
 }
 
 const STUDIO_TABS = [
-  { id: "content" as const, label: "Link", icon: Type },
-  { id: "presets" as const, label: "Presets", icon: LayoutGrid },
-  { id: "design" as const, label: "Design", icon: Palette },
+  { id: "content" as const, label: "Create", icon: Type },
   { id: "image" as const, label: "Picture", icon: ImageIcon },
+  { id: "presets" as const, label: "Looks", icon: LayoutGrid },
+  { id: "design" as const, label: "Tune", icon: Palette },
+  { id: "library" as const, label: "Library", icon: FolderOpen },
 ] as const;
 
 export function Studio() {
@@ -131,7 +134,7 @@ export function Studio() {
 
             <div
               className={cn(
-                "sticky top-0 z-20 grid grid-cols-4 border-b border-border bg-surface p-1",
+                "sticky top-0 z-20 grid grid-cols-5 border-b border-border bg-surface p-1",
                 !sheetOpen && "hidden lg:grid",
               )}
             >
@@ -170,6 +173,7 @@ export function Studio() {
               {mobileTab === "presets" && <PresetGallery />}
               {mobileTab === "design" && <DesignPanel />}
               {mobileTab === "image" && <ImagePanel />}
+              {mobileTab === "library" && <LibraryPanel />}
             </div>
           </aside>
         </div>

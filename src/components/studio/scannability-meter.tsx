@@ -2,6 +2,7 @@ import { Loader2, Wand2 } from "lucide-react";
 import { scanAdvice } from "@/lib/qr/autofix";
 import { cn } from "@/lib/utils";
 import { type QrStyle } from "@/lib/qr/types";
+import { useStudio } from "@/lib/store";
 
 interface ScannabilityMeterProps {
   scanOk: boolean | null;
@@ -14,11 +15,11 @@ interface ScannabilityMeterProps {
 type Band = "checking" | "high" | "good" | "fair" | "low" | "unscannable";
 
 const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
-  { id: "high", label: "High", pos: 8, color: "#7dba7a" },
+  { id: "high", label: "Excellent", pos: 8, color: "#7dba7a" },
   { id: "good", label: "Good", pos: 30, color: "#a3c46a" },
-  { id: "fair", label: "Fair", pos: 52, color: "#c4b45a" },
-  { id: "low", label: "Low", pos: 74, color: "#c47a3a" },
-  { id: "unscannable", label: "Unscannable", pos: 94, color: "#c45c4a" },
+  { id: "fair", label: "Fair — image interference", pos: 52, color: "#c4b45a" },
+  { id: "low", label: "Weak", pos: 74, color: "#c47a3a" },
+  { id: "unscannable", label: "Not reading in-browser", pos: 94, color: "#c45c4a" },
 ];
 
 function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
@@ -52,10 +53,11 @@ export function ScannabilityMeter({
   onAutoFix,
   fixing,
 }: ScannabilityMeterProps) {
+  const notes = useStudio((s) => s.lastFixNotes);
   const band = readBand(scanOk, style, hasImage);
   const active = BANDS.find((b) => b.id === band) ?? BANDS[2]!;
   const checking = band === "checking";
-  const needsTune = band === "low" || band === "unscannable";
+  const needsTune = band === "low" || band === "unscannable" || band === "fair";
   const hint = needsTune ? adviceText(style, hasImage) : null;
 
   return (
@@ -67,7 +69,7 @@ export function ScannabilityMeter({
             style={{ background: checking ? "#6a6760" : active.color }}
           />
           <span className="truncate text-xs font-semibold" style={{ color: checking ? undefined : active.color }}>
-            {checking ? "Reading…" : active.label}
+            {checking ? "Reading…" : `Scan quality: ${active.label}`}
           </span>
         </div>
         <button
@@ -96,19 +98,26 @@ export function ScannabilityMeter({
         />
       </div>
       <div className="mt-1 flex justify-between text-[9px] font-semibold tracking-wide text-fg/70 sm:text-[10px]">
-        <span className="text-ok">High</span>
+        <span className="text-ok">Excellent</span>
         <span>Good</span>
         <span>Fair</span>
-        <span>Low</span>
-        <span className="text-danger">Unscannable</span>
+        <span>Weak</span>
+        <span className="text-danger">Fail</span>
       </div>
+      {notes.length > 0 && (
+        <p className="mt-1.5 text-[10px] leading-snug text-ok">Changed: {notes.join(" · ")}</p>
+      )}
       {hint ? (
         <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>
       ) : hasImage ? (
         <p className="mt-1.5 text-[10px] leading-snug text-subtle">
-          Photo sits only in the dots. Phone cameras beat this checker — no hidden decoder.
+          Photo sits only in the dots. In-browser checker (jsQR) — phones can differ.
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-1.5 text-[10px] leading-snug text-subtle">
+          In-browser checker only. Always test with a real camera before print.
+        </p>
+      )}
     </div>
   );
 }
