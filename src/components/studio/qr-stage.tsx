@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { DestinationDock } from "@/components/studio/destination-dock";
 import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
-import { EXPORT_PRESETS, finishExport } from "@/lib/qr/finish";
+import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
@@ -46,13 +46,9 @@ export function QrStage() {
   const [preview, setPreview] = useState("");
   const [dragging, setDragging] = useState(false);
   const [fixing, setFixing] = useState(false);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [exportOpen, setExportOpen] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
   const setImageUrl = useStudio((s) => s.setImageUrl);
-  const stageBg = useStudio((s) => s.stageBg);
-  const setStageBg = useStudio((s) => s.setStageBg);
   const caption = useStudio((s) => s.caption);
   const frame = useStudio((s) => s.frame);
 
@@ -89,28 +85,19 @@ export function QrStage() {
         return;
       }
       useStudio.getState().setError(null);
-      let art: HTMLImageElement | null = null;
-      let logo: HTMLImageElement | null = null;
-      if (imageUrl) {
-        art = await loadImage(imageUrl).catch(() => null);
-      }
-      if (logoUrl) {
-        logo = await loadImage(logoUrl).catch(() => null);
-      }
+      const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
+      const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
       if (cancelled) return;
-      const canvas = workRef.current ?? makeCanvas();
-      workRef.current = canvas;
+      const canvas = workRef.current;
+      if (!canvas) return;
       renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
-      setPreview(canvas.toDataURL("image/png"));
-      const probe = makeCanvas();
-      renderQr(probe, encoded.qr, style, { pixelSize: 720, art, logo, exportScale: true });
       try {
-        const decoded = await verifyQr(probe);
+        const decoded = await verifyQr(canvas);
         if (!cancelled) useStudio.getState().setScan(Boolean(decoded), decoded);
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
       }
-    }, 40);
+    }, 80);
     return () => {
       cancelled = true;
       window.clearTimeout(handle);
@@ -225,6 +212,7 @@ export function QrStage() {
     setFixing(true);
     try {
       const result = await autoFixScan(payload, style, imageUrl, logoUrl);
+      useStudio.getState().setFixNotes(result.notes);
       if (Object.keys(result.patch).length === 0) {
         toast.success("Already scannable");
       } else {
@@ -237,49 +225,16 @@ export function QrStage() {
   }
 
   const paper = style.bg;
-  const moods = [
-    { id: "cosmic" as const, label: "Night" },
-    { id: "waves" as const, label: "Tide" },
-    { id: "vibrant" as const, label: "Neon" },
-    { id: "minimal" as const, label: "Ink" },
-  ];
 
-  async function onExportPreset(id: string) {
-    const preset = EXPORT_PRESETS.find((p) => p.id === id);
-    if (!preset) return;
-    setExportOpen(false);
-    if (preset.kind === "svg") {
-      onDownloadSvg();
-      return;
-    }
-    try {
-      const canvas = await renderExport(preset.px);
-      downloadCanvasPng(canvas, `qrwho-${preset.px}.png`);
-      toast.success(`${preset.label} saved`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Export failed");
-    }
+  function openPhoneTest() {
+    const canvas = workRef.current;
+    setPreview(canvas && canvas.width > 0 ? canvas.toDataURL("image/png") : "");
+    setTestOpen(true);
   }
 
   return (
     <div className="relative z-10 flex w-full flex-col items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-5">
       <DestinationDock />
-      <div className="flex gap-1 rounded-full border border-white/20 bg-bg/90 p-1 shadow-lg backdrop-blur">
-        {moods.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setStageBg(m.id)}
-            className={
-              stageBg === m.id
-                ? "h-8 rounded-full bg-accent px-3 text-[11px] font-semibold text-accent-fg"
-                : "h-8 rounded-full px-3 text-[11px] font-medium text-fg/85 hover:bg-white/10 hover:text-fg"
-            }
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
       <div
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
@@ -289,19 +244,12 @@ export function QrStage() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDropImage}
-        onPointerMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          const pxn = (e.clientX - r.left) / r.width - 0.5;
-          const pyn = (e.clientY - r.top) / r.height - 0.5;
-          setTilt({ x: pyn * -7, y: pxn * 9 });
-        }}
-        onPointerLeave={() => setTilt({ x: 0, y: 0 })}
         className={cn(
-          "qr-mat relative w-full max-w-[210px] p-2.5 transition duration-200 will-change-transform sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]",
+          "qr-mat relative w-full max-w-[210px] p-2.5 transition duration-200 sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]",
           frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
         )}
         style={{
-          transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${zoom})`,
+          transform: `scale(${zoom})`,
           background: frame === "none" ? undefined : paper,
         }}
       >
@@ -310,11 +258,7 @@ export function QrStage() {
           className="relative mx-auto aspect-square w-full overflow-hidden rounded-xl"
           style={{ background: paper }}
         >
-          {preview ? (
-            <img src={preview} alt="QR code preview" className="block size-full object-contain" />
-          ) : (
-            <div className="size-full bg-surface" />
-          )}
+          <canvas ref={workRef} className="block size-full" aria-label="QR code preview" />
           {dragging && (
             <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-accent/60 bg-bg/70 p-4 text-center text-xs font-medium text-fg">
               Drop picture to style code
@@ -375,7 +319,7 @@ export function QrStage() {
         </button>
         <button
           type="button"
-          onClick={() => setTestOpen(true)}
+          onClick={openPhoneTest}
           className="ml-1 inline-flex h-8 items-center gap-1 rounded-full border border-white/20 bg-bg/80 px-2.5 text-[11px] font-semibold text-fg hover:bg-white/10"
         >
           <Smartphone className="size-3.5" />

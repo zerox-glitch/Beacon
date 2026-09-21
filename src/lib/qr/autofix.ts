@@ -57,7 +57,7 @@ export async function autoFixScan(
     const enc = tryEncodePayload(payload, s);
     if (!enc.ok) return false;
     const canvas = document.createElement("canvas");
-    renderQr(canvas, enc.qr, s, { pixelSize: 720, art, logo, exportScale: true });
+    renderQr(canvas, enc.qr, s, { pixelSize: 480, art, logo, exportScale: true });
     return Boolean(await verifyQr(canvas).catch(() => null));
   };
 

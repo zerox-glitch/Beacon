@@ -186,11 +186,11 @@ export function ImagePanel() {
               </span>
             </div>
             <Slider
-              min={0.25}
-              max={0.9}
+              min={0.45}
+              max={0.96}
               step={0.01}
               value={[style.dotScale]}
-              onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.56 })}
+              onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.78 })}
             />
             <p className="mt-1 text-[11px] text-muted">Thickness of the data dots over the picture.</p>
           </div>
