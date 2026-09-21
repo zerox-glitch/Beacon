@@ -461,7 +461,7 @@ export function QrStage() {
 
       <div className="w-full max-w-[210px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
         <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
-          Steal a look — parrot, geisha, nebula
+          Steal a look — summit, peony, dusk
         </p>
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
           {GALLERY_PRESETS.map((p) => (
