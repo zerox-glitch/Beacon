@@ -82,15 +82,23 @@ function compose(qr, body, n, finders = {}) {
   return { out, w };
 }
 
-function wovenBody(strength, contrast, fade, boost = 0) {
+function wovenBody(strength, contrast, fade, extra = {}) {
   const qr = encodeQr();
   const n = qr.size * 8;
   const pixels = new Uint8ClampedArray(n * n * 4);
   fillGradient(pixels, n);
   const cellPx = 480 / (qr.size + 6);
   const version = Math.max(1, Math.round((qr.size - 17) / 4));
-  const bias = lumaBias({ strength, contrast, version, cellPx, quietZone: 3, boost });
-  remapPhotoLuma(pixels, n, qr, bias, strength, contrast, fade);
+  const bias = lumaBias({ strength, contrast, version, cellPx, quietZone: 3, boost: extra.boost ?? 0 });
+  remapPhotoLuma(pixels, n, qr, {
+    bias,
+    strength,
+    contrast,
+    fade,
+    dotScale: extra.dotScale ?? 0.78,
+    moduleGap: extra.moduleGap ?? 0.03,
+    moduleShape: extra.moduleShape ?? "square",
+  });
   return { qr, n, pixels };
 }
 
@@ -103,10 +111,27 @@ describe("Photo QR luminance weave", () => {
   });
 
   it("stays scannable at a more artistic strength", () => {
-    const { qr, n, pixels } = wovenBody(0.72, 0.82, 0.96);
+    const { qr, n, pixels } = wovenBody(0.68, 0.86, 0.72, { dotScale: 0.84 });
     const { out, w } = compose(qr, pixels, n);
     const hit = jsQR(out, w, w, { inversionAttempts: "attemptBoth" });
     assert.equal(hit?.data, PAYLOAD);
+  });
+
+  it("contrast, fade and dot weight change the weave", () => {
+    const hi = wovenBody(0.4, 1, 0.35, { dotScale: 0.92 });
+    const lo = wovenBody(0.7, 0.35, 1, { dotScale: 0.3 });
+    let changed = 0;
+    for (let i = 0; i < hi.pixels.length; i += 4) {
+      if (
+        Math.abs(hi.pixels[i] - lo.pixels[i]) +
+          Math.abs(hi.pixels[i + 1] - lo.pixels[i + 1]) +
+          Math.abs(hi.pixels[i + 2] - lo.pixels[i + 2]) >
+        18
+      ) {
+        changed++;
+      }
+    }
+    assert.ok(changed > hi.n * hi.n * 0.12, `expected many pixels to move, got ${changed}`);
   });
 
   it("scans with photo-tinted concentric finders", () => {

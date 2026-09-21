@@ -1,6 +1,7 @@
 import { kernelTarget } from "./kernel";
 import type { EncodedQr } from "../encode";
 import { cellRole, isDark, isProtectedRole } from "../structure";
+import type { ModuleShape } from "../types";
 
 function clamp(n: number, a: number, b: number): number {
   return Math.min(b, Math.max(a, n));
@@ -29,6 +30,62 @@ function setLuminance(r: number, g: number, b: number, target: number): [number,
   return [r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k];
 }
 
+function inModuleShape(fx: number, fy: number, shape: ModuleShape | undefined): boolean {
+  const dx = fx - 0.5;
+  const dy = fy - 0.5;
+  switch (shape) {
+    case "dots":
+    case "bubbles":
+      return dx * dx + dy * dy <= 0.48 * 0.48;
+    case "diamond":
+      return Math.abs(dx) + Math.abs(dy) <= 0.52;
+    case "heart":
+      return dx * dx + (dy + 0.06) * (dy + 0.06) <= 0.22 || Math.abs(dx) + Math.abs(dy - 0.08) <= 0.42;
+    case "hex": {
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      return ay <= 0.48 && ax <= 0.48 && ax * 0.577 + ay * 0.5 <= 0.42;
+    }
+    case "star":
+    case "plus":
+    case "cross":
+      return Math.abs(dx) < 0.18 || Math.abs(dy) < 0.18 || dx * dx + dy * dy <= 0.12;
+    case "hbar":
+      return Math.abs(dy) <= 0.28;
+    case "vbar":
+      return Math.abs(dx) <= 0.28;
+    case "leaf":
+    case "classy":
+    case "rounded":
+    case "squircle":
+    case "fluid": {
+      const r = shape === "squircle" ? 0.42 : 0.28;
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      if (ax <= 0.5 - r && ay <= 0.5) return true;
+      if (ay <= 0.5 - r && ax <= 0.5) return true;
+      const cx = 0.5 - r;
+      const ox = ax - cx;
+      const oy = ay - cx;
+      return ox <= 0 || oy <= 0 || ox * ox + oy * oy <= r * r;
+    }
+    default:
+      return true;
+  }
+}
+
+export interface PhotoLumaOpts {
+  bias: number;
+  strength: number;
+  contrast: number;
+  fade: number;
+  /** 0.25 = tiny camera bit, 0.95 = almost the whole module. */
+  dotScale?: number;
+  /** Un-remapped photo rim around each module (0–0.35). */
+  moduleGap?: number;
+  moduleShape?: ModuleShape;
+}
+
 /**
  * Keep photo hue/texture; push each module's luminance toward its QR bit.
  * Center of the module is pushed harder (Chu centroid) with a soft falloff.
@@ -38,16 +95,18 @@ export function remapPhotoLuma(
   pixels: Uint8ClampedArray,
   n: number,
   qr: EncodedQr,
-  bias: number,
-  strength: number,
-  contrast: number,
-  fade: number,
+  opts: PhotoLumaOpts,
 ): void {
   const size = qr.size;
   const step = n / size;
-  const darkT = kernelTarget(true, strength, contrast);
-  const lightT = kernelTarget(false, strength, contrast);
-  const fadeMul = clamp(1.08 - fade * 0.22, 0.82, 1);
+  const contrast = clamp(opts.contrast, 0.3, 1);
+  const fade = clamp(opts.fade, 0.08, 1);
+  const scale = clamp(opts.dotScale ?? 0.78, 0.22, 1);
+  const gap = clamp(opts.moduleGap ?? 0, 0, 0.4);
+  const darkT = lerp(kernelTarget(true, opts.strength, 0.4), kernelTarget(true, opts.strength, 1), contrast);
+  const lightT = lerp(kernelTarget(false, opts.strength, 0.4), kernelTarget(false, opts.strength, 1), contrast);
+  const fadeMul = clamp(1.22 - fade * 0.62, 0.42, 1.18);
+  const contrastMul = 0.55 + contrast * 0.5;
   const roles: ReturnType<typeof cellRole>[] = new Array(size * size);
   const darks = new Uint8Array(size * size);
   for (let y = 0; y < size; y++) {
@@ -57,6 +116,9 @@ export function remapPhotoLuma(
       darks[i] = isDark(qr, x, y) ? 1 : 0;
     }
   }
+
+  const reach = Math.max(0.2, scale);
+  const rim = 1 - gap;
 
   for (let i = 0; i < pixels.length; i += 4) {
     const p = i >> 2;
@@ -71,12 +133,19 @@ export function remapPhotoLuma(
 
     const fx = mx - x;
     const fy = my - y;
+    if (!inModuleShape(fx, fy, opts.moduleShape)) continue;
     const dist = Math.max(Math.abs(fx - 0.5), Math.abs(fy - 0.5)) * 2;
-    const center = clamp(1 - dist * dist, 0, 1);
+    if (dist > rim) continue;
+
+    const t = clamp(1 - dist / reach, 0, 1);
     const guarded = isProtectedRole(role);
-    const edgeAmt = clamp(bias * 0.72 * fadeMul, guarded ? 0.42 : 0.2, 0.7);
-    const centerAmt = clamp((guarded ? bias + 0.3 : bias + 0.22) * fadeMul, guarded ? 0.74 : 0.6, 0.94);
-    const amount = lerp(edgeAmt, centerAmt, center);
+    const centerAmt = clamp(
+      (guarded ? opts.bias + 0.34 : opts.bias + 0.26) * fadeMul * contrastMul,
+      guarded ? 0.7 : 0.42,
+      0.96,
+    );
+    const edgeAmt = clamp(opts.bias * 0.22 * fadeMul, 0.04, 0.4);
+    const amount = lerp(edgeAmt, centerAmt, t * t);
     const r = pixels[i]!;
     const g = pixels[i + 1]!;
     const b = pixels[i + 2]!;

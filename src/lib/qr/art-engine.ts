@@ -348,14 +348,30 @@ function drawPhotoFinders(
 ) {
   const hi = sample(atlas, 0.5, 0.1);
   const lo = sample(atlas, 0.5, 0.55);
-  let light = setLuminance(hi[0], hi[1], hi[2], 0.9);
-  let dark = setLuminance(lo[0], lo[1], lo[2], 0.08);
+  const eye = parseHex(style.eyeColor) ?? lo;
+  const ball = parseHex(style.ballColor) ?? lo;
+  const paper = parseHex(style.bg) ?? hi;
+  let light = setLuminance(
+    paper[0] * 0.45 + hi[0] * 0.55,
+    paper[1] * 0.45 + hi[1] * 0.55,
+    paper[2] * 0.45 + hi[2] * 0.55,
+    0.9,
+  );
+  let dark = setLuminance(eye[0] * 0.7 + lo[0] * 0.3, eye[1] * 0.7 + lo[1] * 0.3, eye[2] * 0.7 + lo[2] * 0.3, 0.08);
+  let pupil = setLuminance(
+    ball[0] * 0.7 + lo[0] * 0.3,
+    ball[1] * 0.7 + lo[1] * 0.3,
+    ball[2] * 0.7 + lo[2] * 0.3,
+    0.07,
+  );
   if (luma(light[0], light[1], light[2]) - luma(dark[0], dark[1], dark[2]) < 0.5) {
     light = setLuminance(hi[0], hi[1], hi[2], 0.94);
-    dark = setLuminance(lo[0], lo[1], lo[2], 0.05);
+    dark = setLuminance(eye[0], eye[1], eye[2], 0.05);
+    pupil = setLuminance(ball[0], ball[1], ball[2], 0.05);
   }
   const lightCss = rgbStr(light[0], light[1], light[2]);
   const darkCss = rgbStr(dark[0], dark[1], dark[2]);
+  const ballCss = rgbStr(pupil[0], pupil[1], pupil[2]);
   const corners: [number, number][] = [
     [0, 0],
     [qr.size - 7, 0],
@@ -368,10 +384,11 @@ function drawPhotoFinders(
     const sepY = ey === 0 ? oy : oy - cell;
     const s7 = cell * 7;
     const r7 = finderCorner(style.eyeShape, s7);
+    const rBall = finderCorner(style.ballShape, cell * 3);
     fillRound(ctx, sepX, sepY, cell * 8, cell * 8, r7 * 1.05, lightCss);
     fillRound(ctx, ox, oy, s7, s7, r7, darkCss);
     fillRound(ctx, ox + cell, oy + cell, cell * 5, cell * 5, r7 * 0.72, lightCss);
-    fillRound(ctx, ox + cell * 2, oy + cell * 2, cell * 3, cell * 3, r7 * 0.5, darkCss);
+    fillRound(ctx, ox + cell * 2, oy + cell * 2, cell * 3, cell * 3, rBall, ballCss);
   }
 }
 
@@ -383,6 +400,7 @@ function drawPhotoFinders(
 function weavePhotoAtlas(
   atlas: { n: number; data: Uint8ClampedArray },
   qr: EncodedQr,
+  style: QrStyle,
   bias: number,
   strength: number,
   contrast: number,
@@ -390,7 +408,15 @@ function weavePhotoAtlas(
 ): HTMLCanvasElement {
   const n = atlas.n;
   const pixels = new Uint8ClampedArray(atlas.data);
-  remapPhotoLuma(pixels, n, qr, bias, strength, contrast, fade);
+  remapPhotoLuma(pixels, n, qr, {
+    bias,
+    strength,
+    contrast,
+    fade,
+    dotScale: style.dotScale,
+    moduleGap: style.moduleGap,
+    moduleShape: style.moduleShape,
+  });
   const c = document.createElement("canvas");
   c.width = n;
   c.height = n;
@@ -428,13 +454,15 @@ function renderFullBleedPhoto(
     quietZone: style.quietZone,
     boost: kernelBoost,
   });
-  const fade = clamp(style.imageOpacity, 0.35, 1);
+  const fade = clamp(style.imageOpacity, 0.08, 1);
   const hi = sample(atlas, 0.5, 0.1);
-  const mat = setLuminance(hi[0], hi[1], hi[2], 0.92);
+  const paper = parseHex(style.bg);
+  const matSrc = paper ?? hi;
+  const mat = setLuminance(matSrc[0], matSrc[1], matSrc[2], 0.92);
   ctx.fillStyle = rgbStr(mat[0], mat[1], mat[2]);
   ctx.fillRect(0, 0, px, px);
 
-  const woven = weavePhotoAtlas(atlas, qr, bias, strength, contrast, fade);
+  const woven = weavePhotoAtlas(atlas, qr, style, bias, strength, contrast, fade);
   ctx.save();
   ctx.beginPath();
   ctx.rect(origin, origin, body, body);
@@ -444,7 +472,16 @@ function renderFullBleedPhoto(
   ctx.drawImage(woven, origin, origin, body, body);
   ctx.restore();
 
-  drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+  if (style.effect === "shadow" || style.effect === "glow") {
+    ctx.save();
+    ctx.shadowColor = style.effect === "glow" ? "rgba(255,220,140,0.55)" : "rgba(0,0,0,0.4)";
+    ctx.shadowBlur = cell * (style.effect === "glow" ? 1.6 : 0.9);
+    ctx.shadowOffsetY = style.effect === "shadow" ? cell * 0.2 : 0;
+    drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+    ctx.restore();
+  } else {
+    drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+  }
 }
 
 /**

@@ -158,7 +158,11 @@ export function DesignPanel() {
             value={[style.dotScale]}
             onValueChange={([v]) => patch({ dotScale: v ?? 0.56 })}
           />
-          <p className="mt-1 text-[11px] text-muted">Adjusts the size of the QR modules.</p>
+          <p className="mt-1 text-[11px] text-muted">
+            {pictured
+              ? "How much of each module is the camera bit. Lower keeps more picture."
+              : "Adjusts the size of the QR modules."}
+          </p>
         </div>
 
         <div>
@@ -175,7 +179,11 @@ export function DesignPanel() {
             value={[style.contrast]}
             onValueChange={([v]) => patch({ contrast: v ?? 0.72 })}
           />
-          <p className="mt-1 text-[11px] text-muted">Boosts color separation and camera readability.</p>
+          <p className="mt-1 text-[11px] text-muted">
+            {pictured
+              ? "Pushes dark modules darker and light modules lighter."
+              : "Boosts color separation and camera readability."}
+          </p>
         </div>
 
         {pictured && (
@@ -193,7 +201,9 @@ export function DesignPanel() {
               value={[style.imageOpacity]}
               onValueChange={([v]) => patch({ imageOpacity: v ?? 0.85 })}
             />
-            <p className="mt-1 text-[11px] text-muted">Lower values help the code pop from the photo.</p>
+            <p className="mt-1 text-[11px] text-muted">
+              Higher keeps more of the picture. Lower makes the code pop.
+            </p>
           </div>
         )}
 

@@ -99,23 +99,16 @@ export function QrStage() {
         return;
       }
       const expected = buildPayload(payload).trim() || null;
-      const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
       try {
-        if (pictured) {
-          const { boost, report } = await autoSafetyBoost(canvas, payload, style, {
-            pixelSize: px,
-            art,
-            logo,
-            expected,
-          });
-          boostRef.current = report.ok ? boost : 0;
-          if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
-        } else {
-          boostRef.current = 0;
-          renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
-          const report = await inspectRenderedQr(canvas, expected);
-          if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
-        }
+        renderQr(canvas, encoded.qr, style, {
+          pixelSize: px,
+          art,
+          logo,
+          exportScale: true,
+          kernelBoost: 0,
+        });
+        const report = await inspectRenderedQr(canvas, expected);
+        if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
       } finally {
