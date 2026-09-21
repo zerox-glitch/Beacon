@@ -175,7 +175,7 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Photo QR", hint: "Photo woven into every module; the center of each dot is the bit cameras read" },
+  { id: "paint", label: "Photo QR", hint: "The picture fills the square. Modules only shift brightness so cameras still read 0/1" },
   { id: "mosaic", label: "Color blend", hint: "Each module is a contrast-normalized sample of the photo" },
   { id: "halftone", label: "Halftone", hint: "3×3 submodules: center is the QR bit, surround is a photo halftone" },
   { id: "duotone", label: "Duotone", hint: "Photo remapped to two scannable tones, still woven into the modules" },
@@ -229,8 +229,8 @@ export const DEFAULT_ART_URL = "/samples/mountain.jpg";
 
 export const DEFAULT_STYLE: QrStyle = {
   moduleShape: "square",
-  eyeShape: "square",
-  ballShape: "square",
+  eyeShape: "extra-rounded",
+  ballShape: "extra-rounded",
   fg: "#0f172a",
   bg: "#f4efe6",
   eyeColor: "#0f172a",
@@ -247,7 +247,7 @@ export const DEFAULT_STYLE: QrStyle = {
   minVersion: 7,
   ecc: "H",
   transparentBg: false,
-  artisticStrength: 0.42,
+  artisticStrength: 0.55,
   effect: "none",
   maskPattern: -1,
 };

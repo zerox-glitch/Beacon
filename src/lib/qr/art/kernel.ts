@@ -50,6 +50,33 @@ export function kernelTarget(dark: boolean, strength: number, contrast: number):
   return clamp(0.96 - s * 0.07 * (1.15 - c), 0.82, 0.98);
 }
 
+/**
+ * How hard Photo QR pushes each module toward its bit (0 = photo wins, 1 = bit wins).
+ * Used by the full-bleed luminance weaver — not a visible kernel disc.
+ */
+export function lumaBias(ctx: KernelContext): number {
+  const cell = ctx.cellPx;
+  let floor: number;
+  if (cell < 5) floor = 0.58;
+  else if (cell < 8) floor = 0.46;
+  else if (cell < 12) floor = 0.36;
+  else if (cell < 18) floor = 0.28;
+  else floor = 0.22;
+
+  const versionLift = ctx.version <= 2 ? 0.12 : ctx.version <= 4 ? 0.07 : ctx.version <= 6 ? 0.04 : 0;
+  const qzLift = ctx.quietZone < 2 ? 0.06 : 0;
+  const boost = clamp(ctx.boost ?? 0, 0, 1) * 0.32;
+  const contrastLift = (1 - clamp(ctx.contrast, 0.35, 1)) * 0.1;
+  const raw =
+    0.76 -
+    clamp(ctx.strength, 0, 1) * 0.4 +
+    versionLift +
+    qzLift +
+    contrastLift +
+    boost;
+  return clamp(raw, floor, 0.92);
+}
+
 /** Surround may keep more of the photo as strength rises. */
 export function surroundTarget(photoL: number, dark: boolean, strength: number): number {
   const s = clamp(strength, 0, 1);

@@ -435,7 +435,6 @@ function luma(r: number, g: number, b: number): number {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 }
 
-/** Shift a photo color to a target luminance while keeping its hue. */
 function parseHex(hex: string): [number, number, number] | null {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return null;
@@ -474,15 +473,6 @@ function makeFill(
 
 function isDark(qr: EncodedQr, x: number, y: number): boolean {
   return Boolean(qr.data[y]?.[x]);
-}
-
-function inkOn(paperHex: string, preferred: string): string {
-  const paper = parseHex(paperHex);
-  const pref = parseHex(preferred);
-  const pL = paper ? luma(paper[0], paper[1], paper[2]) : 1;
-  const fL = pref ? luma(pref[0], pref[1], pref[2]) : 0;
-  if (Math.abs(pL - fL) >= 0.38) return preferred;
-  return pL > 0.5 ? "#141412" : "#f4f1ea";
 }
 
 export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRenderingContext2D {
@@ -619,33 +609,32 @@ export function renderQr(
     }
   }
 
-  const corners: [number, number][] = [
-    [0, 0],
-    [qr.size - 7, 0],
-    [0, qr.size - 7],
-  ];
+  if (!pictured) {
+    const corners: [number, number][] = [
+      [0, 0],
+      [qr.size - 7, 0],
+      [0, qr.size - 7],
+    ];
 
-  for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
-    const sepX = ex === 0 ? ox : ox - cell;
-    const sepY = ey === 0 ? oy : oy - cell;
-    const eyePaper = paper;
-    const eyeInk = pictured ? inkOn(eyePaper, style.eyeColor) : style.eyeColor;
-    const ballInk = pictured ? inkOn(eyePaper, style.ballColor) : style.ballColor;
-    ctx.fillStyle = eyePaper;
-    ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
-    drawEye(
-      ctx,
-      ox,
-      oy,
-      cell,
-      style.eyeShape,
-      style.ballShape,
-      eyeInk,
-      ballInk,
-      eyePaper,
-    );
+    for (const [ex, ey] of corners) {
+      const ox = origin + ex * cell;
+      const oy = origin + ey * cell;
+      const sepX = ex === 0 ? ox : ox - cell;
+      const sepY = ey === 0 ? oy : oy - cell;
+      ctx.fillStyle = paper;
+      ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
+      drawEye(
+        ctx,
+        ox,
+        oy,
+        cell,
+        style.eyeShape,
+        style.ballShape,
+        style.eyeColor,
+        style.ballColor,
+        paper,
+      );
+    }
   }
 
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);

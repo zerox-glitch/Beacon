@@ -212,8 +212,8 @@ export function ImagePanel() {
               onValueChange={([v]) => patchStyle({ artisticStrength: v ?? 0.42 })}
             />
             <p className="mt-1 text-[11px] text-muted">
-              Safe keeps a bigger machine-readable center in each module. Artistic lets more of the
-              photo into the surround — never past scan-safe limits.
+              Safe pushes module brightness harder so cameras lock on. Artistic keeps more of the
+              picture — a faint checker, not a black QR on top.
             </p>
           </div>
 

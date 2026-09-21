@@ -1,4 +1,5 @@
-import { kernelFrac as sizedKernel, kernelTarget, surroundTarget } from "./art/kernel";
+import { kernelFrac as sizedKernel, kernelTarget, lumaBias, surroundTarget } from "./art/kernel";
+import { remapPhotoLuma } from "./art/photo-luma";
 import type { EncodedQr } from "./encode";
 import { cellRole, isDark, isProtectedRole } from "./structure";
 import type { ImageMode, QrStyle } from "./types";
@@ -306,9 +307,149 @@ function drawKernel(
   }
 }
 
+function finderCorner(shape: QrStyle["eyeShape"], s: number): number {
+  switch (shape) {
+    case "circle":
+      return s * 0.5;
+    case "extra-rounded":
+      return s * 0.32;
+    case "rounded":
+    case "classy":
+    case "leaf":
+      return s * 0.18;
+    case "square":
+      return 0;
+    default:
+      return s * 0.16;
+  }
+}
+
+function fillRound(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  color: string,
+) {
+  ctx.fillStyle = color;
+  roundedRect(ctx, x, y, w, h, r);
+  ctx.fill();
+}
+
+function drawPhotoFinders(
+  ctx: CanvasRenderingContext2D,
+  qr: EncodedQr,
+  style: QrStyle,
+  atlas: { n: number; data: Uint8ClampedArray },
+  origin: number,
+  cell: number,
+) {
+  const hi = sample(atlas, 0.5, 0.1);
+  const lo = sample(atlas, 0.5, 0.55);
+  let light = setLuminance(hi[0], hi[1], hi[2], 0.9);
+  let dark = setLuminance(lo[0], lo[1], lo[2], 0.08);
+  if (luma(light[0], light[1], light[2]) - luma(dark[0], dark[1], dark[2]) < 0.5) {
+    light = setLuminance(hi[0], hi[1], hi[2], 0.94);
+    dark = setLuminance(lo[0], lo[1], lo[2], 0.05);
+  }
+  const lightCss = rgbStr(light[0], light[1], light[2]);
+  const darkCss = rgbStr(dark[0], dark[1], dark[2]);
+  const corners: [number, number][] = [
+    [0, 0],
+    [qr.size - 7, 0],
+    [0, qr.size - 7],
+  ];
+  for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+    const sepX = ex === 0 ? ox : ox - cell;
+    const sepY = ey === 0 ? oy : oy - cell;
+    const s7 = cell * 7;
+    const r7 = finderCorner(style.eyeShape, s7);
+    fillRound(ctx, sepX, sepY, cell * 8, cell * 8, r7 * 1.05, lightCss);
+    fillRound(ctx, ox, oy, s7, s7, r7, darkCss);
+    fillRound(ctx, ox + cell, oy + cell, cell * 5, cell * 5, r7 * 0.72, lightCss);
+    fillRound(ctx, ox + cell * 2, oy + cell * 2, cell * 3, cell * 3, r7 * 0.5, darkCss);
+  }
+}
+
+/**
+ * Remap atlas pixels in place: keep photo hue/texture, push each module's
+ * luminance toward its QR bit. Center of the module is pushed harder (Chu
+ * centroid) with a soft falloff — not a drawn kernel disc.
+ */
+function weavePhotoAtlas(
+  atlas: { n: number; data: Uint8ClampedArray },
+  qr: EncodedQr,
+  bias: number,
+  strength: number,
+  contrast: number,
+  fade: number,
+): HTMLCanvasElement {
+  const n = atlas.n;
+  const pixels = new Uint8ClampedArray(atlas.data);
+  remapPhotoLuma(pixels, n, qr, bias, strength, contrast, fade);
+  const c = document.createElement("canvas");
+  c.width = n;
+  c.height = n;
+  const cx = c.getContext("2d");
+  if (!cx) throw new Error("canvas");
+  cx.putImageData(new ImageData(pixels, n, n), 0, 0);
+  return c;
+}
+
+/**
+ * Full-bleed photo: the picture fills the body. Each module only nudges
+ * brightness toward its bit. No kernel discs, no overlay QR.
+ */
+function renderFullBleedPhoto(
+  ctx: CanvasRenderingContext2D,
+  qr: EncodedQr,
+  style: QrStyle,
+  art: HTMLImageElement,
+  origin: number,
+  body: number,
+  cell: number,
+  px: number,
+  kernelBoost: number,
+) {
+  const strength = artisticStrength(style);
+  const contrast = clamp(style.contrast, 0.35, 1);
+  const atlasN = Math.max(qr.size * 8, 64);
+  const atlas = atlasFor(art, atlasN);
+  const version = Math.max(1, Math.round((qr.size - 17) / 4));
+  const bias = lumaBias({
+    strength,
+    contrast,
+    version,
+    cellPx: cell,
+    quietZone: style.quietZone,
+    boost: kernelBoost,
+  });
+  const fade = clamp(style.imageOpacity, 0.35, 1);
+  const hi = sample(atlas, 0.5, 0.1);
+  const mat = setLuminance(hi[0], hi[1], hi[2], 0.92);
+  ctx.fillStyle = rgbStr(mat[0], mat[1], mat[2]);
+  ctx.fillRect(0, 0, px, px);
+
+  const woven = weavePhotoAtlas(atlas, qr, bias, strength, contrast, fade);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(origin, origin, body, body);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(woven, origin, origin, body, body);
+  ctx.restore();
+
+  drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+}
+
 /**
  * Deterministic image-weaving renderer (Chu / Visualead hybrid).
- * Center of each data module carries the QR bit; the surround carries the photo.
+ * Photo QR is full-bleed luminance. Other modes keep module weaves.
  * Finder, timing, alignment, format and version cells stay protected.
  */
 export function renderArtisticQr(
@@ -325,6 +466,11 @@ export function renderArtisticQr(
 ) {
   const mode = weaveMode(style.imageMode);
   if (!mode) return;
+
+  if (mode === "photo") {
+    renderFullBleedPhoto(ctx, qr, style, art, origin, body, cell, px, kernelBoost);
+    return;
+  }
 
   const strength = artisticStrength(style);
   const contrast = clamp(style.contrast, 0.35, 1);
@@ -349,8 +495,6 @@ export function renderArtisticQr(
 
   ctx.fillStyle = paper;
   ctx.fillRect(0, 0, px, px);
-
-  const step = atlasN / qr.size;
 
   for (let y = 0; y < qr.size; y++) {
     for (let x = 0; x < qr.size; x++) {
@@ -450,32 +594,11 @@ export function renderArtisticQr(
             ctx.fillRect(rx, ry, sub + 0.35, sub + 0.35);
           }
         }
-        continue;
       }
-
-      // Photo QR: photo lives in the module surround; concentric kernel is the bit.
-      ctx.save();
-      clipModule(ctx, ox, oy, s, strength > 0.5 ? style.moduleShape : "square");
-      ctx.drawImage(atlas.canvas, x * step, y * step, step, step, ox, oy, s, s);
-      const sTarget = surroundTarget(L, dark, strength);
-      const [sr, sg, sb] = setLuminance(photo[0], photo[1], photo[2], sTarget);
-      ctx.fillStyle = rgbStr(sr, sg, sb);
-      const fade = clamp(style.imageOpacity, 0.2, 1);
-      ctx.globalAlpha = clamp(0.08 + (1 - strength) * 0.26 + (1 - fade) * 0.18, 0.04, 0.42);
-      ctx.fillRect(ox, oy, s, s);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      drawKernel(
-        ctx,
-        cx,
-        cy,
-        (s / 2) * kFrac,
-        inkFrom(photo, dark, strength, contrast),
-        style.effect,
-        strength,
-      );
     }
   }
+
+  drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
 }
 
 export { paperColor };
