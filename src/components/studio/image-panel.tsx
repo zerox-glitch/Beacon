@@ -243,11 +243,11 @@ export function ImagePanel() {
                   </span>
                 </div>
                 <Slider
-                  min={0.45}
+                  min={0.55}
                   max={0.96}
                   step={0.01}
-                  value={[style.dotScale]}
-                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.78 })}
+                  value={[Math.max(0.55, style.dotScale)]}
+                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.9 })}
                 />
               </div>
               <div>

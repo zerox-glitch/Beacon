@@ -152,11 +152,11 @@ export function DesignPanel() {
             </span>
           </div>
           <Slider
-            min={0.25}
-            max={0.95}
+            min={pictured ? 0.55 : 0.35}
+            max={0.96}
             step={0.01}
-            value={[style.dotScale]}
-            onValueChange={([v]) => patch({ dotScale: v ?? 0.56 })}
+            value={[Math.max(style.dotScale, pictured ? 0.55 : 0.35)]}
+            onValueChange={([v]) => patch({ dotScale: v ?? 0.9 })}
           />
           <p className="mt-1 text-[11px] text-muted">
             {pictured

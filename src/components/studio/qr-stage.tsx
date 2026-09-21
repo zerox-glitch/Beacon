@@ -99,15 +99,32 @@ export function QrStage() {
         return;
       }
       const expected = buildPayload(payload).trim() || null;
+      const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
+      // Always paint a scan-sized bitmap (CSS scales it down). A 180px preview
+      // is only ~3px/module on a version-7 photo QR — too small for jsQR or phones.
+      const workPx = pictured ? Math.max(px, 512) : Math.max(px, 320);
       try {
         renderQr(canvas, encoded.qr, style, {
-          pixelSize: px,
+          pixelSize: workPx,
           art,
           logo,
           exportScale: true,
           kernelBoost: 0,
         });
-        const report = await inspectRenderedQr(canvas, expected);
+        let report = await inspectRenderedQr(canvas, expected);
+        if (!report.ok && pictured) {
+          renderQr(canvas, encoded.qr, style, {
+            pixelSize: workPx,
+            art,
+            logo,
+            exportScale: true,
+            kernelBoost: 0.7,
+          });
+          report = await inspectRenderedQr(canvas, expected);
+          boostRef.current = report.ok ? 0.7 : 0;
+        } else {
+          boostRef.current = 0;
+        }
         if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
@@ -291,7 +308,7 @@ export function QrStage() {
         onDragLeave={() => setDragging(false)}
         onDrop={onDropImage}
         className={cn(
-          "qr-mat relative w-full max-w-[210px] p-2.5 transition duration-200 sm:max-w-[300px] sm:p-4 md:max-w-[380px] md:p-5 lg:max-w-[420px]",
+          "qr-mat relative w-full max-w-[280px] p-2.5 transition duration-200 sm:max-w-[340px] sm:p-4 md:max-w-[400px] md:p-5 lg:max-w-[440px]",
           frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
         )}
         style={{
@@ -387,7 +404,7 @@ export function QrStage() {
         fixing={fixing}
       />
 
-      <div className="action-bar z-10 flex w-full max-w-[210px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
+      <div className="action-bar z-10 flex w-full max-w-[280px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <button
           type="button"
           onClick={onDownload}
@@ -452,7 +469,7 @@ export function QrStage() {
         </button>
       </div>
 
-      <div className="w-full max-w-[210px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
+      <div className="w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
           Steal a look — summit, peony, dusk
         </p>
@@ -499,7 +516,7 @@ export function QrStage() {
               <img
                 src={preview}
                 alt="QR preview for phone test"
-                className="mx-auto mt-4 w-56 rounded-xl"
+                className="mx-auto mt-4 w-full max-w-[280px] rounded-xl"
                 style={{ background: paper }}
               />
             )}

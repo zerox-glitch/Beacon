@@ -36,40 +36,12 @@ function inModuleShape(fx: number, fy: number, shape: ModuleShape | undefined): 
   switch (shape) {
     case "dots":
     case "bubbles":
-      return dx * dx + dy * dy <= 0.48 * 0.48;
+      return dx * dx + dy * dy <= 0.5 * 0.5;
     case "diamond":
-      return Math.abs(dx) + Math.abs(dy) <= 0.52;
-    case "heart":
-      return dx * dx + (dy + 0.06) * (dy + 0.06) <= 0.22 || Math.abs(dx) + Math.abs(dy - 0.08) <= 0.42;
-    case "hex": {
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-      return ay <= 0.48 && ax <= 0.48 && ax * 0.577 + ay * 0.5 <= 0.42;
-    }
-    case "star":
-    case "plus":
-    case "cross":
-      return Math.abs(dx) < 0.18 || Math.abs(dy) < 0.18 || dx * dx + dy * dy <= 0.12;
-    case "hbar":
-      return Math.abs(dy) <= 0.28;
-    case "vbar":
-      return Math.abs(dx) <= 0.28;
-    case "leaf":
-    case "classy":
-    case "rounded":
-    case "squircle":
-    case "fluid": {
-      const r = shape === "squircle" ? 0.42 : 0.28;
-      const ax = Math.abs(dx);
-      const ay = Math.abs(dy);
-      if (ax <= 0.5 - r && ay <= 0.5) return true;
-      if (ay <= 0.5 - r && ax <= 0.5) return true;
-      const cx = 0.5 - r;
-      const ox = ax - cx;
-      const oy = ay - cx;
-      return ox <= 0 || oy <= 0 || ox * ox + oy * oy <= r * r;
-    }
+      return Math.abs(dx) + Math.abs(dy) <= 0.58;
     default:
+      // Stars, dashes, hearts etc. punch too many bits on a photo weave.
+      // Fill the whole module so cameras still see a full 0/1.
       return true;
   }
 }
@@ -100,13 +72,12 @@ export function remapPhotoLuma(
   const size = qr.size;
   const step = n / size;
   const contrast = clamp(opts.contrast, 0.3, 1);
-  const fade = clamp(opts.fade, 0.08, 1);
-  const scale = clamp(opts.dotScale ?? 0.78, 0.22, 1);
-  const gap = clamp(opts.moduleGap ?? 0, 0, 0.4);
-  const darkT = lerp(kernelTarget(true, opts.strength, 0.4), kernelTarget(true, opts.strength, 1), contrast);
-  const lightT = lerp(kernelTarget(false, opts.strength, 0.4), kernelTarget(false, opts.strength, 1), contrast);
-  const fadeMul = clamp(1.22 - fade * 0.62, 0.42, 1.18);
-  const contrastMul = 0.55 + contrast * 0.5;
+  const fade = clamp(opts.fade, 0.15, 1);
+  const scale = clamp(opts.dotScale ?? 0.9, 0.5, 1);
+  const gap = clamp(opts.moduleGap ?? 0, 0, 0.18);
+  const darkT = lerp(0.14, kernelTarget(true, opts.strength, contrast), contrast);
+  const lightT = lerp(0.86, kernelTarget(false, opts.strength, contrast), contrast);
+  const mix = clamp(0.68 + contrast * 0.2 - fade * 0.1 + opts.bias * 0.12, 0.64, 0.93);
   const roles: ReturnType<typeof cellRole>[] = new Array(size * size);
   const darks = new Uint8Array(size * size);
   for (let y = 0; y < size; y++) {
@@ -117,7 +88,7 @@ export function remapPhotoLuma(
     }
   }
 
-  const reach = Math.max(0.2, scale);
+  const reach = Math.max(0.78, scale);
   const rim = 1 - gap;
 
   for (let i = 0; i < pixels.length; i += 4) {
@@ -139,13 +110,8 @@ export function remapPhotoLuma(
 
     const t = clamp(1 - dist / reach, 0, 1);
     const guarded = isProtectedRole(role);
-    const centerAmt = clamp(
-      (guarded ? opts.bias + 0.34 : opts.bias + 0.26) * fadeMul * contrastMul,
-      guarded ? 0.7 : 0.42,
-      0.96,
-    );
-    const edgeAmt = clamp(opts.bias * 0.22 * fadeMul, 0.04, 0.4);
-    const amount = lerp(edgeAmt, centerAmt, t * t);
+    const centerAmt = guarded ? Math.min(0.94, mix + 0.12) : mix;
+    const amount = lerp(centerAmt * 0.84, centerAmt, t);
     const r = pixels[i]!;
     const g = pixels[i + 1]!;
     const b = pixels[i + 2]!;

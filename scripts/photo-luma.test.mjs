@@ -95,7 +95,7 @@ function wovenBody(strength, contrast, fade, extra = {}) {
     strength,
     contrast,
     fade,
-    dotScale: extra.dotScale ?? 0.78,
+    dotScale: extra.dotScale ?? 0.9,
     moduleGap: extra.moduleGap ?? 0.03,
     moduleShape: extra.moduleShape ?? "square",
   });
