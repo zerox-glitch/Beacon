@@ -51,8 +51,8 @@ export function kernelTarget(dark: boolean, strength: number, contrast: number):
 }
 
 /**
- * How hard Photo QR pushes each module toward its bit (0 = photo wins, 1 = bit wins).
- * Used by the full-bleed luminance weaver — not a visible kernel disc.
+ * Legacy luma-nudge bias. Mosaic still uses kernelFrac; Photo QR uses
+ * the Chu lattice in halftone-qr.ts instead.
  */
 export function lumaBias(ctx: KernelContext): number {
   const cell = ctx.cellPx;

@@ -152,44 +152,43 @@ export function smartArtPatch(analysis: ImageAnalysis): SmartArtSuggestion {
     case "flat":
       return {
         patch: { ...base, imageMode: "paint", contrast: 0.92, artisticStrength: 0.32, moduleShape: "square" },
-        reason: "Low contrast photo — raised contrast, quieter weave",
+        reason: "Low contrast photo — raised contrast, coarser lattice",
       };
     case "dark":
       return {
         patch: { ...base, imageMode: "paint", contrast: 0.88, artisticStrength: 0.38, moduleShape: "rounded" },
-        reason: "Dark photo — lifted module contrast so bits still separate",
+        reason: "Dark photo — lifted contrast so bits still separate",
       };
     case "bright":
       return {
         patch: { ...base, imageMode: "paint", contrast: 0.9, artisticStrength: 0.36, moduleShape: "square" },
-        reason: "Bright photo — darker kernels so snow/sky still reads as bits",
+        reason: "Bright photo — crushed light tones so snow/sky still reads as bits",
       };
     case "detail":
       return {
         patch: { ...base, imageMode: "halftone", contrast: 0.84, artisticStrength: 0.48, moduleShape: "square" },
-        reason: "Busy detail — halftone keeps texture without smearing bits",
+        reason: "Busy detail — Bayer-friendly halftone keeps texture without smearing bits",
       };
     case "portrait":
       return {
         patch: { ...base, imageMode: "paint", contrast: 0.78, artisticStrength: 0.52, moduleShape: "rounded" },
-        reason: "Face-like tones — Photo QR with a softer kernel",
+        reason: "Face-like tones — Photo QR with a finer lattice",
       };
     case "vivid":
       return {
         patch: {
           ...base,
-          imageMode: "mosaic",
+          imageMode: "paint",
           contrast: 0.82,
-          artisticStrength: 0.5,
-          gradientType: "image",
+          artisticStrength: 0.52,
           moduleShape: "rounded",
         },
-        reason: "Saturated color — color-blend modules with an image gradient",
+        reason: "Saturated color — Photo QR so hue rides the lattice",
       };
     default:
       return {
         patch: { ...base, imageMode: "paint" as ImageMode, contrast: 0.82, artisticStrength: 0.44, moduleShape: "square" as ModuleShape },
-        reason: "Balanced photo — Photo QR at a middle strength",
+        reason: "Balanced photo — Photo QR at a middle lattice",
       };
   }
 }

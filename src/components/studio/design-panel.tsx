@@ -160,7 +160,7 @@ export function DesignPanel() {
           />
           <p className="mt-1 text-[11px] text-muted">
             {pictured
-              ? "How much of each module is the camera bit. Lower keeps more picture."
+              ? "Size of the locked QR centroid. Lower = photograph; higher = plus / 3×3 bit lock."
               : "Adjusts the size of the QR modules."}
           </p>
         </div>
@@ -202,7 +202,7 @@ export function DesignPanel() {
               onValueChange={([v]) => patch({ imageOpacity: v ?? 0.85 })}
             />
             <p className="mt-1 text-[11px] text-muted">
-              Higher keeps more of the picture. Lower makes the code pop.
+              Higher keeps photo hue and softer tones. Lower crushes toward ink so cameras pop.
             </p>
           </div>
         )}

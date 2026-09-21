@@ -1,5 +1,5 @@
-import { kernelFrac as sizedKernel, kernelTarget, lumaBias, surroundTarget } from "./art/kernel";
-import { remapPhotoLuma } from "./art/photo-luma";
+import { pickSubmodules, weaveHalftoneQr, type HalftoneKind } from "./art/halftone-qr";
+import { kernelFrac as sizedKernel, kernelTarget } from "./art/kernel";
 import type { EncodedQr } from "./encode";
 import { cellRole, isDark, isProtectedRole } from "./structure";
 import type { ImageMode, QrStyle } from "./types";
@@ -106,20 +106,9 @@ function parseHex(hex: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-/** Strength 0 = SAFE (big kernel, strong bits). 1 = ARTISTIC (smaller kernel, more photo). */
+/** Strength 0 = SAFE (coarser lattice, stronger bits). 1 = ARTISTIC (finer submodules, more photo). */
 export function artisticStrength(style: QrStyle): number {
   return clamp(style.artisticStrength ?? 0.42, 0, 1);
-}
-
-const BAYER4 = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-];
-
-function bayer(x: number, y: number): number {
-  return ((BAYER4[y & 3]![x & 3]! + 0.5) / 16);
 }
 
 function roundedRect(
@@ -392,45 +381,20 @@ function drawPhotoFinders(
   }
 }
 
-/**
- * Remap atlas pixels in place: keep photo hue/texture, push each module's
- * luminance toward its QR bit. Center of the module is pushed harder (Chu
- * centroid) with a soft falloff — not a drawn kernel disc.
- */
-function weavePhotoAtlas(
-  atlas: { n: number; data: Uint8ClampedArray },
-  qr: EncodedQr,
-  style: QrStyle,
-  bias: number,
-  strength: number,
-  contrast: number,
-  fade: number,
-): HTMLCanvasElement {
-  const n = atlas.n;
-  const pixels = new Uint8ClampedArray(atlas.data);
-  remapPhotoLuma(pixels, n, qr, {
-    bias,
-    strength,
-    contrast,
-    fade,
-    dotScale: style.dotScale,
-    moduleGap: style.moduleGap,
-    moduleShape: style.moduleShape,
-  });
-  const c = document.createElement("canvas");
-  c.width = n;
-  c.height = n;
-  const cx = c.getContext("2d");
-  if (!cx) throw new Error("canvas");
-  cx.putImageData(new ImageData(pixels, n, n), 0, 0);
-  return c;
+function kindFor(mode: WeaveMode): HalftoneKind {
+  if (mode === "halftone") return "halftone";
+  if (mode === "duotone") return "duotone";
+  if (mode === "mono") return "mono";
+  return "photo";
 }
 
 /**
- * Full-bleed photo: the picture fills the body. Each module only nudges
- * brightness toward its bit. No kernel discs, no overlay QR.
+ * Chu-style HalftonePhotoQRRenderer: the photograph is built from the QR.
+ * Each module is S×S submodules; the centroid is the QR bit; the surround is
+ * a Floyd–Steinberg / Bayer halftone of the cover. Nearest-neighbour blit
+ * so the lattice stays crisp for cameras.
  */
-function renderFullBleedPhoto(
+export function renderHalftonePhotoQr(
   ctx: CanvasRenderingContext2D,
   qr: EncodedQr,
   style: QrStyle,
@@ -440,35 +404,54 @@ function renderFullBleedPhoto(
   cell: number,
   px: number,
   kernelBoost: number,
+  mode: WeaveMode,
 ) {
+  const kind = kindFor(mode);
   const strength = artisticStrength(style);
-  const contrast = clamp(style.contrast, 0.35, 1);
-  const atlasN = Math.max(qr.size * 8, 64);
-  const atlas = atlasFor(art, atlasN);
-  const version = Math.max(1, Math.round((qr.size - 17) / 4));
-  const bias = lumaBias({
-    strength,
+  const contrast = clamp(style.contrast, 0.3, 1);
+  const sub = pickSubmodules(kind, strength, qr.size, kernelBoost);
+  const atlas = atlasFor(art, qr.size * sub);
+  const pixels = new Uint8ClampedArray(atlas.data);
+  const duo = kind === "duotone" ? duotonePair(atlas) : null;
+  const fg = parseHex(style.fg) ?? [18, 18, 18];
+  const bgParsed = parseHex(style.bg);
+  const bg: [number, number, number] =
+    bgParsed && luma(bgParsed[0], bgParsed[1], bgParsed[2]) >= 0.42 ? bgParsed : [243, 238, 230];
+
+  weaveHalftoneQr(pixels, qr, {
+    sub,
+    kind,
     contrast,
-    version,
-    cellPx: cell,
-    quietZone: style.quietZone,
+    strength,
     boost: kernelBoost,
+    dotScale: style.dotScale,
+    chroma: clamp(style.imageOpacity, 0.1, 1),
+    dither: style.moduleShape === "dots" || style.moduleShape === "bubbles" ? "bayer" : "fs",
+    fg,
+    bg,
+    duoDark: duo?.dark,
+    duoLight: duo?.light,
   });
-  const fade = clamp(style.imageOpacity, 0.08, 1);
+
+  const W = qr.size * sub;
+  const woven = document.createElement("canvas");
+  woven.width = W;
+  woven.height = W;
+  const wx = woven.getContext("2d");
+  if (!wx) throw new Error("canvas");
+  wx.putImageData(new ImageData(pixels, W, W), 0, 0);
+
   const hi = sample(atlas, 0.5, 0.1);
-  const paper = parseHex(style.bg);
-  const matSrc = paper ?? hi;
+  const matSrc = bgParsed ?? hi;
   const mat = setLuminance(matSrc[0], matSrc[1], matSrc[2], 0.92);
   ctx.fillStyle = rgbStr(mat[0], mat[1], mat[2]);
   ctx.fillRect(0, 0, px, px);
 
-  const woven = weavePhotoAtlas(atlas, qr, style, bias, strength, contrast, fade);
   ctx.save();
   ctx.beginPath();
   ctx.rect(origin, origin, body, body);
   ctx.clip();
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(woven, origin, origin, body, body);
   ctx.restore();
 
@@ -485,9 +468,93 @@ function renderFullBleedPhoto(
 }
 
 /**
- * Deterministic image-weaving renderer (Chu / Visualead hybrid).
- * Photo QR is full-bleed luminance. Other modes keep module weaves.
+ * Color-blend mosaic: one contrast-normalized sample per module.
  * Finder, timing, alignment, format and version cells stay protected.
+ */
+function renderMosaicBlend(
+  ctx: CanvasRenderingContext2D,
+  qr: EncodedQr,
+  style: QrStyle,
+  art: HTMLImageElement,
+  origin: number,
+  body: number,
+  cell: number,
+  px: number,
+  fill: string | CanvasGradient,
+  kernelBoost: number,
+) {
+  const strength = artisticStrength(style);
+  const contrast = clamp(style.contrast, 0.35, 1);
+  const paper = paperColor(style);
+  const gap = Math.max(0, Math.min(0.2, style.moduleGap));
+  const atlas = atlasFor(art, Math.max(qr.size * 8, 64));
+  const version = Math.max(1, Math.round((qr.size - 17) / 4));
+  const kFrac = sizedKernel({
+    strength,
+    contrast,
+    version,
+    cellPx: cell,
+    quietZone: style.quietZone,
+    boost: kernelBoost,
+  });
+  const useImageGrad = style.gradientType === "image";
+  const photoGrad = useImageGrad ? imageGradient(ctx, atlas, origin, body) : null;
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, px, px);
+
+  for (let y = 0; y < qr.size; y++) {
+    for (let x = 0; x < qr.size; x++) {
+      const role = cellRole(qr, x, y);
+      if (role === "finder" || role === "separator") continue;
+
+      const dark = isDark(qr, x, y);
+      const px0 = origin + x * cell;
+      const py0 = origin + y * cell;
+      const photo = sample(atlas, (x + 0.5) / qr.size, (y + 0.5) / qr.size);
+
+      if (isProtectedRole(role)) {
+        ctx.fillStyle = dark ? (photoGrad ?? (typeof fill === "string" ? fill : style.fg)) : paper;
+        if (dark && typeof fill !== "string" && !photoGrad) ctx.fillStyle = fill;
+        ctx.fillRect(px0, py0, cell, cell);
+        continue;
+      }
+
+      const scale = clamp(style.dotScale, 0.5, 1);
+      const inset = cell * (gap * 0.5 + (1 - scale) * 0.1);
+      const ox = px0 + inset;
+      const oy = py0 + inset;
+      const s = cell - inset * 2;
+      const target = dark
+        ? clamp(0.05 + (1 - contrast) * 0.06 + strength * 0.1, 0.04, 0.28)
+        : clamp(0.94 - (1 - contrast) * 0.05 - strength * 0.06, 0.72, 0.98);
+      const [nr, ng, nb] = setLuminance(photo[0], photo[1], photo[2], target);
+      ctx.save();
+      clipModule(ctx, ox, oy, s, style.moduleShape);
+      ctx.fillStyle = rgbStr(nr, ng, nb);
+      ctx.fillRect(ox, oy, s, s);
+      ctx.restore();
+      if (strength < 0.72) {
+        drawKernel(
+          ctx,
+          ox + s / 2,
+          oy + s / 2,
+          (s / 2) * (kFrac * 0.85),
+          inkFrom(photo, dark, strength, contrast),
+          "none",
+          0,
+        );
+      }
+    }
+  }
+
+  drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+}
+
+/**
+ * Deterministic image-weaving renderer.
+ * Photo / Halftone / Duotone / Mono use the Chu lattice.
+ * Color blend keeps per-module mosaic. Function patterns stay protected.
  */
 export function renderArtisticQr(
   ctx: CanvasRenderingContext2D,
@@ -504,138 +571,12 @@ export function renderArtisticQr(
   const mode = weaveMode(style.imageMode);
   if (!mode) return;
 
-  if (mode === "photo") {
-    renderFullBleedPhoto(ctx, qr, style, art, origin, body, cell, px, kernelBoost);
+  if (mode === "blend") {
+    renderMosaicBlend(ctx, qr, style, art, origin, body, cell, px, fill, kernelBoost);
     return;
   }
 
-  const strength = artisticStrength(style);
-  const contrast = clamp(style.contrast, 0.35, 1);
-  const paper = paperColor(style);
-  const gap = Math.max(0, Math.min(0.2, style.moduleGap));
-  const atlasN = Math.max(qr.size * 8, 64);
-  const atlas = atlasFor(art, atlasN);
-  const version = Math.max(1, Math.round((qr.size - 17) / 4));
-  const kFrac = sizedKernel({
-    strength,
-    contrast,
-    version,
-    cellPx: cell,
-    quietZone: style.quietZone,
-    boost: kernelBoost,
-  });
-  const duo = mode === "duotone" || mode === "mono" ? duotonePair(atlas) : null;
-  const inkHex = parseHex(style.fg) ?? [20, 20, 22];
-  const useImageGrad = style.gradientType === "image";
-  const photoGrad = useImageGrad ? imageGradient(ctx, atlas, origin, body) : null;
-  const N = mode === "halftone" ? (strength > 0.55 ? 5 : 3) : 1;
-
-  ctx.fillStyle = paper;
-  ctx.fillRect(0, 0, px, px);
-
-  for (let y = 0; y < qr.size; y++) {
-    for (let x = 0; x < qr.size; x++) {
-      const role = cellRole(qr, x, y);
-      if (role === "finder" || role === "separator") continue;
-
-      const dark = isDark(qr, x, y);
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
-      const photo = sample(atlas, (x + 0.5) / qr.size, (y + 0.5) / qr.size);
-      const L = luma(photo[0], photo[1], photo[2]);
-
-      if (isProtectedRole(role)) {
-        ctx.fillStyle = dark
-          ? photoGrad ?? (typeof fill === "string" ? fill : style.fg)
-          : paper;
-        if (dark && typeof fill !== "string" && !photoGrad) ctx.fillStyle = fill;
-        ctx.fillRect(px0, py0, cell, cell);
-        continue;
-      }
-
-      const scale = clamp(style.dotScale, 0.5, 1);
-      const inset = cell * (gap * 0.5 + (1 - scale) * 0.1);
-      const ox = px0 + inset;
-      const oy = py0 + inset;
-      const s = cell - inset * 2;
-      const cx = ox + s / 2;
-      const cy = oy + s / 2;
-
-      if (mode === "mono") {
-        const density = dark ? 0.55 + (1 - L) * 0.4 : 0.08 * (1 - L) * strength;
-        const r = (s / 2) * clamp(density, dark ? 0.34 : 0, 0.48);
-        if (r < 0.4) continue;
-        const [ir, ig, ib] = setLuminance(inkHex[0], inkHex[1], inkHex[2], kernelTarget(true, 0.2, contrast));
-        drawKernel(ctx, cx, cy, r, rgbStr(ir, ig, ib), style.effect, strength);
-        continue;
-      }
-
-      if (mode === "duotone" && duo) {
-        const [dr, dg, db] = dark ? duo.dark : duo.light;
-        const [pr, pg, pb] = setLuminance(
-          photo[0] * 0.45 + dr * 0.55,
-          photo[1] * 0.45 + dg * 0.55,
-          photo[2] * 0.45 + db * 0.55,
-          dark ? kernelTarget(true, strength * 0.4, contrast) : kernelTarget(false, strength * 0.4, contrast),
-        );
-        ctx.save();
-        clipModule(ctx, ox, oy, s, style.moduleShape);
-        ctx.fillStyle = rgbStr(pr, pg, pb);
-        ctx.fillRect(ox, oy, s, s);
-        ctx.restore();
-        drawKernel(ctx, cx, cy, (s / 2) * kFrac, inkFrom(photo, dark, strength, contrast), style.effect, strength);
-        continue;
-      }
-
-      if (mode === "blend") {
-        const target = dark
-          ? clamp(0.05 + (1 - contrast) * 0.06 + strength * 0.1, 0.04, 0.28)
-          : clamp(0.94 - (1 - contrast) * 0.05 - strength * 0.06, 0.72, 0.98);
-        const [nr, ng, nb] = setLuminance(photo[0], photo[1], photo[2], target);
-        ctx.save();
-        clipModule(ctx, ox, oy, s, style.moduleShape);
-        ctx.fillStyle = rgbStr(nr, ng, nb);
-        ctx.fillRect(ox, oy, s, s);
-        ctx.restore();
-        if (strength < 0.72) {
-          drawKernel(ctx, cx, cy, (s / 2) * (kFrac * 0.85), inkFrom(photo, dark, strength, contrast), "none", 0);
-        }
-        continue;
-      }
-
-      if (mode === "halftone") {
-        const sub = s / N;
-        for (let sy = 0; sy < N; sy++) {
-          for (let sx = 0; sx < N; sx++) {
-            const isCenter = sx === Math.floor(N / 2) && sy === Math.floor(N / 2);
-            const fx = (x + (sx + 0.5) / N) / qr.size;
-            const fy = (y + (sy + 0.5) / N) / qr.size;
-            const p = sample(atlas, fx, fy);
-            const pL = luma(p[0], p[1], p[2]);
-            const rx = ox + sx * sub;
-            const ry = oy + sy * sub;
-            if (isCenter) {
-              ctx.fillStyle = inkFrom(p, dark, 0.15, contrast);
-              ctx.fillRect(rx, ry, sub + 0.4, sub + 0.4);
-              continue;
-            }
-            const thr = 0.42 + (bayer(x * N + sx, y * N + sy) - 0.5) * (0.22 + strength * 0.2);
-            const on = pL < thr;
-            if (on) {
-              const [nr, ng, nb] = setLuminance(p[0], p[1], p[2], surroundTarget(pL, true, strength));
-              ctx.fillStyle = rgbStr(nr, ng, nb);
-            } else {
-              const [nr, ng, nb] = setLuminance(p[0], p[1], p[2], surroundTarget(pL, false, strength));
-              ctx.fillStyle = rgbStr(nr, ng, nb);
-            }
-            ctx.fillRect(rx, ry, sub + 0.35, sub + 0.35);
-          }
-        }
-      }
-    }
-  }
-
-  drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
+  renderHalftonePhotoQr(ctx, qr, style, art, origin, body, cell, px, kernelBoost, mode);
 }
 
 export { paperColor };

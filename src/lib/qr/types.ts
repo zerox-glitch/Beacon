@@ -175,11 +175,11 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Photo QR", hint: "The picture fills the square. Modules only shift brightness so cameras still read 0/1" },
-  { id: "mosaic", label: "Color blend", hint: "Each module is a contrast-normalized sample of the photo" },
-  { id: "halftone", label: "Halftone", hint: "3×3 submodules: center is the QR bit, surround is a photo halftone" },
-  { id: "duotone", label: "Duotone", hint: "Photo remapped to two scannable tones, still woven into the modules" },
-  { id: "mono", label: "Mono ink", hint: "One ink. Dot size follows the photo — like a woodcut QR" },
+  { id: "paint", label: "Photo QR", hint: "The photograph is built from the QR. Each module’s center is the bit; the rest is a photo halftone." },
+  { id: "mosaic", label: "Color blend", hint: "Each module is one contrast-normalized color from the photo" },
+  { id: "halftone", label: "Halftone", hint: "Same lattice in black ink on paper — newspaper dots, not colored rings" },
+  { id: "duotone", label: "Duotone", hint: "Two inks sampled from the photo, same center-locked weave" },
+  { id: "mono", label: "Mono ink", hint: "One ink on paper. Density follows the picture" },
   { id: "logo", label: "Logo", hint: "Center emblem only" },
   { id: "none", label: "None", hint: "Style only, no photo" },
 ];
@@ -240,14 +240,14 @@ export const DEFAULT_STYLE: QrStyle = {
   quietZone: 3,
   moduleGap: 0.02,
   imageMode: "paint",
-  imageOpacity: 0.72,
-  dotScale: 0.9,
-  contrast: 0.88,
+  imageOpacity: 0.86,
+  dotScale: 0.68,
+  contrast: 0.84,
   logoScale: 0.22,
   minVersion: 6,
   ecc: "H",
   transparentBg: false,
-  artisticStrength: 0.38,
+  artisticStrength: 0.5,
   effect: "none",
   maskPattern: -1,
 };
