@@ -1,7 +1,48 @@
+import { useEffect, useRef, useState } from "react";
 import { GALLERY_PRESETS, PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
-import type { Preset } from "@/lib/qr/types";
+import { cachedPresetThumb, renderPresetThumb } from "@/lib/qr/preset-thumb";
+import type { Preset, QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
+
+function Finder({
+  className,
+  ink,
+  paper,
+  ball,
+}: {
+  className: string;
+  ink: string;
+  paper: string;
+  ball: string;
+}) {
+  return (
+    <span className={cn("absolute size-[22%]", className)} style={{ background: ink }}>
+      <span className="absolute inset-[18%]" style={{ background: paper }} />
+      <span className="absolute inset-[36%]" style={{ background: ball }} />
+    </span>
+  );
+}
+
+function QrSkeleton({ style }: { style: QrStyle }) {
+  const ink = style.eyeColor || style.fg;
+  const paper = style.bg;
+  const ball = style.ballColor || ink;
+  const dot = style.fg;
+  return (
+    <div className="relative size-full overflow-hidden" style={{ background: paper }}>
+      <Finder className="left-[8%] top-[8%]" ink={ink} paper={paper} ball={ball} />
+      <Finder className="right-[8%] top-[8%]" ink={ink} paper={paper} ball={ball} />
+      <Finder className="left-[8%] bottom-[8%]" ink={ink} paper={paper} ball={ball} />
+      <span className="absolute left-[38%] top-[12%] size-[7%]" style={{ background: dot }} />
+      <span className="absolute left-[52%] top-[12%] size-[7%]" style={{ background: dot }} />
+      <span className="absolute left-[45%] top-[38%] size-[9%]" style={{ background: dot }} />
+      <span className="absolute right-[18%] top-[42%] size-[7%]" style={{ background: dot }} />
+      <span className="absolute left-[40%] bottom-[18%] size-[7%]" style={{ background: dot }} />
+      <span className="absolute right-[28%] bottom-[28%] size-[8%]" style={{ background: dot }} />
+    </div>
+  );
+}
 
 function PresetThumb({
   preset,
@@ -12,10 +53,32 @@ function PresetThumb({
   active: boolean;
   onPick: () => void;
 }) {
-  const style = preset.style;
+  const hostRef = useRef<HTMLButtonElement>(null);
+  const [src, setSrc] = useState<string | null>(() => cachedPresetThumb(preset.id) ?? null);
+
+  useEffect(() => {
+    if (src) return;
+    const el = hostRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        void renderPresetThumb(preset)
+          .then(setSrc)
+          .catch(() => {
+            /* skeleton stays */
+          });
+      },
+      { rootMargin: "180px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [preset, src]);
 
   return (
     <button
+      ref={hostRef}
       type="button"
       onClick={onPick}
       title={preset.name}
@@ -25,21 +88,11 @@ function PresetThumb({
         active ? "border-accent bg-surface" : "border-border bg-elevated hover:border-border-strong",
       )}
     >
-      <div className="relative aspect-square overflow-hidden rounded-sm" style={{ background: style.bg }}>
-        {preset.artUrl ? (
-          <>
-            <img src={preset.artUrl} alt="" className="size-full object-cover" />
-            <span className="pointer-events-none absolute left-1 top-1 size-3 rounded-[2px] border-2 border-white/90" />
-            <span className="pointer-events-none absolute right-1 top-1 size-3 rounded-[2px] border-2 border-white/90" />
-            <span className="pointer-events-none absolute bottom-1 left-1 size-3 rounded-[2px] border-2 border-white/90" />
-          </>
+      <div className="relative aspect-square overflow-hidden rounded-sm" style={{ background: preset.style.bg }}>
+        {src ? (
+          <img src={src} alt="" className="size-full object-cover" />
         ) : (
-          <div className="grid size-full grid-cols-2 grid-rows-2">
-            <span style={{ background: style.eyeColor }} />
-            <span style={{ background: style.fg }} />
-            <span style={{ background: style.gradientTo }} />
-            <span style={{ background: style.ballColor }} />
-          </div>
+          <QrSkeleton style={preset.style} />
         )}
       </div>
       <span className="truncate px-0.5 text-[10px] leading-tight text-muted group-hover:text-fg">
@@ -96,7 +149,7 @@ export function PresetGallery() {
         </div>
       )}
 
-      <p className="text-xs tabular-nums text-subtle">{list.length} presets</p>
+      <p className="text-xs tabular-nums text-subtle">{list.length} looks — each tile is a real QR</p>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
         {list.map((p) => (
           <PresetThumb
