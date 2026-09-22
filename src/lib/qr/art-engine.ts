@@ -51,20 +51,33 @@ function setLuminance(r: number, g: number, b: number, target: number): [number,
   return [r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k];
 }
 
-function coverDraw(
+/**
+ * Fit the WHOLE photo inside the square atlas — no center crop. The edge
+ * pixels are extended outward into the letterbox bands (smoothed 1-px strips),
+ * so a landscape/portrait photo shows in full and the bands blend with the
+ * photo's own edge colors. Square photos render exactly as before.
+ */
+function fitDraw(
   ctx: CanvasRenderingContext2D,
   img: CanvasImageSource,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  n: number,
   iw: number,
   ih: number,
 ) {
-  const scale = Math.max(w / iw, h / ih);
+  const scale = Math.min(n / iw, n / ih);
   const dw = iw * scale;
   const dh = ih * scale;
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  const ox = (n - dw) / 2;
+  const oy = (n - dh) / 2;
+  if (ox > 0.5) {
+    ctx.drawImage(img, 0, 0, 1, ih, 0, 0, ox, n);
+    ctx.drawImage(img, iw - 1, 0, 1, ih, n - ox, 0, ox, n);
+  }
+  if (oy > 0.5) {
+    ctx.drawImage(img, 0, 0, iw, 1, 0, 0, n, oy);
+    ctx.drawImage(img, 0, ih - 1, iw, 1, 0, n - oy, n, oy);
+  }
+  ctx.drawImage(img, ox, oy, dw, dh);
 }
 
 const atlasCache = new Map<string, { n: number; canvas: HTMLCanvasElement; data: Uint8ClampedArray }>();
@@ -78,7 +91,7 @@ function atlasFor(img: HTMLImageElement, n: number) {
   c.height = n;
   const cx = c.getContext("2d", { willReadFrequently: true });
   if (!cx) throw new Error("canvas");
-  coverDraw(cx, img, 0, 0, n, n, img.naturalWidth, img.naturalHeight);
+  fitDraw(cx, img, n, img.naturalWidth, img.naturalHeight);
   const made = { n, canvas: c, data: cx.getImageData(0, 0, n, n).data };
   atlasCache.set(key, made);
   if (atlasCache.size > 12) {

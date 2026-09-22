@@ -179,6 +179,61 @@ const LADDER = {
   "c5 newspaper ink": woven("halftone", 0.22, 1, 0.95, 0.6, 0),
 };
 
+/**
+ * Contain a 3:1 landscape photo into a square grid with edge-clamped
+ * (letterbox) bands — a conservative stand-in for the browser's smoothed
+ * edge extension in fitDraw. Verifies full-photo fitting keeps codes scannable.
+ */
+function containedLandscape(sub, seed = 41) {
+  const n = SIZE * sub;
+  const sw = 360;
+  const sh = 120;
+  const src = makePhoto(sw, sh, seed);
+  const scale = Math.min(n / sw, n / sh);
+  const dw = Math.round(sw * scale);
+  const dh = Math.round(sh * scale);
+  const ox = Math.floor((n - dw) / 2);
+  const oy = Math.floor((n - dh) / 2);
+  const out = new Uint8ClampedArray(n * n * 4);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const sx = Math.max(0, Math.min(sw - 1, x - ox));
+      const sy = Math.max(0, Math.min(sh - 1, y - oy));
+      const i = (sy * sw + sx) * 4;
+      const o = (y * n + x) * 4;
+      out[o] = src[i];
+      out[o + 1] = src[i + 1];
+      out[o + 2] = src[i + 2];
+      out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
+function wovenContained(kind, strength, contrast, dotScale, opacity, boost) {
+  const sub = pickSubmodules(kind, strength, SIZE, boost);
+  const pixels = containedLandscape(sub, 41 + sub * 13);
+  weaveHalftoneQr(pixels, qr, {
+    sub,
+    kind,
+    contrast,
+    strength,
+    boost,
+    dotScale,
+    chroma: opacity,
+    dither: "fs",
+    fg: [18, 18, 18],
+    bg: [244, 241, 234],
+  });
+  return pixels;
+}
+
+const LADDER_CONTAINED = {
+  "contained default": wovenContained("photo", 0.5, 0.84, 0.68, 0.86, 0),
+  "contained c1": wovenContained("photo", 0.5, 0.92, 0.8, 0.86, 0),
+  "contained c4": wovenContained("photo", 0.22, 1, 0.95, 0.4, 0),
+};
+
 describe("fix scan ladder", () => {
   it("always contains a candidate that survives 512px + 320px decodes", () => {
     const results = {};
@@ -189,5 +244,13 @@ describe("fix scan ladder", () => {
     if (!results["c4 coarse weave"]) throw new Error("c4 coarse weave should always decode");
     if (!results["c5 newspaper ink"]) throw new Error("c5 newspaper ink should always decode");
     if (survivors.length === 0) throw new Error("ladder has no strong candidate");
+  });
+
+  it("full-photo (letterboxed landscape) codes still decode", () => {
+    const results = {};
+    for (const [name, pixels] of Object.entries(LADDER_CONTAINED)) results[name] = strong(name, pixels);
+    // Letterbox bands must not hurt the fix ladder: early + coarse fixes stay strong.
+    if (!results["contained c1"]) throw new Error("contained c1 should decode");
+    if (!results["contained c4"]) throw new Error("contained c4 should decode");
   });
 });
