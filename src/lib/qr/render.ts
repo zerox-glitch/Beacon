@@ -524,7 +524,12 @@ export function renderQr(
 
   /* ---- ART QR STYLE SYSTEM: a direction paints the whole frame itself ---- */
   const direction = getArtDirection(style.artDirection);
-  if (direction) {
+  // A photo in the frame wins over the direction's own artwork: paint/mosaic/
+  // halftone/backdrop/duotone/mono all render through the photo engine, and
+  // ignoring that made uploads look dead while a template was active.
+  const photoModeActive =
+    Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
+  if (direction && !photoModeActive) {
     const artCtx = opts.exportScale
       ? (() => {
           canvas.width = px;
@@ -547,7 +552,28 @@ export function renderQr(
       relax: style.artRelax ?? 0,
       cameraSafe: Boolean(style.artCameraSafe),
     });
-    paintArtPlan(artCtx, plan);
+    paintArtPlan(artCtx, plan, {
+      skipPaper: Boolean(style.transparentBg),
+      effect: style.effect,
+    });
+    // Template kits reserve the centre plate for a brand mark — honor that:
+    // the logo (or any `opts.logo` handed in) composes over the painted plan.
+    const dirLogo = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
+    if (dirLogo) {
+      const body = plan.modules * plan.cell;
+      const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
+      const lx = plan.origin + (body - logoSize) / 2;
+      const ly = plan.origin + (body - logoSize) / 2;
+      const pad = logoSize * 0.12;
+      artCtx.fillStyle = plan.paper;
+      roundedRect(artCtx, lx - pad * 0.4, ly - pad * 0.4, logoSize + pad * 0.8, logoSize + pad * 0.8, pad, pad, pad, pad);
+      artCtx.fill();
+      artCtx.save();
+      roundedRect(artCtx, lx, ly, logoSize, logoSize, pad * 0.6, pad * 0.6, pad * 0.6, pad * 0.6);
+      artCtx.clip();
+      coverDraw(artCtx, dirLogo, lx, ly, logoSize, logoSize, dirLogo.naturalWidth, dirLogo.naturalHeight);
+      artCtx.restore();
+    }
     return;
   }
 
@@ -585,6 +611,62 @@ export function renderQr(
   ) {
     renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
   } else {
+    /* ---- Kernel effects (Tune panel). Silhouette passes run under the ink,
+     * the outline keyline under every module; photo/artistic modes carry
+     * their own treatment in the photo engine. ---- */
+    const effect: QrStyle["effect"] = style.effect ?? "none";
+    const darkPaper = bgLum < 0.42;
+    const canFilter = "filter" in ctx;
+    const forEachDark = (fn: (px0: number, py0: number) => void) => {
+      for (let y = 0; y < qr.size; y++) {
+        for (let x = 0; x < qr.size; x++) {
+          if (isFinderCell(x, y, qr.size)) continue;
+          if (!isDark(qr, x, y)) continue;
+          fn(origin + x * cell, origin + y * cell);
+        }
+      }
+    };
+    const silhouette = (dx: number, dy: number, color: string, blurPx = 0) => {
+      ctx.save();
+      ctx.fillStyle = color;
+      if (blurPx > 0 && canFilter) ctx.filter = `blur(${Math.max(0.5, blurPx).toFixed(2)}px)`;
+      forEachDark((px0, py0) => ctx.fillRect(px0 + dx, py0 + dy, cell, cell));
+      const finderCorners: [number, number][] = [
+        [0, 0],
+        [qr.size - 7, 0],
+        [0, qr.size - 7],
+      ];
+      for (const [ex, ey] of finderCorners) {
+        ctx.fillRect(origin + ex * cell + dx, origin + ey * cell + dy, cell * 7, cell * 7);
+      }
+      ctx.restore();
+    };
+    if (effect === "shadow") {
+      silhouette(0, cell * 0.22, "rgba(4,5,9,0.32)", cell * 0.4);
+    } else if (effect === "glow") {
+      silhouette(0, 0, "rgba(255,214,140,0.42)", cell * 0.8);
+      silhouette(0, 0, "rgba(255,214,140,0.3)", cell * 0.28);
+    } else if (effect === "emboss") {
+      silhouette(-cell * 0.08, -cell * 0.08, "rgba(255,255,255,0.75)");
+      silhouette(cell * 0.09, cell * 0.09, "rgba(4,5,9,0.5)");
+    } else if (effect === "extrude") {
+      for (let k = 3; k >= 1; k--) silhouette(cell * 0.085 * k, cell * 0.115 * k, "rgba(4,5,9,0.55)");
+    }
+
+    if (effect === "outline") {
+      const ink = Math.max(0.5, cell * 0.06);
+      ctx.save();
+      ctx.fillStyle = darkPaper ? "rgba(255,255,255,0.6)" : "rgba(4,5,9,0.55)";
+      const outlineWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+      forEachDark((px0, py0) => {
+        const pad = cell * gap * 0.5;
+        const mSize = (cell - pad * 2) * outlineWeight + ink * 2;
+        const mOffset = (cell - mSize) / 2;
+        drawModuleShape(ctx, px0 + mOffset, py0 + mOffset, mSize, style.moduleShape);
+      });
+      ctx.restore();
+    }
+
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {
         if (isFinderCell(x, y, qr.size)) continue;

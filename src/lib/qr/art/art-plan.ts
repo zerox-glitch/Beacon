@@ -39,6 +39,7 @@ import { clamp, hash2, pick, wobble } from "./noise";
 import { applyRung, relaxLadder } from "./relax";
 import type { EncodedQr } from "../encode";
 import { cellRole, isDark } from "../structure";
+import { tuneDirection } from "./tune";
 import type { ArtDetailLevel, ArtDirection, ArtFinder, ArtShape, QrStyle } from "../types";
 
 /* ------------------------------------------------------------------ *
@@ -594,7 +595,10 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const rungs = relaxLadder({ ...style, artDirection: input.direction.id });
   const rung = rungs[Math.min(rungs.length - 1, Math.max(0, input.relax ?? 0))];
   const relaxed = rung ? applyRung(input.direction, rung) : { dir: input.direction, cameraSafe: false };
-  const dir = resolveDirection(relaxed.dir, detailLevelFor(ppmOf(px, qr.size, qz0)), {
+  // Tune edits enter BEFORE LOD resolution: the relax ladder exists to
+  // simplify (and thereby protect) a code under stress, so at low detail
+  // levels its tweaks still win over a user-picked shape.
+  const dir = resolveDirection(tuneDirection(relaxed.dir, style), detailLevelFor(ppmOf(px, qr.size, qz0)), {
     cameraSafe: Boolean(input.cameraSafe) || relaxed.cameraSafe,
   });
   const inks = inksFor(dir);

@@ -246,6 +246,7 @@ export function DesignPanel() {
               key={e.id}
               type="button"
               onClick={() => patch({ effect: e.id })}
+              title="Applies to standard and art-template codes; photo styles add their own depth."
               className={cn(
                 "h-10 rounded-md border text-[11px] font-medium transition active:scale-95",
                 style.effect === e.id
