@@ -39,7 +39,13 @@
     min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-fg);
-    overflow: hidden;
+  }
+
+  /* Landing & lab pages scroll the document normally (the studio shell
+     clips itself with its own h-dvh/overflow-hidden root). Clip stray
+     horizontal overflow without disabling vertical scroll. */
+  html {
+    overflow-x: clip;
   }
 
   button:not(:disabled),
