@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 import { isSafeImageUrl } from "./media-format.ts";
-import { EYE_SHAPES, IMAGE_MODES, MODULE_SHAPES, QR_EFFECTS } from "../qr/types.ts";
+import { DEFAULT_SAMPLE_URL, EYE_SHAPES, IMAGE_MODES, MODULE_SHAPES, QR_EFFECTS } from "../qr/types.ts";
 
 const short = (max: number) => z.string().trim().max(max);
 const urlish = z
@@ -201,6 +201,33 @@ export const categoryDocSchema = z.object({
 });
 export type CategoryDoc = z.infer<typeof categoryDocSchema>;
 
+/* --------------------------------- samples ---------------------------------- */
+
+/**
+ * Landing-page sample configuration (the "gallery, decoded" grid + the hero
+ * fan). Each entry points at a catalog template (built-in or cms-); the label
+ * and destination are optional overrides. An EMPTY section means "use the
+ * curated built-in list", so a fresh install is byte-identical to before this
+ * document existed, and clearing a section always restores the defaults.
+ */
+export const sampleEntrySchema = z.object({
+  /** Template id from the merged catalog (built-in id or `cms-…`). */
+  presetId: z.string().trim().min(1).max(80),
+  /** Card label override — defaults to the template's name. */
+  label: short(60).optional(),
+  /** Destination encoded into the sample's pixels. */
+  url: z.string().trim().max(400).default(DEFAULT_SAMPLE_URL),
+});
+export type SampleEntry = z.infer<typeof sampleEntrySchema>;
+
+export const samplesDocSchema = z.object({
+  /** Landing grid order; the page shows the first 8. */
+  grid: z.array(sampleEntrySchema).max(12).default([]),
+  /** Hero fan order; the page shows the first 3. */
+  hero: z.array(sampleEntrySchema).max(6).default([]),
+});
+export type SamplesDoc = z.infer<typeof samplesDocSchema>;
+
 /* ---------------------------------- media ----------------------------------- */
 
 export const mediaUploadSchema = z.object({
@@ -243,6 +270,7 @@ export const settingsDocSchemas = {
   content: contentSchema,
   seo: seoSchema,
   categories: categoryDocSchema,
+  samples: samplesDocSchema,
 } as const;
 export type SettingsKey = keyof typeof settingsDocSchemas;
 
@@ -250,3 +278,4 @@ export const DEFAULT_BRAND: BrandDoc = brandSchema.parse({});
 export const DEFAULT_CONTENT: ContentDoc = contentSchema.parse({});
 export const DEFAULT_SEO: SeoDoc = seoSchema.parse({});
 export const DEFAULT_CATEGORIES: CategoryDoc = categoryDocSchema.parse({});
+export const DEFAULT_SAMPLES: SamplesDoc = samplesDocSchema.parse({});

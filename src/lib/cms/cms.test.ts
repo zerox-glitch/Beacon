@@ -8,10 +8,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { assessPassword, assertStrongPassword, guardCheck, guardOnFail, LOCKOUT } from "./policy.ts";
-import { mergeCatalog, adminCatalog, rowToPreset, newTemplateId, worksWithImages } from "./catalog-merge.ts";
+import type { Preset } from "../qr/types.ts";
+import { mergeCatalog, adminCatalog, rowToPreset, newTemplateId, worksWithImages, resolveSamples } from "./catalog-merge.ts";
 import { sniffImage, sanitizeFilename, isSafeImageUrl, parseUpload, MAX_MEDIA_BYTES } from "./media-format.ts";
 import { seoKeyForPath, brandSchema, templateSaveSchema } from "./schemas.ts";
-import type { Preset } from "../qr/types.ts";
 
 const preset = (id: string, over: Partial<Preset> = {}): Preset => ({
   id,
@@ -200,6 +200,50 @@ describe("mergeCatalog", () => {
     // compatibility from the style at read time (worksWithImages above).
     assert.equal(adm.find((p) => p.id === "art-royal")!.imageCompatible, undefined);
     assert.equal(worksWithImages(adm.find((p) => p.id === "art-royal")!), false);
+  });
+
+  it("resolveSamples: empty doc falls back to curated ids in order", () => {
+    const presets = [
+      { id: "a", name: "A", category: "Art", style: {} } as never,
+      { id: "b", name: "B", category: "Art", style: {} } as never,
+      { id: "c", name: "C", category: "Photo", style: {} } as never,
+    ];
+    const r = resolveSamples(null, presets, new Set(), { grid: ["b", "a", "c"], hero: ["a"] });
+    assert.deepEqual(r.grid.map((e) => e.preset.id), ["b", "a", "c"]);
+    assert.deepEqual(r.hero.map((e) => e.preset.id), ["a"]);
+    assert.equal(r.grid[0]!.label, "B"); // label defaults to the template name
+    assert.ok(r.grid[0]!.url.length > 0); // destination defaults to the sample URL
+  });
+
+  it("resolveSamples: admin order wins, overrides apply, unknown/hidden/dups skipped", () => {
+    const presets = [
+      { id: "a", name: "A", category: "Art", style: {} } as never,
+      { id: "b", name: "B", category: "Art", style: {} } as never,
+      { id: "c", name: "C", category: "Photo", style: {} } as never,
+    ];
+    const doc = {
+      grid: [
+        { presetId: "c", url: "https://menu.example" },
+        { presetId: "ghost" },
+        { presetId: "b" },
+        { presetId: "c", label: "Menu" }, // dup collapses to the first
+      ],
+      hero: [{ presetId: "a", label: "  Neon  " }],
+    };
+    const r = resolveSamples(doc, presets, new Set(["a"]), { grid: ["a"], hero: ["a", "b"] });
+    assert.deepEqual(r.grid.map((e) => e.preset.id), ["c", "b"]);
+    assert.equal(r.grid[0]!.url, "https://menu.example");
+    assert.equal(r.hero.length, 0); // a is hidden
+    const r2 = resolveSamples(doc, presets, new Set(), { grid: ["a"], hero: ["a", "b"] });
+    assert.equal(r2.hero[0]!.label, "Neon"); // label trimmed
+  });
+
+  it("resolveSamples: caps at 8 grid / 3 hero entries", () => {
+    const presets = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, category: "Art", style: {} })) as unknown as Preset[];
+    const ids = presets.map((p) => p.id);
+    const r = resolveSamples({ grid: ids.map((presetId) => ({ presetId })), hero: ids.map((presetId) => ({ presetId })) }, presets, new Set(), { grid: [], hero: [] });
+    assert.equal(r.grid.length, 8);
+    assert.equal(r.hero.length, 3);
   });
 
   it("ignores identity renames and orders listed tabs first", () => {

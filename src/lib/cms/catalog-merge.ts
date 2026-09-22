@@ -10,6 +10,7 @@
  */
 import { DEFAULT_STYLE } from "../qr/types.ts";
 import type { Preset, QrStyle } from "../qr/types.ts";
+import { DEFAULT_SAMPLE_URL } from "../qr/types.ts";
 
 /** Admin-managed category layer (see schemas.ts `categoryDocSchema`). */
 export interface CategoryDoc {
@@ -199,4 +200,51 @@ export function newTemplateId(): string {
       ? globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 12)
       : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   return `cms-${rnd}`;
+}
+
+/* ------------------------------ landing samples ------------------------------ */
+
+/** A resolved sample: the template to render + the card's label/destination. */
+export interface SampleRef {
+  preset: Preset;
+  label: string;
+  url: string;
+}
+
+/**
+ * Resolve a samples document against the merged catalog. Each section is
+ * independent: an EMPTY doc section falls back to the curated id list (a
+ * fresh install renders exactly what the hardcoded landing showed); a
+ * non-empty section is honored in admin order. Unknown ids and hidden
+ * templates are skipped; duplicates collapse to the first occurrence.
+ */
+/** A samples-doc entry as authored (post-zod it always has url; the pure
+ * resolver stays lenient so tests and client drafts can pass partials). */
+type SampleEntryLike = { presetId: string; label?: string; url?: string };
+
+export function resolveSamples(
+  doc: { grid: SampleEntryLike[]; hero: SampleEntryLike[] } | null | undefined,
+  presets: readonly Preset[],
+  hiddenIds: ReadonlySet<string>,
+  fallback: { grid: readonly string[]; hero: readonly string[] },
+): { grid: SampleRef[]; hero: SampleRef[] } {
+  const byId = new Map(presets.map((p) => [p.id, p]));
+  const resolve = (entries: SampleEntryLike[] | undefined, fallbackIds: readonly string[], cap: number) => {
+    const out: SampleRef[] = [];
+    const seen = new Set<string>();
+    const take = (id: string, entry?: SampleEntryLike) => {
+      if (seen.has(id) || hiddenIds.has(id)) return;
+      const preset = byId.get(id);
+      if (!preset) return;
+      seen.add(id);
+      out.push({ preset, label: (entry?.label ?? "").trim() || preset.name, url: (entry?.url ?? "").trim() || DEFAULT_SAMPLE_URL });
+    };
+    if (entries && entries.length) for (const e of entries) take(e.presetId, e);
+    else for (const id of fallbackIds) take(id);
+    return out.slice(0, cap);
+  };
+  return {
+    grid: resolve(doc?.grid, fallback.grid, 8),
+    hero: resolve(doc?.hero, fallback.hero, 3),
+  };
 }

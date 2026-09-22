@@ -34,6 +34,7 @@ import {
   signInSchema,
   templateSaveSchema,
   categoryDocSchema,
+  samplesDocSchema,
 } from "./schemas";
 
 /* ------------------------------ shared plumbing ----------------------------- */
@@ -239,17 +240,18 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
     const store = await import("./store.server");
-    const [brand, content, seo, templates, categories, admin, media] = await Promise.all([
+    const [brand, content, seo, templates, categories, samples, admin, media] = await Promise.all([
       store.getBrand(),
       store.getContent(),
       store.getSeo(),
       store.listTemplateRows(true),
       store.getCategories(),
+      store.getSamples(),
       store.getAdmin(),
       store.listMedia(),
     ]);
     const { dbSource } = await import("../db");
-    return { brand, content, seo, templates, categories, admin, media, meta: { dbSource } };
+    return { brand, content, seo, templates, categories, samples, admin, media, meta: { dbSource } };
   });
 
 export const saveBrandDoc = createServerFn({ method: "POST" })
@@ -318,6 +320,17 @@ const templateFlagsSchema = z.object({
   /** Studio default (singleton — setting one clears the rest; false clears). */
   defaultTemplate: z.boolean().optional(),
 });
+
+export const saveSamplesDoc = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .validator(samplesDocSchema)
+  .handler(async ({ data, context }) => {
+    const store = await import("./store.server");
+    const admin = adminOf(context);
+    const saved = await store.saveSamples(data, admin.userId);
+    await store.audit(admin.userId, "settings.samples", "samples", undefined, reqMeta(), admin.name);
+    return saved;
+  });
 
 export const saveTemplate = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])

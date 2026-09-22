@@ -112,6 +112,13 @@ export interface QrStyle {
   artCameraSafe?: boolean;
 }
 
+/**
+ * Where landing-page sample codes point by default (the site itself — so a
+ * scan of the demo is a harmless loop back to the top page). Admins can
+ * override per sample (CMS samples doc).
+ */
+export const DEFAULT_SAMPLE_URL = "https://qrwho.vercel.app";
+
 export interface Payload {
   kind: PayloadKind;
   url: string;

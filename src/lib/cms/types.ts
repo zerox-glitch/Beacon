@@ -3,7 +3,7 @@
  * server modules (no runtime deps). The server store implements these; the
  * public API returns them; UI consumes them.
  */
-import type { BrandDoc, CategoryDoc, ContentDoc, SeoDoc } from "./schemas";
+import type { BrandDoc, CategoryDoc, ContentDoc, SamplesDoc, SeoDoc } from "./schemas";
 import type { TemplateRow } from "./catalog-merge";
 
 /** Per-page SEO head payload (server-computed, SSR-safe). */
@@ -32,4 +32,6 @@ export interface PublicBundle {
   categories: CategoryDoc;
   /** Template the admin pinned to open the studio with; null = stock style. */
   defaultTemplate: string | null;
+  /** Landing sample grid/hero order + per-card overrides (empty = curated). */
+  samples: SamplesDoc;
 }

@@ -11,8 +11,8 @@
 import { useSyncExternalStore, useEffect } from "react";
 import { PRESETS } from "@/lib/qr/presets";
 import { mergeCatalog, type VisibleCatalog } from "./catalog-merge.ts";
-import type { BrandDoc, ContentDoc, SeoDoc } from "./schemas.ts";
-import { DEFAULT_BRAND, DEFAULT_CONTENT, DEFAULT_SEO } from "./schemas.ts";
+import type { BrandDoc, ContentDoc, SamplesDoc, SeoDoc } from "./schemas.ts";
+import { DEFAULT_BRAND, DEFAULT_CONTENT, DEFAULT_SAMPLES, DEFAULT_SEO } from "./schemas.ts";
 
 export type CmsStatus = "idle" | "loading" | "ready" | "error";
 
@@ -25,6 +25,8 @@ export interface CmsState {
   presetCount: number;
   /** Template the admin pinned as the studio's opening look (null = stock). */
   defaultTemplate: string | null;
+  /** Landing sample grid/hero doc (empty sections = curated built-ins). */
+  samplesDoc: SamplesDoc;
   error: string | null;
 }
 
@@ -36,6 +38,7 @@ const INITIAL: CmsState = {
   seo: DEFAULT_SEO,
   presetCount: PRESETS.length,
   defaultTemplate: null,
+  samplesDoc: DEFAULT_SAMPLES,
   error: null,
 };
 
@@ -75,6 +78,7 @@ export function ensureCms(force = false): Promise<void> {
         seo: bundle.seo,
         presetCount: PRESETS.length + bundle.templates.filter((t) => t.isCustom).length,
         defaultTemplate: bundle.defaultTemplate ?? null,
+        samplesDoc: bundle.samples ?? DEFAULT_SAMPLES,
         error: null,
       };
     } catch (err) {

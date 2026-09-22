@@ -1,10 +1,10 @@
 import { encodePayload } from "./encode";
 import { buildPayload } from "./payload";
 import { loadImage, renderQr } from "./render";
-import { emptyPayload, type Preset } from "./types";
+import { DEFAULT_SAMPLE_URL, emptyPayload, type Preset } from "./types";
 import { verifyQr } from "./verify";
 
-export const SAMPLE_URL = "https://qrwho.vercel.app";
+export const SAMPLE_URL = DEFAULT_SAMPLE_URL;
 
 export interface SampleImage {
   preset: Preset;
@@ -18,8 +18,12 @@ export interface SampleImage {
  * pipeline the studio uses — then return the PNG data URL. Used by the
  * landing page so every showcased code is a real, verified QR.
  */
-export async function renderSamplePreset(preset: Preset, px = 512): Promise<SampleImage> {
-  const payload = { ...emptyPayload(), kind: "url" as const, url: SAMPLE_URL };
+export async function renderSamplePreset(
+  preset: Preset,
+  px = 512,
+  url: string = DEFAULT_SAMPLE_URL,
+): Promise<SampleImage> {
+  const payload = { ...emptyPayload(), kind: "url" as const, url: url.trim() || DEFAULT_SAMPLE_URL };
   const text = buildPayload(payload).trim();
   const qr = encodePayload(payload, preset.style);
   const art = preset.artUrl ? await loadImage(preset.artUrl).catch(() => null) : null;

@@ -22,6 +22,7 @@ import { PRESETS, getPreset } from "@/lib/qr/presets";
 import { getPresetMerged } from "@/lib/cms/runtime";
 import { useCms } from "@/lib/cms/runtime";
 import { renderSamplePreset, type SampleImage } from "@/lib/qr/sample-render";
+import { resolveSamples, type SampleRef } from "@/lib/cms/catalog-merge";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -42,17 +43,17 @@ function RotatingWord({ words = HOOK_WORDS }: { words?: string[] }) {
   );
 }
 
-function useSamples(ids: string[], px: number) {
+function useSamples(entries: { id: string; url?: string }[], px: number) {
   const [samples, setSamples] = useState<SampleImage[]>([]);
   const done = useRef(false);
   useEffect(() => {
     if (done.current) return;
     done.current = true;
     let live = true;
-    ids.forEach((id) => {
+    entries.forEach(({ id, url }) => {
       const preset = getPresetMerged(id) ?? getPreset(id);
       if (!preset) return;
-      renderSamplePreset(preset, px)
+      renderSamplePreset(preset, px, url)
         .then((s) => {
           if (live) setSamples((prev) => (prev.some((p) => p.preset.id === s.preset.id) ? prev : [...prev, s]));
         })
@@ -61,7 +62,7 @@ function useSamples(ids: string[], px: number) {
     return () => {
       live = false;
     };
-  }, [ids, px]);
+  }, [entries, px]);
   return samples;
 }
 
@@ -75,7 +76,7 @@ function VerifiedBadge({ verified }: { verified: boolean }) {
   );
 }
 
-function SampleCard({ sample, onTry }: { sample?: SampleImage; onTry: (id: string) => void }) {
+function SampleCard({ sample, label, onTry }: { sample?: SampleImage; label?: string; onTry: (id: string) => void }) {
   const isPlaceholder = !sample;
   return (
     <figure className="group relative overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-2xl">
@@ -84,7 +85,7 @@ function SampleCard({ sample, onTry }: { sample?: SampleImage; onTry: (id: strin
       ) : (
         <img
           src={sample.url}
-          alt={`${sample.preset.name} QR code sample`}
+          alt={`${label ?? sample.preset.name} QR code sample`}
           loading="lazy"
           className="aspect-square w-full object-cover"
         />
@@ -92,7 +93,7 @@ function SampleCard({ sample, onTry }: { sample?: SampleImage; onTry: (id: strin
       {!isPlaceholder && (
         <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-10">
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold text-white">{sample.preset.name}</p>
+            <p className="truncate text-xs font-bold text-white">{label ?? sample.preset.name}</p>
             <p className="text-[10px] text-white/70">{sample.preset.category}</p>
           </div>
           <VerifiedBadge verified={sample.verified} />
@@ -124,16 +125,16 @@ const GRID_SAMPLE_IDS = [
 
 const HERO_SAMPLE_IDS = ["art-neon-tokyo", "art-royal", "gal-duo-aurora"] as const;
 
-function HeroFan() {
-  const samples = useSamples([...HERO_SAMPLE_IDS], 320);
+function HeroFan({ entries }: { entries: SampleRef[] }) {
+  const samples = useSamples(entries.map((e) => ({ id: e.preset.id, url: e.url })), 320);
   const tilts = ["-rotate-6 -translate-x-6", "rotate-2 translate-y-2", "rotate-8 translate-x-6"];
   return (
     <div className="relative mx-auto flex h-64 w-full max-w-md items-center justify-center sm:h-80">
-      {HERO_SAMPLE_IDS.map((id, i) => {
-        const s = samples.find((p) => p.preset.id === id);
+      {entries.slice(0, 3).map((entry, i) => {
+        const s = samples.find((p) => p.preset.id === entry.preset.id);
         return (
           <div
-            key={id}
+            key={entry.preset.id}
             className={cn(
               "art-floating-card absolute size-44 overflow-hidden rounded-2xl sm:size-56",
               tilts[i],
@@ -141,7 +142,7 @@ function HeroFan() {
             )}
           >
             {s ? (
-              <img src={s.url} alt={`${s.preset.name} sample QR`} className="size-full object-cover" />
+              <img src={s.url} alt={`${entry.label} sample QR`} className="size-full object-cover" />
             ) : (
               <div className="size-full animate-pulse bg-elevated" />
             )}
@@ -198,16 +199,21 @@ function wordsList(csv: string): string[] {
 export function Landing() {
   const navigate = useNavigate();
   const applyPreset = useStudio((s) => s.applyPreset);
-  const { catalog, presetCount, brand, content } = useCms();
+  const { catalog, presetCount, brand, content, samplesDoc } = useCms();
+  // Curated fallback = the original hardcoded ids plus any custom art
+  // template the admin has published; the samples doc overrides when set.
   const customArtIds = catalog.presets
     .filter((p) => p.id.startsWith("cms-") && p.artUrl)
     .map((p) => p.id);
-  const sampleIds = [...GRID_SAMPLE_IDS, ...customArtIds]
-    .filter((id) => !catalog.hiddenIds.has(id));
-  const samples = useSamples(sampleIds, 512);
+  const sampleRefs = resolveSamples(samplesDoc, catalog.presets, catalog.hiddenIds, {
+    grid: [...GRID_SAMPLE_IDS, ...customArtIds],
+    hero: [...HERO_SAMPLE_IDS],
+  });
+  const samples = useSamples(sampleRefs.grid.map((r) => ({ id: r.preset.id, url: r.url })), 512);
 
-  function tryInStudio(id: string) {
+  function tryInStudio(id: string, url?: string) {
     applyPreset(id);
+    if (url) useStudio.getState().patchPayload({ kind: "url", url });
     navigate({ to: "/studio" });
   }
 
@@ -324,7 +330,7 @@ export function Landing() {
               })}
             </div>
           </div>
-          <HeroFan />
+          <HeroFan entries={sampleRefs.hero} />
         </div>
       </section>
 
@@ -402,12 +408,17 @@ export function Landing() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {sampleIds.slice(0, 8).map((id) => (
-              <SampleCard key={id} sample={samples.find((s) => s.preset.id === id)} onTry={tryInStudio} />
+            {sampleRefs.grid.map((ref) => (
+              <SampleCard
+                key={ref.preset.id}
+                sample={samples.find((s) => s.preset.id === ref.preset.id)}
+                label={ref.label}
+                onTry={() => tryInStudio(ref.preset.id, ref.url)}
+              />
             ))}
           </div>
           <p className="mt-6 text-center text-xs text-subtle">
-            …and {Math.max(0, presetCount - sampleIds.slice(0, 8).length)} more in the studio — pick any, tune it,
+            …and {Math.max(0, presetCount - sampleRefs.grid.length)} more in the studio — pick any, tune it,
             and hit <span className="font-semibold text-fg">Fix scan</span> if it wobbles.
           </p>
         </div>

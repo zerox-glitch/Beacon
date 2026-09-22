@@ -19,6 +19,8 @@ import {
   DEFAULT_SEO,
   seoSchema,
   settingsDocSchemas,
+  samplesDocSchema,
+  DEFAULT_SAMPLES,
   seoKeyForPath,
   type BrandDoc,
   type ContentDoc,
@@ -135,6 +137,15 @@ export async function saveCategories(doc: unknown, actor: string): Promise<impor
   await writeSetting("categories", doc, actor);
   invalidateCmsCache();
   return getCategories();
+}
+
+export async function getSamples(): Promise<import("./schemas").SamplesDoc> {
+  return readSetting("samples", samplesDocSchema, DEFAULT_SAMPLES);
+}
+export async function saveSamples(doc: unknown, actor: string): Promise<import("./schemas").SamplesDoc> {
+  await writeSetting("samples", doc, actor);
+  invalidateCmsCache();
+  return getSamples();
 }
 
 /* ------------------------------ templates table ----------------------------- */
@@ -578,15 +589,16 @@ export type { PageMeta, PublicBundle };
 export async function getPublicBundle(): Promise<PublicBundle> {
   const now = Date.now();
   if (bundleCache && now - bundleCache.at < TTL_MS) return bundleCache.data;
-  const [brand, content, seo, rows, categories] = await Promise.all([
+  const [brand, content, seo, rows, categories, samples] = await Promise.all([
     getBrand(),
     getContent(),
     getSeo(),
     listTemplateRows(false),
     getCategories(),
+    getSamples(),
   ]);
   const defaultTemplate = rows.find((r) => r.isDefault === true)?.id ?? null;
-  const data: PublicBundle = { brand, content, seo, templates: rows, categories, defaultTemplate };
+  const data: PublicBundle = { brand, content, seo, templates: rows, categories, defaultTemplate, samples };
   bundleCache = { at: now, data };
   return data;
 }

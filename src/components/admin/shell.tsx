@@ -7,6 +7,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Images,
   RefreshCw,
   ShieldAlert,
   Gauge,
@@ -29,6 +30,7 @@ import { AdminTopBar } from "./ui";
 import { OverviewPanel } from "./panels/overview";
 import { BrandingPanel } from "./panels/branding";
 import { MediaPanel } from "./panels/media";
+import { SamplesPanel } from "./panels/samples";
 import { TemplatesPanel } from "./panels/templates";
 import { SeoPanel } from "./panels/seo";
 import { ContentPanel } from "./panels/content";
@@ -39,6 +41,7 @@ const TABS = [
   { id: "branding", label: "Branding", icon: Palette },
   { id: "media", label: "Media", icon: ImageIcon },
   { id: "templates", label: "QR templates", icon: LayoutTemplate },
+  { id: "samples", label: "Landing samples", icon: Images },
   { id: "seo", label: "SEO", icon: SearchCode },
   { id: "content", label: "Site content", icon: TextCursorInput },
   { id: "security", label: "Security", icon: ShieldCheck },
@@ -139,6 +142,7 @@ function Dashboard() {
           {tab === "branding" ? <BrandingPanel /> : null}
           {tab === "media" ? <MediaPanel /> : null}
           {tab === "templates" ? <TemplatesPanel /> : null}
+          {tab === "samples" ? <SamplesPanel /> : null}
           {tab === "seo" ? <SeoPanel /> : null}
           {tab === "content" ? <ContentPanel /> : null}
           {tab === "security" ? <SecurityPanel /> : null}
