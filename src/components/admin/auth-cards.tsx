@@ -179,7 +179,8 @@ export function LoginCard() {
         {busy ? "Checking…" : "Sign in"}
       </Button>
       <p className="text-center text-[11px] leading-relaxed text-subtle">
-        Failed attempts are throttled per IP and per account (5 failures → 15 min lock).
+        Every attempt is logged — IP, device, time — and retained. Repeated failures burn the
+        account and the network block, not just this page.
       </p>
     </form>
   );

@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   RefreshCw,
+  ShieldAlert,
   Gauge,
   Image as ImageIcon,
   LayoutTemplate,
@@ -171,13 +172,22 @@ function AuthLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgb(143_166_122/0.08),transparent)] px-4 py-10">
       <div className="text-center">
         <img src="/logo.png" alt="" className="mx-auto size-12 rounded-xl border border-border" />
-        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-subtle">QRWho · Private area</p>
+        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-subtle">QRWho · Restricted area</p>
       </div>
       {children}
-      <p className="max-w-sm text-center text-[11px] leading-relaxed text-subtle">
-        This page is never indexed (noindex) and its APIs are closed to non-admins. If you are not
-        the site owner, use the public studio instead.
-      </p>
+      <div className="w-full max-w-md rounded-xl border-2 border-danger/40 bg-danger/5 px-4 py-3 text-center">
+        <p className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-danger">
+          <ShieldAlert className="size-3.5" /> Authorized personnel only
+        </p>
+        <p className="mt-2 text-[11px] leading-relaxed text-danger/85">
+          This is a private, monitored system. Every visit and every access attempt — successful or
+          denied — is captured with IP address, device signature and precise timestamps and is
+          retained for abuse reporting. Unauthorized entry, scanning or password guessing are
+          criminal offences under the Computer Fraud and Abuse Act, the EU Convention on Cybercrime
+          and equivalent computer-misuse laws in your jurisdiction, and they are investigated and
+          reported — never ignored. If you are not the site owner, close this page now.
+        </p>
+      </div>
     </div>
   );
 }

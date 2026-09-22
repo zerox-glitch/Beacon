@@ -37,7 +37,8 @@ export function OverviewPanel() {
             <Database className="mt-0.5 size-3.5 shrink-0" />
             <span>
               Currently running on the embedded preview database (PGLite, in-memory): data survives
-              dev-server edits but <strong>not a server restart</strong>. For permanent storage, set
+              dev-server edits but <strong>not a server restart</strong> — on a deployed preview each
+              request can land on a fresh, empty copy. For permanent storage, set
               <code className="mx-1 rounded bg-black/30 px-1">DATABASE_URL</code> (e.g. Neon) on
               your deployment — the app switches over automatically, no code changes.
             </span>

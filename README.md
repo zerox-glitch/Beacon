@@ -13,7 +13,17 @@ npm run build      # Vercel Build Output API → .vercel/output
 
 ## Host
 
-Import the repo on Vercel. Root directory unset. No env vars. Production branch: `main`.
+Import the repo on Vercel. Root directory unset. Production branch: `main`.
+
+**Required for the admin panel to persist:** add a Postgres URL as `DATABASE_URL`
+in the Vercel project's Environment Variables (Production *and* Preview) — the
+easiest path is Vercel's Marketplace → **Neon** integration, which sets it
+automatically. Then redeploy: `npm run build` applies `migrations/0002_cms.sql`
+(and the Better-Auth schema) once to that database, and the app switches from its
+embedded in-memory preview database to Neon by itself. Without `DATABASE_URL` the
+public site still works, but the database is a throwaway in-memory copy per
+serverless instance — admin saves would not survive (the Overview panel warns
+about exactly this).
 
 ## Admin panel (CMS)
 

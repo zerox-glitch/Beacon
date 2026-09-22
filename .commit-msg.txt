@@ -1,0 +1,16 @@
+QRWho: fix serverless PGLite crash, deploy-hardened build, deterrent banner
+
+- db.ts: explicit dataDir "memory://" on the PGLite fallback. The default
+  "./pglite.data" filesystem path is ENOENT on read-only /var/task — the
+  exact crash reported from Vercel. The fallback now only ever touches RAM.
+- build: scripts/sync-auth-migration.mjs materializes the Better-Auth
+  schema into migrations/ before vite build + db:migrate, so fresh Vercel
+  deploys apply it to Neon while the copy stays un-committed.
+- README: Host section documents DATABASE_URL (Neon) as required for
+  persistent admin data; the app switches backends automatically.
+- Admin sign-in/setup: removed the note advertising the lockout
+  parameters; replaced with an "Authorized personnel only" banner —
+  attempts logged with IP/device/time, retained for abuse reporting,
+  computer-misuse-law warning, walk-away instruction for non-owners.
+- Overview pglite warning now states the serverless consequence (each
+  request can hit a fresh empty copy).

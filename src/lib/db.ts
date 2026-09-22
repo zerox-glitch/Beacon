@@ -111,7 +111,12 @@ async function createPgliteSql(): Promise<Sql> {
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    // `memory://` EXPLICITLY: the default dataDir is the filesystem path
+    // `./pglite.data`, which is a guaranteed ENOENT on read-only serverless
+    // filesystems (Vercel's /var/task). This path only runs when DATABASE_URL
+    // is unset (local dev / preview); deployed apps must set DATABASE_URL.
     const pg = new PGlite({
+      dataDir: "memory://",
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
