@@ -17,19 +17,22 @@ import {
 } from "lucide-react";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { PRESETS, getPreset } from "@/lib/qr/presets";
+import { getPresetMerged } from "@/lib/cms/runtime";
+import { useCms } from "@/lib/cms/runtime";
 import { renderSamplePreset, type SampleImage } from "@/lib/qr/sample-render";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const HOOK_WORDS = ["picture", "Wi-Fi", "menu", "event", "contact", "link"];
 
-function RotatingWord() {
+function RotatingWord({ words = HOOK_WORDS }: { words?: string[] }) {
+  const list = words.length ? words : HOOK_WORDS;
   const [i, setI] = useState(0);
   useEffect(() => {
-    const id = window.setInterval(() => setI((n) => (n + 1) % HOOK_WORDS.length), 2600);
+    const id = window.setInterval(() => setI((n) => (n + 1) % list.length), 2600);
     return () => window.clearInterval(id);
-  }, []);
-  const word = HOOK_WORDS[i]!;
+  }, [list.length]);
+  const word = list[i % list.length] ?? list[0]!;
   return (
     <span key={word} className="word-in inline-block font-semibold text-ok">
       {word}
@@ -45,7 +48,7 @@ function useSamples(ids: string[], px: number) {
     done.current = true;
     let live = true;
     ids.forEach((id) => {
-      const preset = getPreset(id);
+      const preset = getPresetMerged(id) ?? getPreset(id);
       if (!preset) return;
       renderSamplePreset(preset, px)
         .then((s) => {
@@ -182,10 +185,24 @@ const TRUST = [
   { icon: Sparkles, label: "Free, no watermark" },
 ] as const;
 
+function wordsList(csv: string): string[] {
+  return (csv ?? "")
+    .split(",")
+    .map((w) => w.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 export function Landing() {
   const navigate = useNavigate();
   const applyPreset = useStudio((s) => s.applyPreset);
-  const samples = useSamples([...GRID_SAMPLE_IDS], 512);
+  const { catalog, presetCount, brand, content } = useCms();
+  const customArtIds = catalog.presets
+    .filter((p) => p.id.startsWith("cms-") && p.artUrl)
+    .map((p) => p.id);
+  const sampleIds = [...GRID_SAMPLE_IDS, ...customArtIds]
+    .filter((id) => !catalog.hiddenIds.has(id));
+  const samples = useSamples(sampleIds, 512);
 
   function tryInStudio(id: string) {
     applyPreset(id);
@@ -198,20 +215,20 @@ export function Landing() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link to="/" className="flex min-w-0 items-center gap-2.5">
-            <img src="/logo.png" alt="QRWho" className="size-9 rounded-lg border border-border" />
+            <img src={brand.logoUrl || "/logo.png"} alt={brand.siteName || "QRWho"} className="size-9 rounded-lg border border-border" />
             <div className="min-w-0">
               <p className="font-display text-lg italic leading-none tracking-tight">
-                <span className="wordmark-shimmer">QRWho</span>
+                <span className="wordmark-shimmer">{brand.siteName || "QRWho"}</span>
               </p>
               <p className="mt-0.5 truncate text-[11px] text-fg/80">
-                Turn any <RotatingWord /> into a working QR
+                Turn any <RotatingWord words={wordsList(content.heroWords)} /> into a working QR
               </p>
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <span className="hidden items-center gap-1.5 rounded-full border border-white/15 bg-elevated px-3 py-1 text-xs font-semibold text-fg/90 sm:inline-flex">
               <Palette className="size-3.5 text-ok" />
-              {PRESETS.length} art styles
+              {presetCount} art styles
             </span>
             <Link
               to="/studio"
@@ -253,30 +270,34 @@ export function Landing() {
               Every sample on this page is a real, decoded QR
             </span>
             <h1 className="font-display text-4xl italic leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              Turn any <RotatingWord />
-              <br />
-              into a QR that
-              <br />
-              people <span className="text-accent">actually want to scan</span>
+              {content.heroTitle ? (
+                content.heroTitle
+              ) : (
+                <>
+                  Turn any <RotatingWord words={wordsList(content.heroWords)} />
+                  <br />
+                  into a QR that
+                  <br />
+                  people <span className="text-accent">actually want to scan</span>
+                </>
+              )}
             </h1>
             <p className="mx-auto max-w-lg text-sm leading-relaxed text-fg/85 sm:text-base lg:mx-0">
-              QRWho weaves your picture, colors or style into a proper QR code — then proves it by
-              decoding the exact pixels in your browser. Art you can point a phone camera at and
-              trust. 100% on-device, free, no watermark.
+              {content.heroSubtitle}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <Link
                 to="/studio"
                 className="inline-flex h-12 items-center gap-2 rounded-2xl bg-accent px-6 text-base font-bold text-accent-fg shadow-lg transition hover:brightness-110 active:scale-[0.98]"
               >
-                Open the studio
+                {content.ctaPrimary || "Open the studio"}
                 <ArrowRight className="size-4.5" />
               </Link>
               <a
                 href="#samples"
                 className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/5 px-6 text-base font-semibold text-fg transition hover:bg-white/10"
               >
-                See the art
+                {content.ctaSecondary || "See the art"}
               </a>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
@@ -316,12 +337,12 @@ export function Landing() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {GRID_SAMPLE_IDS.map((id) => (
+            {sampleIds.slice(0, 8).map((id) => (
               <SampleCard key={id} sample={samples.find((s) => s.preset.id === id)} onTry={tryInStudio} />
             ))}
           </div>
           <p className="mt-6 text-center text-xs text-subtle">
-            …and {PRESETS.length - GRID_SAMPLE_IDS.length} more in the studio — pick any, tune it,
+            …and {Math.max(0, presetCount - sampleIds.slice(0, 8).length)} more in the studio — pick any, tune it,
             and hit <span className="font-semibold text-fg">Fix scan</span> if it wobbles.
           </p>
         </div>

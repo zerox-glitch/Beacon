@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://qrwho.vercel.app/sitemap.xml

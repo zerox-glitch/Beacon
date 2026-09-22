@@ -10,3 +10,7 @@ screenshots/
 .node_modules.lock
 dist/
 .tmp/
+
+# Materialized by the sign-in enablement flow (source: migrations/auth/0001_auth.sql).
+# Must never be committed — see scripts/migration-plan.test.mjs.
+migrations/0001_auth.sql

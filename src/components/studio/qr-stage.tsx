@@ -23,7 +23,7 @@ import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
 import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
-import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
+import { useCms } from "@/lib/cms/runtime";
 import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
 import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
@@ -35,6 +35,8 @@ function makeCanvas(): HTMLCanvasElement {
 }
 
 export function QrStage({ compact = false }: { compact?: boolean }) {
+  const cms = useCms();
+  const GALLERY_PRESETS = cms.catalog.presets.filter((p) => Boolean(p.artUrl));
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
   const payload = useStudio((s) => s.payload);
@@ -305,7 +307,8 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
   }
 
   function surprise() {
-    const pick = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+    const pool = cms.catalog.presets;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
     if (pick) useStudio.getState().applyPreset(pick.id);
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { GALLERY_PRESETS, PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
+import { useCms } from "@/lib/cms/runtime";
 import { cachedPresetThumb, renderPresetThumb } from "@/lib/qr/preset-thumb";
 import type { Preset, QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
@@ -110,6 +110,12 @@ export function PresetGallery() {
   const presetId = useStudio((s) => s.presetId);
   const setCategory = useStudio((s) => s.setCategory);
   const applyPreset = useStudio((s) => s.applyPreset);
+
+  // CMS-merged: built-ins + admin custom templates, hidden ones filtered out.
+  const { catalog } = useCms();
+  const PRESETS = catalog.presets;
+  const GALLERY_PRESETS = PRESETS.filter((p) => Boolean(p.artUrl));
+  const PRESET_CATEGORIES = ["All", ...catalog.categories];
 
   const list = category === "All" ? PRESETS : PRESETS.filter((p) => p.category === category);
 

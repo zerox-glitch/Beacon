@@ -19,7 +19,7 @@ import { LibraryPanel } from "@/components/studio/library-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
+import { useCms } from "@/lib/cms/runtime";
 import { useStudio } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ const STUDIO_TABS = [
 ] as const;
 
 export function Studio() {
+  const { catalog, brand } = useCms();
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
@@ -80,8 +81,8 @@ export function Studio() {
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <Link to="/" aria-label="QRWho home" className="shrink-0">
                 <img
-                  src="/logo.png"
-                  alt="QRWho"
+                  src={brand.logoUrl || "/logo.png"}
+                  alt={brand.siteName || "QRWho"}
                   className="size-8 rounded-lg border border-border sm:size-10 sm:rounded-xl"
                 />
               </Link>
@@ -94,13 +95,13 @@ export function Studio() {
             </div>
 
             <div className="hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
-              {PRESET_CATEGORIES.filter((c) => c !== "All").map((c) => (
+              {catalog.categories.filter((c) => c !== "All").map((c) => (
                 <button
                   key={c}
                   type="button"
                   title={`Surprise me with a ${c} look`}
                   onClick={() => {
-                    const pool = PRESETS.filter((p) => p.category === c);
+                    const pool = catalog.presets.filter((p) => p.category === c);
                     const pick = pool[Math.floor(Math.random() * pool.length)];
                     if (!pick) return;
                     useStudio.getState().setCategory(c);

@@ -15,7 +15,7 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
-import { PRESETS } from "@/lib/qr/presets";
+import { useCms } from "@/lib/cms/runtime";
 import { useStudio } from "@/lib/store";
 
 const SHOWCASE_CARDS = [
@@ -163,6 +163,7 @@ const FAQS = [
 ];
 
 export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
+  const { catalog, brand, presetCount } = useCms();
   const applyPreset = useStudio((s) => s.applyPreset);
 
   const handleApply = (id: string) => {
@@ -184,7 +185,7 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
             <Sparkles className="size-3.5 text-ok" />
-            Curated Art Direction · {PRESETS.length} Free Styles & Vector SVG Export
+            Curated Art Direction · {presetCount} Free Styles & Vector SVG Export
           </div>
           <h2 className="font-display text-3xl italic tracking-tight sm:text-4xl lg:text-5xl">
             QR codes that refuse to look like medical barcodes.
@@ -198,7 +199,8 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
         {/* Interactive Gallery Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {SHOWCASE_CARDS.map((card) => {
-            const preset = PRESETS.find((p) => p.id === card.id);
+            const preset = catalog.presets.find((p) => p.id === card.id);
+            if (!preset) return null; // hidden from the public site by the admin
             return (
               <div
                 key={card.id}
@@ -349,13 +351,12 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
         {/* Semantic SEO Keywords & Footer */}
         <footer className="border-t border-border pt-12 text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <img src="/logo.png" alt="QRWho Logo" className="size-8 rounded-lg border border-border" />
-            <span className="font-display text-xl italic text-fg">QRWho</span>
+            <img src={brand.logoUrl || "/logo.png"} alt={`${brand.siteName || "QRWho"} Logo`} className="size-8 rounded-lg border border-border" />
+            <span className="font-display text-xl italic text-fg">{brand.siteName || "QRWho"}</span>
           </div>
           <p className="text-xs text-subtle max-w-xl mx-auto leading-relaxed">
-            QRWho is the premier free online artistic QR code generator. Generate scannable custom QR
-            art with logos, photos, WiFi profiles, vCards, restaurant menus, and Instagram links.
-            Static, private, on-device, and print-ready.
+            {brand.footerNote ||
+              "QRWho is the premier free online artistic QR code generator. Generate scannable custom QR art with logos, photos, WiFi profiles, vCards, restaurant menus, and Instagram links. Static, private, on-device, and print-ready."}
           </p>
           <div className="text-[11px] text-muted space-x-3">
             <span>© {new Date().getFullYear()} QRWho Studio</span>

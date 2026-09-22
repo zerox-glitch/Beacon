@@ -8,6 +8,7 @@ import {
   type QrStyle,
 } from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
+import { getPresetMerged } from "@/lib/cms/runtime";
 import type { FrameKind } from "@/lib/qr/finish";
 import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
 
@@ -114,7 +115,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       lastFixNotes: [],
     })),
   applyPreset: (id) => {
-    const preset = getPreset(id);
+    // CMS-merged lookup: custom admin templates + overridden built-ins resolve
+    // here too; falls back to the static list until the catalog is loaded.
+    const preset = getPresetMerged(id) ?? getPreset(id);
     if (!preset) return;
     const current = get();
     if (preset.artUrl) {

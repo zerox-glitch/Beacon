@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -14,6 +15,20 @@ import { isMigrationFile, migrationName, pendingMigrations } from "./migration-p
 import { projectRoot } from "./with-app-env.mjs";
 
 const AUTH_MIGRATION = "0001_auth.sql";
+
+/** Basenames of *.sql files COMMITTED in migrations/ (null when git is unavailable). */
+function trackedMigrations(root) {
+  try {
+    const out = execFileSync("git", ["-C", root, "ls-files", "--", "migrations"], { encoding: "utf8" });
+    return out
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l !== "" && l !== "migrations" && !l.slice("migrations/".length).includes("/"))
+      .map((l) => l.split("/").pop());
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The auth-on copy of the Better Auth schema and its source, or null when the
@@ -57,8 +72,17 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 });
 
 test("the auth schema ships outside the globbed directory", () => {
-  const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  const root = projectRoot();
+  const migrationsDir = join(root, "migrations");
+  // The globbed directory is what deploys apply. An app MAY ship its own schema
+  // there (AGENTS §0.5: `migrations/0002_*.sql`), but the Better Auth copy must
+  // never be committed: turning sign-in on materializes it as a working-copy
+  // file (git-ignored), and a committed copy would run auth DDL on every deploy
+  // of an app that has since turned sign-in back off.
+  const tracked = trackedMigrations(root);
+  if (tracked !== null) {
+    assert.ok(!tracked.includes(AUTH_MIGRATION), `git tracks ${AUTH_MIGRATION} inside migrations/`);
+  }
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 

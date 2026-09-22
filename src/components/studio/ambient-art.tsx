@@ -1,7 +1,8 @@
 import { Lock, Palette, ShieldCheck, Sparkles } from "lucide-react";
-import { PRESETS } from "@/lib/qr/presets";
+import { useCms } from "@/lib/cms/runtime";
 
 export function AmbientArt() {
+  const { presetCount } = useCms();
   return (
     <div className="absolute inset-0 overflow-hidden">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -15,7 +16,7 @@ export function AmbientArt() {
 
         <div className="absolute left-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
           <Sparkles className="size-3.5 text-ok" />
-          <span>{PRESETS.length} styles · still a real QR</span>
+          <span>{presetCount} styles · still a real QR</span>
         </div>
 
         <div className="absolute right-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
