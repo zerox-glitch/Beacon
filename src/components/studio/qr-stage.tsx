@@ -111,6 +111,8 @@ export function QrStage() {
           exportScale: true,
           kernelBoost: 0,
         });
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
         let report = await inspectRenderedQr(canvas, expected);
         if (!report.ok && pictured) {
           renderQr(canvas, encoded.qr, style, {
@@ -120,6 +122,8 @@ export function QrStage() {
             exportScale: true,
             kernelBoost: 0.7,
           });
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
           report = await inspectRenderedQr(canvas, expected);
           boostRef.current = report.ok ? 0.7 : 0;
         } else {
@@ -296,8 +300,11 @@ export function QrStage() {
   }
 
   return (
-    <div className="relative z-10 flex w-full flex-col items-center justify-center gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-5">
-      <DestinationDock />
+    <div className="relative z-10 flex h-full min-h-0 w-full flex-col items-center justify-center gap-1.5 overflow-hidden px-3 py-1.5 sm:gap-4 sm:px-6 sm:py-5">
+      <div className="w-full shrink-0">
+        <DestinationDock />
+      </div>
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
       <div
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
@@ -308,7 +315,7 @@ export function QrStage() {
         onDragLeave={() => setDragging(false)}
         onDrop={onDropImage}
         className={cn(
-          "qr-mat relative w-full max-w-[280px] p-2.5 transition duration-200 sm:max-w-[340px] sm:p-4 md:max-w-[400px] md:p-5 lg:max-w-[440px]",
+          "qr-mat relative aspect-square h-full max-h-[min(100%,280px)] w-auto max-w-full p-2 transition duration-200 sm:max-h-[340px] sm:p-4 md:max-h-[400px] md:p-5 lg:max-h-[440px]",
           frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
         )}
         style={{
@@ -318,10 +325,10 @@ export function QrStage() {
       >
         <div
           ref={innerRef}
-          className="relative mx-auto aspect-square w-full overflow-hidden rounded-xl"
+          className="relative mx-auto aspect-square h-full w-full overflow-hidden rounded-xl"
           style={{ background: paper }}
         >
-          <canvas ref={workRef} className="block size-full" aria-label="QR code preview" />
+          <canvas ref={workRef} className="block h-full w-full max-h-full max-w-full" aria-label="QR code preview" />
           {rendering && (
             <div className="absolute inset-0 flex items-center justify-center bg-bg/55 text-xs font-semibold tracking-wide text-fg">
               <Loader2 className="mr-1.5 size-3.5 animate-spin" />
@@ -365,8 +372,9 @@ export function QrStage() {
           </span>
         </div>
       </div>
+      </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           aria-label="Zoom out"
@@ -396,13 +404,15 @@ export function QrStage() {
         </button>
       </div>
 
-      <ScannabilityMeter
-        scanOk={scanOk}
-        style={style}
-        hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
-        onAutoFix={onAutoFix}
-        fixing={fixing}
-      />
+      <div className="w-full shrink-0">
+        <ScannabilityMeter
+          scanOk={scanOk}
+          style={style}
+          hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
+          onAutoFix={onAutoFix}
+          fixing={fixing}
+        />
+      </div>
 
       <div className="action-bar z-10 flex w-full max-w-[280px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <button
@@ -469,7 +479,7 @@ export function QrStage() {
         </button>
       </div>
 
-      <div className="w-full max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
+      <div className="hidden w-full max-w-[280px] shrink-0 sm:block sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
           Steal a look — summit, peony, dusk
         </p>

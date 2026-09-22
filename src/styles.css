@@ -35,10 +35,11 @@
   html,
   body,
   #app {
+    height: 100dvh;
     min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-fg);
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
   button:not(:disabled),
@@ -306,7 +307,6 @@ input[type="color"]::-webkit-color-swatch {
 
 @media (max-width: 390px) {
   .qr-mat {
-    max-width: 196px;
-    padding: 0.55rem;
+    padding: 0.45rem;
   }
 }

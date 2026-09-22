@@ -479,8 +479,8 @@ export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRend
   const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
   canvas.width = Math.round(px * dpr);
   canvas.height = Math.round(px * dpr);
-  canvas.style.width = `${px}px`;
-  canvas.style.height = `${px}px`;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas is not available");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -506,8 +506,10 @@ export function renderQr(
     ? (() => {
         canvas.width = px;
         canvas.height = px;
-        canvas.style.width = `${px}px`;
-        canvas.style.height = `${px}px`;
+        // Bitmap stays scan-sized; CSS 100% lets the on-screen frame show the
+        // whole code. Inline 512px here used to clip the preview to one corner.
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
         const c = canvas.getContext("2d", { willReadFrequently: true });
         if (!c) throw new Error("Canvas is not available");
         c.setTransform(1, 0, 0, 1, 0, 0);

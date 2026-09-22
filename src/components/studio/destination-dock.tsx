@@ -18,7 +18,7 @@ export function DestinationDock() {
 
   return (
     <div className="w-full max-w-[210px] sm:max-w-[300px] md:max-w-[380px] lg:max-w-[420px]">
-      <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
+      <p className="mb-1 hidden px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:mb-1.5 sm:block sm:text-[11px]">
         1 · Paste what this QR opens
       </p>
       <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-thin">

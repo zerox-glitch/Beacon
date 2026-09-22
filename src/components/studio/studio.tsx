@@ -64,7 +64,7 @@ export function Studio() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-dvh flex-col overflow-x-hidden bg-bg text-fg">
+      <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
         <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
@@ -104,16 +104,18 @@ export function Studio() {
           </div>
         </header>
 
-        <div className="relative flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
-          <main className="relative flex shrink-0 flex-col items-center justify-center overflow-hidden border-b border-border lg:min-h-0 lg:border-b-0 lg:border-r">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
+          <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
             <AmbientArt />
             <QrStage />
           </main>
 
           <aside
             className={cn(
-              "flex min-h-0 flex-col border-t border-border bg-elevated lg:min-h-[calc(100dvh-57px)] lg:border-t-0",
-              sheetOpen ? "max-h-[52dvh] lg:max-h-none" : "lg:max-h-none",
+              "z-20 flex min-h-0 flex-col border-t border-border bg-elevated lg:h-full lg:border-t-0",
+              sheetOpen
+                ? "h-[min(48dvh,440px)] shrink-0 lg:h-auto lg:max-h-none"
+                : "h-12 shrink-0 lg:h-auto lg:max-h-none",
             )}
           >
             <button
