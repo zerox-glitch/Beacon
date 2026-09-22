@@ -13,6 +13,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { handOver, parseWriteAtomicArgs, stagingError } from "./write-atomic.mjs";
+import fs from "node:fs";
+
+/* The .grok scaffold (skill docs, template app-env) is not part of this
+ * product branch; tests that read it skip cleanly when it is absent. */
+const HAS_GROK_SCAFFOLD = fs.existsSync(new URL("../.grok", import.meta.url));
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(TEMPLATE_ROOT, "scripts/write-atomic.mjs");
@@ -164,7 +169,7 @@ test("cli: relative paths follow the script's root, not the caller's cwd", () =>
   assert.equal(existsSync(join(root, "public/og.jpg")), false);
 });
 
-test("every hand-over the og skill prints is one this script accepts", () => {
+test("every hand-over the og skill prints is one this script accepts", { skip: !HAS_GROK_SCAFFOLD }, () => {
   // The card and banner recipes live in the skill's references/, not SKILL.md.
   const skillDir = join(TEMPLATE_ROOT, ".grok/skills/og");
   const docs = [

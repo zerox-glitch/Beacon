@@ -13,6 +13,11 @@ import {
   probeDevAuthEnabled,
 } from "./check-auth-invariant.mjs";
 import { projectRoot } from "./with-app-env.mjs";
+import fs from "node:fs";
+
+/* The .grok scaffold (skill docs, template app-env) is not part of this
+ * product branch; tests that read it skip cleanly when it is absent. */
+const HAS_GROK_SCAFFOLD = fs.existsSync(new URL("../.grok", import.meta.url));
 
 /**
  * The JSON body `/__app-env` would serve. Do not start a real Vite server —
@@ -90,7 +95,7 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the build side resolves the template's shipped app-env", () => {
+test("the build side resolves the template's shipped app-env", { skip: !HAS_GROK_SCAFFOLD }, () => {
   assert.equal(buildAuthEnabled(projectRoot(), {}), false);
   assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
 });

@@ -12,6 +12,11 @@ import {
   projectRoot,
   readAppEnv,
 } from "./with-app-env.mjs";
+import fs from "node:fs";
+
+/* The .grok scaffold (skill docs, template app-env) is not part of this
+ * product branch; tests that read it skip cleanly when it is absent. */
+const HAS_GROK_SCAFFOLD = fs.existsSync(new URL("../.grok", import.meta.url));
 
 const execFileAsync = promisify(execFile);
 const WRAPPER = join(projectRoot(), "scripts/with-app-env.mjs");
@@ -59,7 +64,7 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("the template ships auth off", () => {
+test("the template ships auth off", { skip: !HAS_GROK_SCAFFOLD }, () => {
   assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
 });
 
@@ -73,7 +78,7 @@ test("vite loadEnv resolves the wrapped value", () => {
   assert.equal(merged.VITE_AUTH_ENABLED, "false");
 });
 
-test("the wrapped command runs with the app env applied", async () => {
+test("the wrapped command runs with the app env applied", { skip: !HAS_GROK_SCAFFOLD }, async () => {
   const { stdout } = await execFileAsync(process.execPath, [
     WRAPPER,
     process.execPath,
@@ -113,7 +118,7 @@ test("a signal-killed command is never reported as success", async () => {
   );
 });
 
-test("the CLI still runs when invoked through a symlinked path", async () => {
+test("the CLI still runs when invoked through a symlinked path", { skip: !HAS_GROK_SCAFFOLD }, async () => {
   // node realpaths import.meta.url but not process.argv[1], so a raw comparison
   // turns the wrapper into a no-op that exits 0 without starting anything.
   const link = join(mkdtempSync(join(tmpdir(), "app-env-link-")), "scripts");
