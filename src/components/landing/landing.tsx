@@ -10,11 +10,13 @@ import {
   Lock,
   Palette,
   QrCode,
+  ScanLine,
   ScanSearch,
   ShieldCheck,
   Sparkles,
   Wand2,
 } from "lucide-react";
+import { ScanDecode } from "@/components/qr/scan-decode";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { PRESETS, getPreset } from "@/lib/qr/presets";
 import { getPresetMerged } from "@/lib/cms/runtime";
@@ -299,6 +301,13 @@ export function Landing() {
               >
                 {content.ctaSecondary || "See the art"}
               </a>
+              <a
+                href="#remake"
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/5 px-6 text-base font-semibold text-fg transition hover:bg-white/10"
+              >
+                <ScanLine className="size-4.5" />
+                Scan a QR
+              </a>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
               {TRUST.map((t) => {
@@ -316,6 +325,62 @@ export function Landing() {
             </div>
           </div>
           <HeroFan />
+        </div>
+      </section>
+
+      {/* Remake an existing code */}
+      <section id="remake" className="relative border-t border-border bg-elevated/30">
+        <div className="ambient-constellation pointer-events-none absolute inset-0 opacity-15" aria-hidden />
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:py-20">
+          <div className="space-y-5">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
+              <ScanSearch className="size-3.5 text-ok" />
+              Already printed one?
+            </span>
+            <h2 className="font-display text-3xl italic leading-tight tracking-tight sm:text-4xl">
+              That old QR can still
+              <br />
+              earn a <span className="text-accent">better look</span>
+            </h2>
+            <p className="max-w-md text-sm leading-relaxed text-fg/85 sm:text-base">
+              Scan or upload any QR you already have — a menu, a Wi-Fi code, a
+              business card, a sticker on a door. We read exactly what it
+              points to, then rebuild it in the studio as a scannable,
+              beautiful one with the same destination. Nothing is uploaded;
+              decoding happens on your device.
+            </p>
+            <ul className="space-y-2 text-sm text-fg/85">
+              {[
+                "Links, Wi-Fi, contacts, phone & SMS, locations, events — all recognized",
+                "The extracted fields land in the right forms, ready to tweak",
+                "One click takes the result into the studio to make it beautiful",
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-3xl border border-border bg-surface p-5 shadow-2xl sm:p-6">
+            <ScanDecode
+              primary={(result) => (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: "/studio",
+                      search: { scan: result },
+                    })
+                  }
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-xs font-bold text-accent-fg transition hover:brightness-110 active:scale-[0.98]"
+                >
+                  <Wand2 className="size-3.5" />
+                  Remake it in the studio
+                </button>
+              )}
+            />
+          </div>
         </div>
       </section>
 

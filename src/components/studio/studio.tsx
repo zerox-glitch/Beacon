@@ -9,7 +9,7 @@ import {
   Type,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { AmbientArt } from "@/components/studio/ambient-art";
 import { ArtShowcase } from "@/components/studio/art-showcase";
@@ -20,6 +20,7 @@ import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getPresetMerged, useCms } from "@/lib/cms/runtime";
+import { classifyScan } from "@/lib/qr/scan-intent";
 import { getPreset } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
@@ -64,6 +65,19 @@ export function Studio() {
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
+
+  // Deep link from the landing "remake" flow: /studio?scan=<decoded text>.
+  // Applies the payload once on load, over the seeded state.
+  useEffect(() => {
+    const scan = new URLSearchParams(window.location.search).get("scan");
+    if (!scan) return;
+    const intent = classifyScan(scan);
+    const s = useStudio.getState();
+    s.setKind(intent.kind);
+    s.patchPayload(intent);
+    toast.success("Scanned code loaded — make it yours");
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   // Admin-picked opening look: applied ONCE per session, and only over the
   // seeded default view — a visitor who already started designing is never
