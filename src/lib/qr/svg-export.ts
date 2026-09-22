@@ -2,6 +2,7 @@ import { QrCodeDataType } from "uqr";
 import type { EncodedQr } from "./encode";
 import type { EyeShape, ModuleShape, QrStyle } from "./types";
 
+
 function roundedRectPath(
   x: number,
   y: number,
@@ -93,6 +94,10 @@ export function exportQrSvg(qr: EncodedQr, style: QrStyle, viewBoxSize = 1000): 
       case "dots":
       case "bubbles":
         return `M ${cx} ${cy - r * 0.9} a ${r * 0.9} ${r * 0.9} 0 1 0 0.001 0 Z`;
+      case "hbar":
+        return roundedRectPath(x, y + s * 0.22, s, s * 0.56, s * 0.2, s * 0.2, s * 0.2, s * 0.2);
+      case "vbar":
+        return roundedRectPath(x + s * 0.22, y, s * 0.56, s, s * 0.2, s * 0.2, s * 0.2, s * 0.2);
       case "diamond":
         return `M ${cx} ${y} L ${x + s} ${cy} L ${cx} ${y + s} L ${x} ${cy} Z`;
       case "classy":
@@ -197,3 +202,104 @@ export function downloadSvg(svgString: string, filename = "qrwho-vector.svg") {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
+
+/* ------------------------------------------------------------------ *
+ * ART QR STYLE SYSTEM — vector export
+ *
+ * The SVG walks the exact same `ArtPlan` the canvas painter and the offline
+ * validator use, so the vector download is the same design as the PNG — not a
+ * parallel approximation of it.
+ * ------------------------------------------------------------------ */
+
+import { getArtDirection } from "./art-directions";
+import { buildArtPlan, type ArtPlan, type FillSpec, type Paint } from "./art/art-plan";
+import { shapePrim, type Prim } from "./art/geometry";
+
+function num(n: number): string {
+  return Number(n.toFixed(3)).toString();
+}
+
+function primToPath(prim: Prim, k: number): string {
+  if (prim.kind === "circle") {
+    const rx = prim.rx * k;
+    const ry = prim.ry * k;
+    const cx = prim.cx * k;
+    const cy = prim.cy * k;
+    return `M ${num(cx - rx)} ${num(cy)} a ${num(rx)} ${num(ry)} 0 1 0 ${num(rx * 2)} 0 a ${num(rx)} ${num(ry)} 0 1 0 ${num(-rx * 2)} 0 Z`;
+  }
+  if (prim.kind === "poly") {
+    const pts = prim.pts;
+    let d = `M ${num(pts[0]! * k)} ${num(pts[1]! * k)}`;
+    for (let i = 2; i < pts.length; i += 2) d += ` L ${num(pts[i]! * k)} ${num(pts[i + 1]! * k)}`;
+    return `${d} Z`;
+  }
+  const x = prim.x * k;
+  const y = prim.y * k;
+  const w = prim.w * k;
+  const h = prim.h * k;
+  return roundedRectPath(x, y, w, h, prim.r[0] * k, prim.r[1] * k, prim.r[2] * k, prim.r[3] * k);
+}
+
+function gradientDef(id: string, fill: FillSpec, plan: ArtPlan, k: number): string {
+  const stops = fill.stops
+    .map((s, i) => {
+      const off = fill.stops.length === 1 ? 0 : (i / (fill.stops.length - 1)) * 100;
+      return `<stop offset="${num(off)}%" stop-color="${s}"/>`;
+    })
+    .join("");
+  const o = plan.origin * k;
+  const size = plan.modules * plan.cell * k;
+  if (fill.kind === "radial") {
+    return `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${num(o + size / 2)}" cy="${num(o + size / 2)}" r="${num(size * 0.72)}">${stops}</radialGradient>`;
+  }
+  const x2 = fill.axis === "y" ? o : o + size;
+  const y2 = fill.axis === "x" ? o : o + size;
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${num(o)}" y1="${num(o)}" x2="${num(x2)}" y2="${num(y2)}">${stops}</linearGradient>`;
+}
+
+/** Vector export for a styled (art-direction) QR. Returns null if not styled. */
+export function exportArtDirectionSvg(
+  qr: EncodedQr,
+  style: QrStyle,
+  viewBoxSize = 1000,
+): string | null {
+  const direction = getArtDirection(style.artDirection);
+  if (!direction) return null;
+  const plan = buildArtPlan({
+    qr,
+    style,
+    direction,
+    px: viewBoxSize,
+    relax: style.artRelax ?? 0,
+    cameraSafe: Boolean(style.artCameraSafe),
+  });
+  const k = 1; // plan is already built at viewBox size
+  const defs: string[] = [];
+  const gradIds = new Map<string, string>();
+  const body: string[] = [];
+
+  for (const paint of plan.paints) {
+    let fillRef: string;
+    if (paint.fill.kind === "solid") {
+      fillRef = paint.fill.stops[0]!;
+    } else {
+      const key = `${paint.fill.kind}:${paint.fill.axis ?? ""}:${paint.fill.stops.join(",")}`;
+      let id = gradIds.get(key);
+      if (!id) {
+        id = `art-grad-${gradIds.size}`;
+        gradIds.set(key, id);
+        defs.push(gradientDef(id, paint.fill, plan, k));
+      }
+      fillRef = `url(#${id})`;
+    }
+    body.push(`<path d="${primToPath(shapePrim(paint), k)}" fill="${fillRef}"/>`);
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" width="${viewBoxSize}" height="${viewBoxSize}">
+  ${defs.length ? `<defs>${defs.join("")}</defs>` : ""}
+  ${body.join("\n  ")}
+</svg>`;
+}
+
+export type { Paint };

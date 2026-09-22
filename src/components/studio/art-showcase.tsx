@@ -162,10 +162,14 @@ const FAQS = [
   },
 ];
 
-export function ArtShowcase() {
+export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
   const applyPreset = useStudio((s) => s.applyPreset);
 
   const handleApply = (id: string) => {
+    if (onTry) {
+      onTry(id);
+      return;
+    }
     applyPreset(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -359,6 +363,10 @@ export function ArtShowcase() {
             <span>100% Free & Open</span>
             <span>·</span>
             <span>Error Correction ISO/IEC 18004</span>
+            <span>·</span>
+            <a href="/lab" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Weaver lab
+            </a>
           </div>
         </footer>
       </div>

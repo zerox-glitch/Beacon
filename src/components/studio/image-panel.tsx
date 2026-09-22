@@ -1,7 +1,11 @@
-import { ImagePlus, Sliders, X } from "lucide-react";
-import { useRef } from "react";
+import { ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { analyzeImage, smartArtPatch } from "@/lib/qr/art/analyzer";
+import { WEAVE_PRESETS } from "@/lib/qr/art/weave-presets";
+import { loadImage } from "@/lib/qr/render";
 import { IMAGE_MODES } from "@/lib/qr/types";
 import { SAMPLE_IMAGES } from "@/lib/qr/presets";
 import { cn } from "@/lib/utils";
@@ -12,6 +16,8 @@ function readFile(file: File, onUrl: (url: string) => void) {
   onUrl(url);
 }
 
+const WEAVE_MODES = IMAGE_MODES.filter((m) => m.id !== "logo");
+
 export function ImagePanel() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
@@ -21,12 +27,32 @@ export function ImagePanel() {
   const patchStyle = useStudio((s) => s.patchStyle);
   const artRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+  const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
+  const strength = style.artisticStrength ?? 0.42;
+  const smartArt = useStudio((s) => s.smartArt);
+  const setSmartArt = useStudio((s) => s.setSmartArt);
+
+  useEffect(() => {
+    if (!smartArt || !imageUrl) return;
+    let cancelled = false;
+    loadImage(imageUrl)
+      .then((img) => {
+        if (cancelled) return;
+        const suggestion = smartArtPatch(analyzeImage(img));
+        useStudio.getState().patchStyle(suggestion.patch);
+      })
+      .catch(() => {
+        /* keep current knobs */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [smartArt, imageUrl]);
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Upload Box */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Upload Custom Image</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Upload a picture</p>
         <button
           type="button"
           onClick={() => artRef.current?.click()}
@@ -57,7 +83,9 @@ export function ImagePanel() {
           <span className="text-sm font-medium text-fg">
             {imageUrl ? "Click to replace photo" : "Drop a picture or browse"}
           </span>
-          <span className="text-xs text-muted">Blends your image into a working, scannable QR code</span>
+          <span className="text-xs text-muted">
+            Woven into the QR in this browser — no upload, no AI models.
+          </span>
         </button>
         <input
           ref={artRef}
@@ -84,19 +112,15 @@ export function ImagePanel() {
         )}
       </div>
 
-      {/* Preset Sample Gallery */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try sample pictures</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try a sample</p>
         <div className="grid grid-cols-6 gap-2">
           {SAMPLE_IMAGES.map((s) => (
             <button
               key={s.id}
               type="button"
               title={s.name}
-              onClick={() => {
-                setImageUrl(s.src);
-                if (style.imageMode === "none") patchStyle({ imageMode: "paint" });
-              }}
+              onClick={() => setImageUrl(s.src)}
               className={cn(
                 "aspect-square overflow-hidden rounded-lg border transition-all active:scale-95",
                 imageUrl === s.src ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
@@ -108,11 +132,10 @@ export function ImagePanel() {
         </div>
       </div>
 
-      {/* Picture Treatment Modes */}
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Picture Treatment Mode</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {IMAGE_MODES.map((m) => (
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {WEAVE_MODES.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -120,7 +143,7 @@ export function ImagePanel() {
               disabled={!imageUrl && m.id !== "none"}
               onClick={() => patchStyle({ imageMode: m.id })}
               className={cn(
-                "h-11 rounded-md border text-xs font-medium transition disabled:opacity-40 active:scale-95",
+                "h-11 rounded-md border px-2 text-xs font-medium transition disabled:opacity-40 active:scale-95",
                 style.imageMode === m.id
                   ? "border-accent bg-accent text-accent-fg font-semibold shadow-sm"
                   : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
@@ -130,87 +153,136 @@ export function ImagePanel() {
             </button>
           ))}
         </div>
+        <p className="mt-1.5 text-[11px] leading-snug text-subtle">
+          {IMAGE_MODES.find((m) => m.id === style.imageMode)?.hint}
+        </p>
       </div>
 
-      {/* Picture Tuning Controls (ALWAYS VISIBLE & FUNCTIONAL WHEN IMAGE LOADED) */}
-      {imageUrl && style.imageMode !== "none" && (
-        <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
-          <p className="text-xs font-semibold tracking-wide text-fg flex items-center gap-1.5">
-            <Sliders className="size-3.5 text-ok" />
-            <span>Picture Tuning & Contrast</span>
-          </p>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Photo Opacity / Fade</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.imageOpacity * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.1}
-              max={1.0}
-              step={0.01}
-              value={[style.imageOpacity]}
-              onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.85 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Controls how much the photo shines through.</p>
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Image Contrast</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.contrast * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.3}
-              max={1.0}
-              step={0.01}
-              value={[style.contrast]}
-              onValueChange={([v]) => patchStyle({ contrast: v ?? 0.72 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Sharpens edges for instant camera detection.</p>
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Dot Weight</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">
-                {Math.round(style.dotScale * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.25}
-              max={0.9}
-              step={0.01}
-              value={[style.dotScale]}
-              onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.56 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Thickness of the data dots over the picture.</p>
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Grid Detail (Version)</Label>
-              <span className="text-xs font-medium tabular-nums text-fg">{style.minVersion}</span>
-            </div>
-            <Slider
-              min={2}
-              max={12}
-              step={1}
-              value={[style.minVersion]}
-              onValueChange={([v]) => patchStyle({ minVersion: v ?? 6 })}
-            />
-            <p className="mt-1 text-[11px] text-muted">Higher grid density preserves finer photo details.</p>
+      {imageUrl && (
+        <div>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave look</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {WEAVE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                title={p.hint}
+                onClick={() => patchStyle(p.patch)}
+                className="h-10 rounded-md border border-border bg-elevated px-1 text-[10px] font-semibold text-muted transition hover:border-border-strong hover:text-fg active:scale-95"
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Center Logo */}
+      {imageUrl && (
+        <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-ok" />
+            Smart Art
+          </span>
+          <Switch checked={smartArt} onCheckedChange={setSmartArt} />
+        </label>
+      )}
+      {smartArt && imageUrl && (
+        <p className="text-[11px] leading-snug text-subtle">
+          Reads luma, contrast, edges and color in this browser, then picks a weave. Not a model.
+        </p>
+      )}
+
+      {pictured && (
+        <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
+          <p className="text-xs font-semibold tracking-wide text-fg flex items-center gap-1.5">
+            <Sliders className="size-3.5 text-ok" />
+            <span>Artistic strength</span>
+          </p>
+          <div>
+            <div className="mb-1 flex items-center justify-between text-[11px] font-semibold tracking-wide">
+              <span className="text-ok">Safe</span>
+              <span className="tabular-nums text-fg">{Math.round(strength * 100)}%</span>
+              <span className="text-warn">Artistic</span>
+            </div>
+            <Slider
+              min={0}
+              max={1}
+              step={0.01}
+              value={[strength]}
+              onValueChange={([v]) => patchStyle({ artisticStrength: v ?? 0.42 })}
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              Safe uses a coarser lattice and a larger locked center. Artistic uses 5×5 / 7×7
+              submodules so the photograph reads from a distance.
+            </p>
+          </div>
+
+          <details className="rounded-lg border border-border bg-surface/50 p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-fg">Advanced</summary>
+            <div className="mt-3 grid gap-4">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Contrast</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.contrast * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.3}
+                  max={1.0}
+                  step={0.01}
+                  value={[style.contrast]}
+                  onValueChange={([v]) => patchStyle({ contrast: v ?? 0.82 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Module scale</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.dotScale * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.55}
+                  max={0.96}
+                  step={0.01}
+                  value={[Math.max(0.55, style.dotScale)]}
+                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.9 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Quiet zone</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">{style.quietZone}</span>
+                </div>
+                <Slider
+                  min={2}
+                  max={6}
+                  step={1}
+                  value={[style.quietZone]}
+                  onValueChange={([v]) => patchStyle({ quietZone: v ?? 3 })}
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Grid detail</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">{style.minVersion}</span>
+                </div>
+                <Slider
+                  min={5}
+                  max={12}
+                  step={1}
+                  value={[style.minVersion]}
+                  onValueChange={([v]) => patchStyle({ minVersion: v ?? 7 })}
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+
       <div>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center Logo / Icon</p>
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Center logo</p>
         <div className="flex items-center gap-3">
           <button
             type="button"

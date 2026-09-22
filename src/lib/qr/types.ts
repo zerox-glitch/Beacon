@@ -8,7 +8,13 @@ export type PayloadKind =
   | "wifi"
   | "geo"
   | "vcard"
-  | "event";
+  | "event"
+  | "pdf"
+  | "menu"
+  | "review"
+  | "payment"
+  | "app"
+  | "social";
 
 export type ModuleShape =
   | "square"
@@ -28,7 +34,9 @@ export type ModuleShape =
   | "cross"
   | "diag"
   | "radial"
-  | "bubbles";
+  | "bubbles"
+  | "hbar"
+  | "vbar";
 
 export type EyeShape =
   | "square"
@@ -42,9 +50,19 @@ export type EyeShape =
   | "target"
   | "ticks";
 
-export type GradientType = "none" | "linear" | "radial" | "diagonal";
+export type GradientType = "none" | "linear" | "radial" | "diagonal" | "image";
 
-export type ImageMode = "none" | "logo" | "backdrop" | "mosaic" | "halftone" | "paint";
+export type ImageMode =
+  | "none"
+  | "logo"
+  | "backdrop"
+  | "mosaic"
+  | "halftone"
+  | "paint"
+  | "duotone"
+  | "mono";
+
+export type QrEffect = "none" | "shadow" | "glow" | "outline" | "emboss" | "extrude";
 
 export type EccLevel = "L" | "M" | "Q" | "H";
 
@@ -68,11 +86,29 @@ export interface QrStyle {
   minVersion: number;
   ecc: EccLevel;
   transparentBg: boolean;
+  /** 0 = SAFE (strong bits), 1 = ARTISTIC (more photo in each module). */
+  artisticStrength: number;
+  effect: QrEffect;
+  /** -1 = automatic mask. */
+  maskPattern: number;
   /** Optional secondary "pop" modules drawn in accentColor (e.g. red X over blue dashes). */
   accentShape?: ModuleShape;
   accentColor?: string;
   /** When true the accent dots decorate the *light* cells instead of replacing dark modules. */
   accentOnLight?: boolean;
+  /** Photo QR kernel candidate; set by Fix scan escalation (photo engine). */
+  photoKernel?: "detail" | "structure" | "balanced" | "camera-safe" | "robust";
+  /**
+   * Art QR Style System direction (src/lib/qr/art-directions.ts). When set,
+   * the renderer paints a deterministic design system instead of a flat
+   * module loop — and `artRelax` records how far the relax ladder had to walk
+   * to keep it camera-scannable.
+   */
+  artDirection?: string;
+  /** Relax-ladder rung actually rendered (0 = the direction as authored). */
+  artRelax?: number;
+  /** Force the direction's camera-safe fallback (last relax rung). */
+  artCameraSafe?: boolean;
 }
 
 export interface Payload {
@@ -110,6 +146,10 @@ export interface Preset {
   name: string;
   category: string;
   featured?: boolean;
+  /** One-line design note shown in the gallery (art directions). */
+  blurb?: string;
+  /** When set, applying this preset loads this picture into the QR. */
+  artUrl?: string;
   style: QrStyle;
 }
 
@@ -132,6 +172,8 @@ export const MODULE_SHAPES: { id: ModuleShape; label: string }[] = [
   { id: "diag", label: "Streak" },
   { id: "radial", label: "Burst" },
   { id: "bubbles", label: "Bubbles" },
+  { id: "hbar", label: "H-bars" },
+  { id: "vbar", label: "V-bars" },
 ];
 
 export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
@@ -148,18 +190,28 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 ];
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
-  { id: "paint", label: "Picture", hint: "Image shows through; dots carry the code" },
-  { id: "mosaic", label: "Mosaic", hint: "Each tile samples the photo" },
-  { id: "halftone", label: "Halftone", hint: "Dots sized from the photo" },
-  { id: "backdrop", label: "Backdrop", hint: "Photo sits behind the mark" },
+  { id: "paint", label: "Photo QR", hint: "The photograph is built from the QR. Each module’s center is the bit; the rest is a photo halftone." },
+  { id: "mosaic", label: "Color blend", hint: "Each module is one contrast-normalized color from the photo" },
+  { id: "halftone", label: "Halftone", hint: "Same lattice in black ink on paper — newspaper dots, not colored rings" },
+  { id: "duotone", label: "Duotone", hint: "Two inks sampled from the photo, same center-locked weave" },
+  { id: "mono", label: "Mono ink", hint: "One ink on paper. Density follows the picture" },
   { id: "logo", label: "Logo", hint: "Center emblem only" },
   { id: "none", label: "None", hint: "Style only, no photo" },
+];
+
+export const QR_EFFECTS: { id: QrEffect; label: string }[] = [
+  { id: "none", label: "None" },
+  { id: "shadow", label: "Shadow" },
+  { id: "outline", label: "Outline" },
+  { id: "emboss", label: "Emboss" },
+  { id: "extrude", label: "3D" },
+  { id: "glow", label: "Glow" },
 ];
 
 export function emptyPayload(): Payload {
   return {
     kind: "url",
-    url: "https://grok.com",
+    url: "https://qrwho.vercel.app",
     text: "",
     phone: "",
     smsBody: "",
@@ -188,24 +240,160 @@ export function emptyPayload(): Payload {
   };
 }
 
+export const DEFAULT_ART_URL = "/samples/mountain.jpg";
+
 export const DEFAULT_STYLE: QrStyle = {
-  moduleShape: "fluid",
-  eyeShape: "rounded",
-  ballShape: "rounded",
-  fg: "#141412",
-  bg: "#f4f1ea",
-  eyeColor: "#141412",
-  ballColor: "#141412",
+  moduleShape: "square",
+  eyeShape: "extra-rounded",
+  ballShape: "extra-rounded",
+  fg: "#0f172a",
+  bg: "#f4efe6",
+  eyeColor: "#0f172a",
+  ballColor: "#0f172a",
   gradientType: "none",
-  gradientTo: "#3a3a36",
-  quietZone: 2,
-  moduleGap: 0,
+  gradientTo: "#1e293b",
+  quietZone: 3,
+  moduleGap: 0.02,
   imageMode: "paint",
-  imageOpacity: 0.92,
-  dotScale: 0.56,
-  contrast: 0.72,
+  imageOpacity: 0.86,
+  dotScale: 0.68,
+  contrast: 0.84,
   logoScale: 0.22,
   minVersion: 6,
   ecc: "H",
   transparentBg: false,
+  artisticStrength: 0.5,
+  effect: "none",
+  maskPattern: -1,
 };
+
+/* ------------------------------------------------------------------ *
+ * Art QR Style System — vocabulary
+ *
+ * An "art direction" is a deterministic design system, not a palette swap.
+ * Each one names at least five visual dimensions: module shape + corner
+ * radius, grouping geometry, distortion, gradient behaviour, accent
+ * frequency, finder styling and timing/alignment styling. Everything is
+ * data (see src/lib/qr/art-directions.ts) so the renderer, the relax
+ * ladder and the validation harness all read the same definition.
+ * ------------------------------------------------------------------ */
+
+/** Per-cell module geometry. `pill`/`petal`/`pebble`/`gem`/`facet` are art-system additions. */
+export type ArtShape =
+  | ModuleShape
+  | "pill"
+  | "petal"
+  | "pebble"
+  | "gem"
+  | "facet"
+  | "capsule";
+
+/** How dark modules join into larger, camera-survivable shapes. */
+export type ArtGeometry =
+  | "single"
+  | "runs-h"
+  | "runs-v"
+  | "runs-both"
+  | "blocks"
+  | "components"
+  | "traces";
+
+/** Medium-scale distortion. Never sub-module noise. */
+export type ArtDistortion = "none" | "jitter" | "taper" | "wobble" | "bands" | "steps";
+
+export type ArtGradient =
+  | "none"
+  | "linear-x"
+  | "linear-y"
+  | "diagonal"
+  | "radial"
+  | "ramp"
+  | "spectrum"
+  | "bands"
+  | "split";
+
+export type ArtFinder =
+  | "solid"
+  | "ringed"
+  | "bracket"
+  | "chamfer"
+  | "diamond"
+  | "circle"
+  | "floral"
+  | "circuit"
+  | "gothic"
+  | "deco"
+  | "soft"
+  | "ring8"
+  | "halo"
+  | "cut";
+
+export type ArtTiming = "solid" | "pill" | "dot";
+
+export type ArtAccent = "none" | "fleck" | "spark" | "ring" | "tick";
+
+/**
+ * Rendered size budget. `ppm` = finalRenderedPixels / QRModuleCount.
+ * Rich allows full decoration; lean is the camera-safe simplification the
+ * renderer falls back to automatically as modules get small.
+ */
+export type ArtDetailLevel = "rich" | "standard" | "lean";
+
+export interface ArtLodTweaks {
+  geometry?: ArtGeometry;
+  distortion?: ArtDistortion;
+  accent?: ArtAccent;
+  gradient?: ArtGradient;
+  shape?: ArtShape;
+  radius?: number;
+  gap?: number;
+  mass?: number;
+  /** Extra luminance separation applied at this level (0 = none). */
+  contrastBoost?: number;
+}
+
+export interface ArtDirection {
+  id: string;
+  name: string;
+  category: string;
+  /** One line shown in the gallery — what makes this direction itself. */
+  blurb: string;
+  /** Dark-module colour stops (stop[0] is the base ink). */
+  stops: string[];
+  bg: string;
+  /** Finder ring / ball colours when they differ from the ink ramp. */
+  eye?: string;
+  ball?: string;
+  accent?: string;
+  shape: ArtShape;
+  /** Corner radius as a fraction of the module (0 = hard, 0.5 = round). */
+  radius: number;
+  geometry: ArtGeometry;
+  distortion: ArtDistortion;
+  gradient: ArtGradient;
+  /** Extra stops for spectrum/ramp gradients. */
+  ramp?: string[];
+  finder: ArtFinder;
+  timing: ArtTiming;
+  alignment: ArtTiming | "ring";
+  accentMark: ArtAccent;
+  /** 0–1: how often the accent appears. */
+  accentFreq: number;
+  accentOnLight?: boolean;
+  /** Filled-area target for a dark module (QR mass). Clamped by the renderer. */
+  mass: number;
+  /** Module inset as a fraction of the cell. */
+  gap: number;
+  /** Artistic strength the direction is safe at (0–1). */
+  strength: number;
+  quietZone: number;
+  /** Minimum luminance separation this direction is allowed to render at. */
+  minSeparation?: number;
+  lod?: Partial<Record<ArtDetailLevel, ArtLodTweaks>>;
+  /** Deterministic fallback used when validation cannot pass otherwise. */
+  cameraSafe?: ArtLodTweaks;
+}
+
+export interface QrStyleArtRef {
+  directionId: string;
+}

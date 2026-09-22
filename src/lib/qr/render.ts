@@ -1,8 +1,40 @@
 import { QrCodeDataType } from "uqr";
+import { renderArtisticQr } from "./art-engine";
+import { getArtDirection } from "./art-directions";
+import { buildArtPlan } from "./art/art-plan";
+import { paintArtPlan } from "./art/paint";
 import type { EncodedQr } from "./encode";
 import type { EyeShape, ModuleShape, QrStyle } from "./types";
 
 export const imageCache = new Map<string, HTMLImageElement>();
+
+const MAX_IMAGE_EDGE = 1600;
+
+function downsampleImage(img: HTMLImageElement): Promise<HTMLImageElement> {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const edge = Math.max(w, h);
+  if (edge <= MAX_IMAGE_EDGE) return Promise.resolve(img);
+  const scale = MAX_IMAGE_EDGE / edge;
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w * scale));
+  c.height = Math.max(1, Math.round(h * scale));
+  const cx = c.getContext("2d");
+  if (!cx) return Promise.resolve(img);
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = "high";
+  cx.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((resolve) => {
+    const out = new Image();
+    out.onload = () => resolve(out);
+    out.onerror = () => resolve(img);
+    try {
+      out.src = c.toDataURL("image/jpeg", 0.9);
+    } catch {
+      resolve(img);
+    }
+  });
+}
 
 export function loadImage(url: string): Promise<HTMLImageElement> {
   const hit = imageCache.get(url);
@@ -11,8 +43,15 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      imageCache.set(url, img);
-      resolve(img);
+      downsampleImage(img)
+        .then((ready) => {
+          imageCache.set(url, ready);
+          resolve(ready);
+        })
+        .catch(() => {
+          imageCache.set(url, img);
+          resolve(img);
+        });
     };
     img.onerror = () => reject(new Error("Could not load image"));
     img.src = url;
@@ -177,6 +216,12 @@ function drawModuleShape(
       ctx.beginPath();
       ctx.arc(cx, cy, s * 0.48, 0, Math.PI * 2);
       ctx.fill();
+      return;
+    case "hbar":
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, 0);
+      return;
+    case "vbar":
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, Math.PI / 2);
       return;
     case "diamond":
       ctx.beginPath();
@@ -385,38 +430,24 @@ function drawEye(
   }
 }
 
-function sampleGrid(
-  img: HTMLImageElement,
-  size: number,
-): { data: Uint8ClampedArray; canvas: HTMLCanvasElement } {
-  const c = document.createElement("canvas");
-  c.width = size;
-  c.height = size;
-  const cx = c.getContext("2d", { willReadFrequently: true });
-  if (!cx) throw new Error("canvas");
-  coverDraw(cx, img, 0, 0, size, size, img.naturalWidth, img.naturalHeight);
-  return { data: cx.getImageData(0, 0, size, size).data, canvas: c };
+function clamp(n: number, a: number, b: number): number {
+  return Math.min(b, Math.max(a, n));
 }
 
-function lumAt(data: Uint8ClampedArray, size: number, x: number, y: number): number {
-  const i = (y * size + x) * 4;
-  return (data[i]! * 0.2126 + data[i + 1]! * 0.7152 + data[i + 2]! * 0.0722) / 255;
+function luma(r: number, g: number, b: number): number {
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 }
 
-function rgbAt(data: Uint8ClampedArray, size: number, x: number, y: number): [number, number, number] {
-  const i = (y * size + x) * 4;
-  return [data[i]!, data[i + 1]!, data[i + 2]!];
+function parseHex(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1]!, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function mixToward(r: number, g: number, b: number, dark: boolean, amount: number): string {
-  const t = Math.min(1, Math.max(0, amount));
-  if (dark) {
-    return `rgb(${Math.round(r * (1 - t))},${Math.round(g * (1 - t))},${Math.round(b * (1 - t))})`;
-  }
-  const rr = Math.round(r + (255 - r) * t);
-  const gg = Math.round(g + (255 - g) * t);
-  const bb = Math.round(b + (255 - b) * t);
-  return `rgb(${rr},${gg},${bb})`;
+/** Tint a photo-derived rgb() toward the preset foreground so style + picture mix. */
+function isFinderCell(x: number, y: number, size: number): boolean {
+  return (x < 8 && y < 8) || (x >= size - 8 && y < 8) || (x < 8 && y >= size - 8);
 }
 
 function makeFill(
@@ -427,7 +458,7 @@ function makeFill(
   w: number,
   h: number,
 ): string | CanvasGradient {
-  if (style.gradientType === "none") return style.fg;
+  if (style.gradientType === "none" || style.gradientType === "image") return style.fg;
   if (style.gradientType === "radial") {
     const g = ctx.createRadialGradient(x0 + w / 2, y0 + h / 2, 0, x0 + w / 2, y0 + h / 2, w * 0.72);
     g.addColorStop(0, style.fg);
@@ -451,8 +482,8 @@ export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRend
   const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
   canvas.width = Math.round(px * dpr);
   canvas.height = Math.round(px * dpr);
-  canvas.style.width = `${px}px`;
-  canvas.style.height = `${px}px`;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas is not available");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -470,6 +501,7 @@ export function renderQr(
     art?: HTMLImageElement | null;
     logo?: HTMLImageElement | null;
     exportScale?: boolean;
+    kernelBoost?: number;
   },
 ) {
   const px = opts.pixelSize;
@@ -477,8 +509,10 @@ export function renderQr(
     ? (() => {
         canvas.width = px;
         canvas.height = px;
-        canvas.style.width = `${px}px`;
-        canvas.style.height = `${px}px`;
+        // Bitmap stays scan-sized; CSS 100% lets the on-screen frame show the
+        // whole code. Inline 512px here used to clip the preview to one corner.
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
         const c = canvas.getContext("2d", { willReadFrequently: true });
         if (!c) throw new Error("Canvas is not available");
         c.setTransform(1, 0, 0, 1, 0, 0);
@@ -488,240 +522,162 @@ export function renderQr(
       })()
     : prepareCanvas(canvas, px);
 
-  const qz = Math.max(0, Math.min(8, style.quietZone));
+  /* ---- ART QR STYLE SYSTEM: a direction paints the whole frame itself ---- */
+  const direction = getArtDirection(style.artDirection);
+  if (direction) {
+    const artCtx = opts.exportScale
+      ? (() => {
+          canvas.width = px;
+          canvas.height = px;
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
+          const c = canvas.getContext("2d", { willReadFrequently: true });
+          if (!c) throw new Error("Canvas is not available");
+          c.setTransform(1, 0, 0, 1, 0, 0);
+          c.imageSmoothingEnabled = true;
+          c.imageSmoothingQuality = "high";
+          return c;
+        })()
+      : prepareCanvas(canvas, px);
+    const plan = buildArtPlan({
+      qr,
+      style,
+      direction,
+      px,
+      relax: style.artRelax ?? 0,
+      cameraSafe: Boolean(style.artCameraSafe),
+    });
+    paintArtPlan(artCtx, plan);
+    return;
+  }
+
+  const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
+  const qz = pictured
+    ? Math.max(2, Math.min(8, style.quietZone))
+    : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
   const cell = px / total;
   const origin = qz * cell;
   const body = qr.size * cell;
-  const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
-  const bg = style.transparentBg ? "rgba(0,0,0,0)" : style.bg;
+  const mode = pictured ? style.imageMode : "none";
+
+  const bgRgb = parseHex(style.bg);
+  const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  const paper = pictured && bgLum < 0.42 ? "#f3eee6" : style.bg;
 
   ctx.clearRect(0, 0, px, px);
   if (!style.transparentBg) {
-    ctx.fillStyle = style.bg;
+    ctx.fillStyle = paper;
     ctx.fillRect(0, 0, px, px);
-  }
-
-  // Draw background photo layer
-  if (pictured && opts.art && (style.imageMode === "paint" || style.imageMode === "backdrop")) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(origin, origin, body, body);
-    ctx.clip();
-    ctx.globalAlpha = Math.max(0.05, Math.min(1, style.imageOpacity));
-    const contrastVal = Math.max(0.2, Math.min(2, style.contrast * 1.5));
-    const brightVal = Math.max(0.5, Math.min(1.8, 1 + (style.contrast - 0.7) * 0.4));
-    ctx.filter = `contrast(${contrastVal}) brightness(${brightVal})`;
-    coverDraw(
-      ctx,
-      opts.art,
-      origin,
-      origin,
-      body,
-      body,
-      opts.art.naturalWidth,
-      opts.art.naturalHeight,
-    );
-    ctx.restore();
-  }
-
-  const sampled =
-    pictured && opts.art
-      ? sampleGrid(opts.art, qr.size)
-      : null;
-
-  if (style.imageMode === "mosaic" && sampled && opts.art) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(origin, origin, body, body);
-    ctx.clip();
-    coverDraw(
-      ctx,
-      sampled.canvas,
-      origin,
-      origin,
-      body,
-      body,
-      qr.size,
-      qr.size,
-    );
-    ctx.restore();
   }
 
   const fill = makeFill(ctx, style, origin, origin, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
-  // Render QR matrix modules
-  for (let y = 0; y < qr.size; y++) {
-    for (let x = 0; x < qr.size; x++) {
-      const type = qr.types[y]![x]!;
-      // Skip finder pattern 8x8 regions (handled cleanly with guaranteed contrast below)
-      if (
-        (x < 8 && y < 8) ||
-        (x >= qr.size - 8 && y < 8) ||
-        (x < 8 && y >= qr.size - 8)
-      ) {
-        continue;
-      }
+  if (
+    opts.art &&
+    (mode === "paint" ||
+      mode === "mosaic" ||
+      mode === "halftone" ||
+      mode === "backdrop" ||
+      mode === "duotone" ||
+      mode === "mono")
+  ) {
+    renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
+  } else {
+    for (let y = 0; y < qr.size; y++) {
+      for (let x = 0; x < qr.size; x++) {
+        if (isFinderCell(x, y, qr.size)) continue;
 
-      const dark = isDark(qr, x, y);
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
-      const pad = cell * gap * 0.5;
+        const type = qr.types[y]![x]!;
+        const dark = isDark(qr, x, y);
+        const px0 = origin + x * cell;
+        const py0 = origin + y * cell;
+        const pad = cell * gap * 0.5;
+        const protectedPattern =
+          type === QrCodeDataType.Function ||
+          type === QrCodeDataType.Timing ||
+          type === QrCodeDataType.Alignment;
+        const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
 
-      // Protected structural patterns (Timing, Alignment, Function)
-      const protectedPattern =
-        type === QrCodeDataType.Function ||
-        type === QrCodeDataType.Timing ||
-        type === QrCodeDataType.Alignment;
+        if (protectedPattern) {
+          ctx.fillStyle = dark ? fill : paper;
+          ctx.fillRect(px0, py0, cell, cell);
+          continue;
+        }
 
-      if (protectedPattern) {
-        ctx.fillStyle = dark ? fill : style.bg;
-        ctx.fillRect(px0, py0, cell, cell);
-        continue;
-      }
+        if (!dark) {
+          if (style.accentShape && style.accentColor && style.accentOnLight) {
+            ctx.fillStyle = style.accentColor;
+            const ds = cell * 0.3;
+            drawModuleShape(ctx, px0 + (cell - ds) / 2, py0 + (cell - ds) / 2, ds, style.accentShape, undefined, grid);
+          }
+          continue;
+        }
 
-      const grid: ModuleGrid = { gx: x, gy: y, size: qr.size };
-      const L = sampled ? lumAt(sampled.data, qr.size, x, y) : (dark ? 0 : 1);
-
-      if (style.imageMode === "mosaic" && sampled) {
-        const [r, g, b] = rgbAt(sampled.data, qr.size, x, y);
-        ctx.fillStyle = mixToward(r, g, b, dark, style.contrast);
-        const ms = cell - pad * 2;
+        const accent =
+          style.accentShape && style.accentColor && !style.accentOnLight && cellHash(x, y) % 6 === 0;
+        ctx.fillStyle = accent ? style.accentColor! : fill;
+        const neighbors =
+          style.moduleShape === "fluid" && !accent
+            ? {
+                n: isDark(qr, x, y - 1),
+                e: isDark(qr, x + 1, y),
+                s: isDark(qr, x, y + 1),
+                w: isDark(qr, x - 1, y),
+              }
+            : undefined;
+        const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+        const mSize = (cell - pad * 2) * dotWeight;
+        const mOffset = (cell - mSize) / 2;
         drawModuleShape(
           ctx,
-          px0 + pad,
-          py0 + pad,
-          ms,
-          style.moduleShape,
-          {
-            n: isDark(qr, x, y - 1),
-            e: isDark(qr, x + 1, y),
-            s: isDark(qr, x, y + 1),
-            w: isDark(qr, x - 1, y),
-          },
+          px0 + mOffset,
+          py0 + mOffset,
+          mSize,
+          accent ? style.accentShape! : style.moduleShape,
+          neighbors,
           grid,
         );
-        continue;
       }
+    }
+  }
 
-      if (style.imageMode === "halftone" && sampled) {
-        const minR = dark ? cell * 0.26 : cell * 0.02;
-        const maxR = dark ? cell * 0.49 : cell * 0.16;
-        const radius = minR + (maxR - minR) * (1 - L);
-        ctx.fillStyle = dark ? fill : bg;
-        ctx.beginPath();
-        ctx.arc(px0 + cell / 2, py0 + cell / 2, Math.max(0.4, radius), 0, Math.PI * 2);
-        ctx.fill();
-        continue;
-      }
+  if (!pictured) {
+    const corners: [number, number][] = [
+      [0, 0],
+      [qr.size - 7, 0],
+      [0, qr.size - 7],
+    ];
 
-      if (style.imageMode === "paint" && opts.art) {
-        if (!dark) {
-          // AI Adaptive Light Module Wash: If background image is dark in this cell,
-          // wash the cell with style.bg so phone camera decoders reliably see a 0-bit
-          if (L < 0.72) {
-            ctx.fillStyle = style.bg;
-            ctx.fillRect(px0, py0, cell, cell);
-          }
-          // Optional faint light dot
-          const ds = cell * 0.26 * (1 - gap);
-          ctx.fillStyle = style.bg;
-          ctx.beginPath();
-          ctx.arc(px0 + cell / 2, py0 + cell / 2, ds / 2, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          // Dark module: solid dot with user-selected shape
-          const scale = Math.max(0.68, style.dotScale);
-          const ds = cell * scale * (1 - gap);
-          const dx = px0 + (cell - ds) / 2;
-          const dy = py0 + (cell - ds) / 2;
-          ctx.fillStyle = fill;
-          const markerShape: ModuleShape =
-            style.moduleShape === "fluid" || style.moduleShape === "classy" || style.moduleShape === "heart"
-              ? "dots"
-              : style.moduleShape;
-          drawModuleShape(ctx, dx, dy, ds, markerShape, undefined, grid);
-        }
-        continue;
-      }
-
-      if (!dark) {
-        if (style.accentShape && style.accentColor && style.accentOnLight) {
-          ctx.fillStyle = style.accentColor;
-          const ds = cell * 0.3;
-          drawModuleShape(ctx, px0 + (cell - ds) / 2, py0 + (cell - ds) / 2, ds, style.accentShape, undefined, grid);
-        }
-        continue;
-      }
-
-      const accent =
-        style.accentShape && style.accentColor && !style.accentOnLight && cellHash(x, y) % 6 === 0;
-      ctx.fillStyle = accent ? style.accentColor! : fill;
-      const neighbors =
-        style.moduleShape === "fluid" && !accent
-          ? {
-              n: isDark(qr, x, y - 1),
-              e: isDark(qr, x + 1, y),
-              s: isDark(qr, x, y + 1),
-              w: isDark(qr, x - 1, y),
-            }
-          : undefined;
-      const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
-      const mSize = (cell - pad * 2) * dotWeight;
-      const mOffset = (cell - mSize) / 2;
-      drawModuleShape(
+    for (const [ex, ey] of corners) {
+      const ox = origin + ex * cell;
+      const oy = origin + ey * cell;
+      const sepX = ex === 0 ? ox : ox - cell;
+      const sepY = ey === 0 ? oy : oy - cell;
+      ctx.fillStyle = paper;
+      ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
+      drawEye(
         ctx,
-        px0 + mOffset,
-        py0 + mOffset,
-        mSize,
-        accent ? style.accentShape! : style.moduleShape,
-        neighbors,
-        grid,
+        ox,
+        oy,
+        cell,
+        style.eyeShape,
+        style.ballShape,
+        style.eyeColor,
+        style.ballColor,
+        paper,
       );
     }
   }
 
-  // Draw 8x8 finder patterns + clean separator
-  const corners: [number, number][] = [
-    [0, 0],
-    [qr.size - 7, 0],
-    [0, qr.size - 7],
-  ];
-
-  for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
-
-    // Clear 8x8 area (7x7 finder pattern + 1-cell separator) with pure background color
-    const sepX = ex === 0 ? ox : ox - cell;
-    const sepY = ey === 0 ? oy : oy - cell;
-    const sepW = cell * 8;
-    const sepH = cell * 8;
-    ctx.fillStyle = style.bg;
-    ctx.fillRect(sepX, sepY, sepW, sepH);
-
-    drawEye(
-      ctx,
-      ox,
-      oy,
-      cell,
-      style.eyeShape,
-      style.ballShape,
-      style.eyeColor,
-      style.ballColor,
-      style.bg,
-    );
-  }
-
-  // Draw Center Logo
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
   if (logoImg) {
     const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
     const lx = origin + (body - logoSize) / 2;
     const ly = origin + (body - logoSize) / 2;
     const pad = logoSize * 0.12;
-    ctx.fillStyle = style.bg;
+    ctx.fillStyle = paper;
     roundedRect(
       ctx,
       lx - pad * 0.4,

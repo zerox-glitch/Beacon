@@ -1,6 +1,15 @@
 import { create } from "zustand";
-import { DEFAULT_STYLE, emptyPayload, type Payload, type PayloadKind, type QrStyle } from "@/lib/qr/types";
+import {
+  DEFAULT_ART_URL,
+  DEFAULT_STYLE,
+  emptyPayload,
+  type Payload,
+  type PayloadKind,
+  type QrStyle,
+} from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
+import type { FrameKind } from "@/lib/qr/finish";
+import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
 
 export interface HistoryItem {
   id: string;
@@ -10,9 +19,12 @@ export interface HistoryItem {
   style: QrStyle;
   imageUrl: string | null;
   thumb: string;
+  caption?: string;
+  frame?: FrameKind;
 }
 
 export type StageBgMood = "vibrant" | "cosmic" | "waves" | "minimal";
+export type StudioTab = "content" | "image" | "presets" | "design" | "library";
 
 interface StudioState {
   payload: Payload;
@@ -26,7 +38,13 @@ interface StudioState {
   scanOk: boolean | null;
   error: string | null;
   history: HistoryItem[];
-  mobileTab: "content" | "image" | "presets" | "design";
+  mobileTab: StudioTab;
+  caption: string;
+  frame: FrameKind;
+  useCase: UseCaseId | null;
+  lastFixNotes: string[];
+  smartArt: boolean;
+  rendering: boolean;
   setKind: (kind: PayloadKind) => void;
   patchPayload: (patch: Partial<Payload>) => void;
   patchStyle: (patch: Partial<QrStyle>) => void;
@@ -37,13 +55,21 @@ interface StudioState {
   setStageBg: (stageBg: StageBgMood) => void;
   setScan: (ok: boolean | null, text: string | null) => void;
   setError: (error: string | null) => void;
-  setMobileTab: (tab: StudioState["mobileTab"]) => void;
+  setMobileTab: (tab: StudioTab) => void;
+  setCaption: (caption: string) => void;
+  setFrame: (frame: FrameKind) => void;
+  applyUseCase: (id: UseCaseId) => void;
+  setFixNotes: (notes: string[]) => void;
+  setSmartArt: (smartArt: boolean) => void;
+  setRendering: (rendering: boolean) => void;
   pushHistory: (item: Omit<HistoryItem, "id" | "createdAt">) => void;
   loadHistoryItem: (id: string) => void;
+  deleteHistoryItem: (id: string) => void;
+  remixHistoryItem: (id: string) => void;
   hydrateHistory: () => void;
 }
 
-const HISTORY_KEY = "beacon-history-v1";
+const HISTORY_KEY = "qrwho-history-v1";
 
 function persist(history: HistoryItem[]) {
   try {
@@ -57,87 +83,107 @@ function persist(history: HistoryItem[]) {
   }
 }
 
-// Default initial state: Alpine Summit Peak AI Artwork
 export const useStudio = create<StudioState>((set, get) => ({
   payload: {
     ...emptyPayload(),
     url: "https://qrwho.vercel.app",
   },
-  style: {
-    ...DEFAULT_STYLE,
-    moduleShape: "dots",
-    eyeShape: "square",
-    ballShape: "square",
-    fg: "#0f172a",
-    bg: "#f8fafc",
-    eyeColor: "#0f172a",
-    ballColor: "#0f172a",
-    imageMode: "paint",
-    imageOpacity: 0.88,
-    contrast: 0.85,
-    dotScale: 0.72,
-    moduleGap: 0.02,
-    quietZone: 3,
-    ecc: "H",
-  },
-  imageUrl: "/samples/mountain.jpg",
+  style: { ...DEFAULT_STYLE },
+  imageUrl: DEFAULT_ART_URL,
   logoUrl: null,
   presetId: "art-alpine-summit",
   category: "Art",
-  stageBg: "vibrant",
+  stageBg: "cosmic",
   scanText: null,
   scanOk: null,
   error: null,
   history: [],
   mobileTab: "content",
-  setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind } })),
-  patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch } })),
+  caption: "",
+  frame: "none",
+  useCase: null,
+  lastFixNotes: [],
+  smartArt: false,
+  rendering: false,
+  setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind }, lastFixNotes: [] })),
+  patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch }, lastFixNotes: [] })),
   patchStyle: (patch) =>
     set((s) => ({
       style: { ...s.style, ...patch },
       presetId: null,
+      lastFixNotes: [],
     })),
   applyPreset: (id) => {
     const preset = getPreset(id);
     if (!preset) return;
     const current = get();
-    const keepMode =
-      preset.style.imageMode === "none"
-        ? current.imageUrl ? "paint" : "none"
-        : current.imageUrl && current.style.imageMode !== "none"
-          ? current.style.imageMode
-          : current.imageUrl
-            ? "paint"
-            : preset.style.imageMode;
+    if (preset.artUrl) {
+      set({
+        presetId: id,
+        imageUrl: preset.artUrl,
+        style: {
+          ...preset.style,
+          imageMode: preset.style.imageMode || "paint",
+        },
+        lastFixNotes: [],
+      });
+      return;
+    }
+    const keepPhoto = Boolean(current.imageUrl) && current.imageUrl !== DEFAULT_ART_URL;
+    const nextMode = keepPhoto
+      ? current.style.imageMode === "none"
+        ? "paint"
+        : current.style.imageMode
+      : "none";
     set({
       presetId: id,
       style: {
         ...preset.style,
-        imageMode: keepMode,
-        minVersion: current.style.minVersion,
-        dotScale: current.style.dotScale,
-        contrast: current.style.contrast,
-        logoScale: current.style.logoScale,
-        quietZone: current.style.quietZone,
-        transparentBg: current.style.transparentBg,
-        ecc: current.style.ecc,
+        imageMode: nextMode,
       },
+      lastFixNotes: [],
     });
   },
   setImageUrl: (url) =>
-    set((s) => ({
-      imageUrl: url,
-      style: {
-        ...s.style,
-        imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
-      },
-    })),
-  setLogoUrl: (url) => set({ logoUrl: url }),
+    set((s) => {
+      if (s.imageUrl?.startsWith("blob:") && s.imageUrl !== url) {
+        URL.revokeObjectURL(s.imageUrl);
+      }
+      return {
+        imageUrl: url,
+        style: {
+          ...s.style,
+          imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
+        },
+        lastFixNotes: [],
+      };
+    }),
+  setLogoUrl: (url) =>
+    set((s) => {
+      if (s.logoUrl?.startsWith("blob:") && s.logoUrl !== url) {
+        URL.revokeObjectURL(s.logoUrl);
+      }
+      return { logoUrl: url };
+    }),
   setCategory: (category) => set({ category }),
   setStageBg: (stageBg) => set({ stageBg }),
   setScan: (scanOk, scanText) => set({ scanOk, scanText }),
   setError: (error) => set({ error }),
   setMobileTab: (mobileTab) => set({ mobileTab }),
+  setCaption: (caption) => set({ caption }),
+  setFrame: (frame) => set({ frame }),
+  applyUseCase: (id) => {
+    const rec = useCaseById(id);
+    set((s) => ({
+      useCase: id,
+      caption: rec.caption,
+      style: { ...s.style, ...rec.patch },
+      lastFixNotes: [],
+    }));
+  },
+  setFixNotes: (lastFixNotes) => set({ lastFixNotes }),
+  setSmartArt: (smartArt) => set({ smartArt }),
+  setRendering: (rendering) => set({ rendering }),
   pushHistory: (item) => {
     const entry: HistoryItem = {
       ...item,
@@ -156,6 +202,27 @@ export const useStudio = create<StudioState>((set, get) => ({
       style: item.style,
       imageUrl: item.imageUrl,
       presetId: null,
+      caption: item.caption ?? "",
+      frame: item.frame ?? "none",
+      lastFixNotes: [],
+    });
+  },
+  deleteHistoryItem: (id) => {
+    const history = get().history.filter((h) => h.id !== id);
+    set({ history });
+    persist(history);
+  },
+  remixHistoryItem: (id) => {
+    const item = get().history.find((h) => h.id === id);
+    if (!item) return;
+    set({
+      style: item.style,
+      imageUrl: item.imageUrl,
+      caption: item.caption ?? "",
+      frame: item.frame ?? "none",
+      presetId: null,
+      mobileTab: "content",
+      lastFixNotes: [],
     });
   },
   hydrateHistory: () => {

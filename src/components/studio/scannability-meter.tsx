@@ -1,7 +1,15 @@
-import { CheckCircle2, AlertTriangle, ShieldCheck, Zap, Wand2, Loader2, Sparkles, HelpCircle } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Wand2 } from "lucide-react";
+import { scanAdvice } from "@/lib/qr/autofix";
 import { cn } from "@/lib/utils";
 import { type QrStyle } from "@/lib/qr/types";
+import { useStudio } from "@/lib/store";
+
+interface PhotoStatus {
+  candidate: string;
+  robustness: number;
+  fidelity: number;
+  cameraRobust: boolean;
+}
 
 interface ScannabilityMeterProps {
   scanOk: boolean | null;
@@ -9,6 +17,38 @@ interface ScannabilityMeterProps {
   hasImage: boolean;
   onAutoFix: () => void;
   fixing: boolean;
+  /** Camera-stress + fidelity verdict from the photo engine (photo mode only). */
+  photoStatus?: PhotoStatus | null;
+}
+
+type Band = "checking" | "high" | "good" | "fair" | "low" | "unscannable";
+
+const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
+  { id: "high", label: "Excellent", pos: 8, color: "#7dba7a" },
+  { id: "good", label: "Good", pos: 30, color: "#a3c46a" },
+  { id: "fair", label: "Fair — image interference", pos: 52, color: "#c4b45a" },
+  { id: "low", label: "Weak", pos: 74, color: "#c47a3a" },
+  { id: "unscannable", label: "Not scanning", pos: 94, color: "#c45c4a" },
+];
+
+function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
+  if (scanOk === null) return "checking";
+  if (scanOk === false) return "unscannable";
+  const simple = ["square", "dots", "rounded", "squircle"].includes(style.moduleShape);
+  if (!hasImage && simple) return "high";
+  if (!hasImage) return "good";
+  if ((style.artisticStrength ?? 0.42) <= 0.45 && style.contrast >= 0.7) return "good";
+  if ((style.artisticStrength ?? 0.42) > 0.7) return "fair";
+  return "good";
+}
+
+function adviceText(style: QrStyle, hasImage: boolean): string | null {
+  const { raise, lower } = scanAdvice(style, hasImage);
+  const bits: string[] = [];
+  if (raise.length) bits.push(`increase ${raise.join(", ")}`);
+  if (lower.length) bits.push(`decrease ${lower.join(", ")}`);
+  if (!bits.length) return null;
+  return `To lock: ${bits.join("; ")}.`;
 }
 
 export function ScannabilityMeter({
@@ -17,115 +57,93 @@ export function ScannabilityMeter({
   hasImage,
   onAutoFix,
   fixing,
+  photoStatus,
 }: ScannabilityMeterProps) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  // Compute realistic scannability score based on ISO contrast, shapes, and camera decode
-  let score = 0;
-  let statusText = "Checking...";
-  let colorClass = "text-muted";
-  let barGradient = "from-muted/40 to-muted";
-
-  if (scanOk === true) {
-    if (style.ecc === "H" && (style.moduleShape === "square" || style.moduleShape === "dots" || style.moduleShape === "rounded")) {
-      score = 100;
-      statusText = "100% Perfect Lock";
-      colorClass = "text-ok";
-      barGradient = "from-ok/80 to-ok";
-    } else if (hasImage) {
-      score = style.contrast >= 0.7 ? 98 : 94;
-      statusText = `${score}% Instant Read`;
-      colorClass = "text-ok";
-      barGradient = "from-ok/80 to-ok";
-    } else {
-      score = 96;
-      statusText = "96% Excellent";
-      colorClass = "text-ok";
-      barGradient = "from-ok/80 to-ok";
-    }
-  } else if (scanOk === false) {
-    score = 42;
-    statusText = "42% Needs Tune";
-    colorClass = "text-warn";
-    barGradient = "from-warn/80 to-warn";
-  } else {
-    score = 75;
-    statusText = "Calibrating...";
-  }
+  const notes = useStudio((s) => s.lastFixNotes);
+  const band = readBand(scanOk, style, hasImage);
+  const active = BANDS.find((b) => b.id === band) ?? BANDS[2]!;
+  const checking = band === "checking";
+  const needsTune = band === "low" || band === "unscannable" || band === "fair";
+  const hint = needsTune ? adviceText(style, hasImage) : null;
 
   return (
-    <div className="w-full max-w-[420px] rounded-xl border border-border/80 bg-surface/70 p-2.5 sm:p-3 backdrop-blur shadow-md">
-      {/* Top Header Row */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-1.5">
-          {scanOk === true ? (
-            <CheckCircle2 className="size-4 text-ok shrink-0" />
-          ) : scanOk === false ? (
-            <AlertTriangle className="size-4 text-warn shrink-0 animate-pulse" />
-          ) : (
-            <Zap className="size-4 text-muted shrink-0" />
-          )}
-          <span className="text-xs font-semibold text-fg">Scannability Scale:</span>
-          <span className={cn("text-xs font-bold tabular-nums", colorClass)}>
-            {statusText}
+    <div className="w-full max-w-[210px] rounded-xl border border-border-strong bg-elevated p-2 sm:max-w-[300px] sm:p-2.5 md:max-w-[380px] lg:max-w-[420px]">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ background: checking ? "#6a6760" : active.color }}
+          />
+          <span className="truncate text-xs font-semibold" style={{ color: checking ? undefined : active.color }}>
+            {checking ? "Reading…" : `Scan quality: ${active.label}`}
           </span>
         </div>
-
-        <div className="flex items-center gap-1">
-          {scanOk === false ? (
-            <button
-              type="button"
-              onClick={onAutoFix}
-              disabled={fixing}
-              className="flex items-center gap-1 rounded-md bg-warn px-2 py-0.5 text-[11px] font-semibold text-bg transition hover:bg-warn/90 active:scale-95 shadow"
-            >
-              {fixing ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />}
-              <span>Fix to 100%</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowDetails((v) => !v)}
-              className="rounded p-0.5 text-muted hover:text-fg transition"
-              title="View scannability breakdown"
-            >
-              <HelpCircle className="size-3.5" />
-            </button>
+        <button
+          type="button"
+          onClick={onAutoFix}
+          disabled={fixing}
+          className={cn(
+            "flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50",
+            needsTune
+              ? "bg-warn text-bg hover:bg-warn/90"
+              : "border border-border-strong bg-surface text-fg hover:bg-surface-hover",
           )}
-        </div>
+        >
+          {fixing ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />}
+          <span>Fix scan</span>
+        </button>
       </div>
 
-      {/* Progress Scale Bar */}
-      <div className="relative h-2 w-full overflow-hidden rounded-full bg-elevated border border-border/50">
-        <div
-          className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-500", barGradient)}
-          style={{ width: `${score}%` }}
+      <div className="relative h-2 w-full rounded-full scan-hue-track">
+        <span
+          className="scan-hue-mark"
+          style={{
+            left: `${checking ? 50 : active.pos}%`,
+            background: checking ? "#8c8880" : active.color,
+          }}
         />
       </div>
-
-      {/* Micro Metrics Row */}
-      <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted font-mono">
-        <span className="flex items-center gap-1">
-          <ShieldCheck className="size-3 text-ok" />
-          <span>ECC: {style.ecc === "H" ? "Level H (30% Max)" : `Level ${style.ecc}`}</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <Zap className="size-3 text-ok" />
-          <span>Lock: ~0.02s</span>
-        </span>
-        <span>ISO/IEC 18004</span>
+      <div className="mt-1 flex justify-between text-[9px] font-semibold tracking-wide text-fg/70 sm:text-[10px]">
+        <span className="text-ok">Excellent</span>
+        <span>Good</span>
+        <span>Fair</span>
+        <span>Weak</span>
+        <span className="text-danger">Fail</span>
       </div>
-
-      {/* Collapsible Details */}
-      {showDetails && (
-        <div className="mt-2 rounded-lg border border-border bg-bg/80 p-2 text-[11px] text-muted leading-relaxed animate-fade-in">
-          <p className="font-medium text-fg mb-1">Scannability Scale Breakdown:</p>
-          <ul className="list-disc space-y-0.5 pl-3.5">
-            <li><span className="text-fg">1:1:3:1:1 Finder Pattern:</span> 100% registration lock on all phone lenses.</li>
-            <li><span className="text-fg">Adaptive Cell Luminance:</span> AI background wash ensures 0-bits and 1-bits stay razor-sharp.</li>
-            <li><span className="text-fg">Reed-Solomon Level H:</span> Self-heals up to 30% pixel obstruction or print wear.</li>
-          </ul>
-        </div>
+      {photoStatus && (
+        <p className="mt-1.5 text-[10px] leading-snug text-fg/75">
+          {photoStatus.cameraRobust
+            ? `Camera-sim robust · ${photoStatus.candidate} kernels · photo fidelity ${Math.round(
+                photoStatus.fidelity * 100,
+              )}% — still test on a real phone before print.`
+            : `Static decode only — risky on real cameras (${photoStatus.candidate} kernels failed the stress battery). Tap Fix scan.`}
+        </p>
+      )}
+      {notes.length > 0 && (() => {
+        const first = notes[0] ?? "";
+        const failed = first.startsWith("No look");
+        const sentence = failed || first.startsWith("Reads");
+        return (
+          <p
+            className={cn(
+              "mt-1.5 text-[10px] leading-snug",
+              failed ? "text-danger" : "text-ok",
+            )}
+          >
+            {sentence ? first : `Fixed — ${notes.join(" · ")}`}
+          </p>
+        );
+      })()}
+      {hint ? (
+        <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>
+      ) : hasImage ? (
+        <p className="mt-1.5 text-[10px] leading-snug text-subtle">
+          jsQR read this bitmap. Phone cameras can still differ — test before print.
+        </p>
+      ) : (
+        <p className="mt-1.5 text-[10px] leading-snug text-subtle">
+          In-browser checker only. Always test with a real camera before print.
+        </p>
       )}
     </div>
   );

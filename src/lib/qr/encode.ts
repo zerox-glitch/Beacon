@@ -5,13 +5,14 @@ import type { Payload, QrStyle } from "./types";
 export type EncodedQr = QrCodeGenerateResult;
 
 export function encodePayload(payload: Payload, style: QrStyle): EncodedQr {
-  const text = buildPayload(payload).trim() || "https://grok.com";
+  const text = buildPayload(payload).trim() || "https://qrwho.vercel.app";
   const pictured = style.imageMode !== "none";
   return encode(text, {
     ecc: pictured ? "H" : style.ecc,
     boostEcc: pictured,
-    minVersion: pictured ? Math.max(style.minVersion, 4) : 1,
+    minVersion: pictured ? Math.max(style.minVersion, 5) : 1,
     border: 0,
+    maskPattern: (style.maskPattern ?? -1) >= 0 ? style.maskPattern : undefined,
   });
 }
 

@@ -19,7 +19,13 @@ function icsDate(value: string): string {
 
 export function buildPayload(p: Payload): string {
   switch (p.kind) {
-    case "url": {
+    case "url":
+    case "pdf":
+    case "menu":
+    case "review":
+    case "payment":
+    case "app":
+    case "social": {
       const url = p.url.trim();
       if (!url) return "";
       if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;

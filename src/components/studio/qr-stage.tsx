@@ -4,85 +4,37 @@ import {
   Download,
   FileCode2,
   ImageDown,
-  Info,
   Loader2,
-  Palette,
+  Minus,
+  Plus,
   Printer,
   Shuffle,
-  Sparkles,
+  Smartphone,
   Wand2,
 } from "lucide-react";
+import { autoSafetyBoost } from "@/lib/qr/art/optimizer";
 import { autoFixScan } from "@/lib/qr/autofix";
+import { weaveMode } from "@/lib/qr/art-engine";
+import { forgetPhoto, refinePhotoQr, type CandidateId } from "@/lib/qr/photo/photo-engine";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { DestinationDock } from "@/components/studio/destination-dock";
+import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
+import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
-import { PRESETS } from "@/lib/qr/presets";
-import { canvasPngBlob, downloadCanvasPng, loadImage, renderQr } from "@/lib/qr/render";
-import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
-import { verifyQr } from "@/lib/qr/verify";
-import { StageBgMood, useStudio } from "@/lib/store";
+import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
+import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
+import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
+import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
+import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function makeCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
 }
 
-const HOOKS = [
-  "Scan me. I dare you.",
-  "Your cat, now teleporting to phones.",
-  "The Mona Lisa of machine-readable squares.",
-  "Ugly QRs are a choice. Choose again.",
-  "Zero trackers. 100% on-device. Zero middleman.",
-  "Because life is too short for boring barcodes.",
-  "Point. Shoot. Teleport.",
-  "Made with love & error correction level H.",
-  "High fashion for internet links.",
-  "Warning: may cause excessive camera scanning.",
-  "Art your phone camera understands in 0.02 seconds.",
-  "Forever static. No expiring links. No paywalls.",
-  "Proof that algorithms can have good taste.",
-  "From canvas to camera with zero friction.",
-];
-
-function HookLine() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => setI((v) => (v + 1) % HOOKS.length), 4200);
-    return () => window.clearInterval(t);
-  }, []);
-  return (
-    <p
-      key={i}
-      className="word-in min-h-5 font-display text-xs sm:text-sm italic text-muted text-center"
-      aria-live="polite"
-    >
-      {HOOKS[i]}
-    </p>
-  );
-}
-
-const BG_MOODS: { id: StageBgMood; label: string; icon: string }[] = [
-  { id: "vibrant", label: "Aurora", icon: "✨" },
-  { id: "cosmic", label: "Cosmic", icon: "🌌" },
-  { id: "waves", label: "Waves", icon: "🌊" },
-];
-
-const TRENDING_ART = [
-  { id: "art-ukiyo", name: "Ukiyo", icon: "🌊" },
-  { id: "art-cyberpunk", name: "Cyberpunk", icon: "⚡" },
-  { id: "art-royal", name: "Royal Gold", icon: "👑" },
-  { id: "art-sakura", name: "Sakura", icon: "🌸" },
-  { id: "art-matcha", name: "Matcha", icon: "🍵" },
-  { id: "art-solarpunk", name: "Solarpunk", icon: "✨" },
-  { id: "arcade-dash", name: "Arcade", icon: "🕹️" },
-  { id: "art-neon-fungi", name: "Neon", icon: "🍄" },
-  { id: "art-mono", name: "Mono", icon: "🕶️" },
-];
-
-export function QrStage() {
+export function QrStage({ compact = false }: { compact?: boolean }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
   const payload = useStudio((s) => s.payload);
@@ -90,30 +42,28 @@ export function QrStage() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
   const scanOk = useStudio((s) => s.scanOk);
-  const stageBg = useStudio((s) => s.stageBg);
+  const presetId = useStudio((s) => s.presetId);
   const error = useStudio((s) => s.error);
   const [copied, setCopied] = useState(false);
-  const [px, setPx] = useState(380);
-  const [preview, setPreview] = useState<string>("");
+  const [px, setPx] = useState(220);
+  const [preview, setPreview] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [fixing, setFixing] = useState(false);
-  const matRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [testOpen, setTestOpen] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<{
+    candidate: CandidateId;
+    robustness: number;
+    fidelity: number;
+    cameraRobust: boolean;
+  } | null>(null);
+  const [selVer, setSelVer] = useState(0);
   const setImageUrl = useStudio((s) => s.setImageUrl);
-
-  function onTilt(e: React.PointerEvent<HTMLDivElement>) {
-    const el = matRef.current;
-    if (!el || e.pointerType === "touch") return;
-    const r = el.getBoundingClientRect();
-    const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-    const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-    el.style.transform = `perspective(900px) rotateX(${(-dy * 3).toFixed(2)}deg) rotateY(${(dx * 4).toFixed(2)}deg)`;
-  }
-
-  function onTiltEnd() {
-    const el = matRef.current;
-    if (el) el.style.transform = "";
-  }
+  const caption = useStudio((s) => s.caption);
+  const frame = useStudio((s) => s.frame);
+  const rendering = useStudio((s) => s.rendering);
+  const boostRef = useRef(0);
+  const prevImgRef = useRef<string | null>(null);
 
   function onDropImage(e: React.DragEvent<HTMLDivElement>) {
     setDragging(false);
@@ -130,7 +80,7 @@ export function QrStage() {
     if (!el) return;
     const measure = () => {
       const w = el.clientWidth;
-      setPx(Math.max(220, Math.min(480, Math.floor(w))));
+      setPx(Math.max(180, Math.min(420, Math.floor(w))));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -140,41 +90,90 @@ export function QrStage() {
 
   useEffect(() => {
     let cancelled = false;
+    useStudio.getState().setRendering(true);
+    setPhotoStatus(null);
+    if (imageUrl) forgetPhoto(imageUrl);
     const handle = window.setTimeout(async () => {
       const encoded = tryEncodePayload(payload, style);
       if (!encoded.ok) {
         useStudio.getState().setError(encoded.error);
         useStudio.getState().setScan(null, null);
+        useStudio.getState().setRendering(false);
         return;
       }
       useStudio.getState().setError(null);
-      let art: HTMLImageElement | null = null;
-      let logo: HTMLImageElement | null = null;
-      if (imageUrl) {
-        art = await loadImage(imageUrl).catch(() => null);
-      }
-      if (logoUrl) {
-        logo = await loadImage(logoUrl).catch(() => null);
-      }
+      const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
+      const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
       if (cancelled) return;
-      const canvas = workRef.current ?? makeCanvas();
-      workRef.current = canvas;
-      renderQr(canvas, encoded.qr, style, { pixelSize: px, art, logo, exportScale: true });
-      setPreview(canvas.toDataURL("image/png"));
-      const probe = makeCanvas();
-      renderQr(probe, encoded.qr, style, { pixelSize: 640, art, logo, exportScale: true });
+      const canvas = workRef.current;
+      if (!canvas) {
+        useStudio.getState().setRendering(false);
+        return;
+      }
+      const expected = buildPayload(payload).trim() || null;
+      const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
+      // Always paint a scan-sized bitmap (CSS scales it down). A 180px preview
+      // is only ~3px/module on a version-7 photo QR — too small for jsQR or phones.
+      const workPx = pictured ? Math.max(px, 512) : Math.max(px, 320);
       try {
-        const decoded = await verifyQr(probe);
-        if (!cancelled) useStudio.getState().setScan(Boolean(decoded), decoded);
+        renderQr(canvas, encoded.qr, style, {
+          pixelSize: workPx,
+          art,
+          logo,
+          exportScale: true,
+          kernelBoost: 0,
+        });
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        let report = await inspectRenderedQr(canvas, expected);
+        if (!report.ok && pictured) {
+          renderQr(canvas, encoded.qr, style, {
+            pixelSize: workPx,
+            art,
+            logo,
+            exportScale: true,
+            kernelBoost: 0.7,
+          });
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
+          report = await inspectRenderedQr(canvas, expected);
+          boostRef.current = report.ok ? 0.7 : 0;
+        } else {
+          boostRef.current = 0;
+        }
+        if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
+        // Background candidate refinement (photo mode): scores all five
+        // kernel candidates against the camera-stress battery, chunked so
+        // the UI never blocks. Promotes a safer candidate only when the
+        // analytic default fails the camera gate — then repaints once.
+        const wm = pictured ? weaveMode(style.imageMode) : null;
+        if (pictured && art && wm) {
+          void refinePhotoQr({ art, qr: encoded.qr, style, mode: wm, expected })
+            .then((entry) => {
+              if (cancelled || !entry) return;
+              setPhotoStatus({
+                candidate: entry.chosen,
+                robustness: entry.robustness,
+                fidelity: entry.fidelity,
+                cameraRobust: entry.defaultEligible || entry.robustness >= 0.62,
+              });
+              if (!entry.defaultEligible) setSelVer((v) => v + 1);
+            })
+            .catch(() => undefined);
+        } else {
+          setPhotoStatus(null);
+        }
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
+      } finally {
+        if (!cancelled) useStudio.getState().setRendering(false);
       }
-    }, 40);
+    }, 80);
     return () => {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [payload, style, imageUrl, logoUrl, px]);
+  }, [payload, style, imageUrl, logoUrl, px, selVer]);
 
   async function renderExport(size: number) {
     const encoded = tryEncodePayload(payload, style);
@@ -182,14 +181,42 @@ export function QrStage() {
     const canvas = makeCanvas();
     const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
     const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
-    renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
-    return canvas;
+    const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
+    if (pictured) {
+      const expected = buildPayload(payload).trim() || null;
+      renderQr(canvas, encoded.qr, style, {
+        pixelSize: size,
+        art,
+        logo,
+        exportScale: true,
+        kernelBoost: boostRef.current,
+      });
+      const report = await inspectRenderedQr(canvas, expected);
+      if (!report.ok) {
+        await autoSafetyBoost(canvas, payload, style, {
+          pixelSize: size,
+          art,
+          logo,
+          expected,
+        });
+      }
+    } else {
+      renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
+    }
+    return finishExport(canvas, { frame, caption, paper: style.bg });
   }
 
   async function onDownload() {
     try {
       const canvas = await renderExport(2048);
-      downloadCanvasPng(canvas, "qrwho-qr.png");
+      const expected = buildPayload(payload).trim() || null;
+      const blob = await canvasPngBlob(canvas);
+      const pngReport = await inspectPngBlob(blob, expected);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "qrwho-qr.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
       const thumb = workRef.current?.toDataURL("image/jpeg", 0.6) ?? "";
       useStudio.getState().pushHistory({
         label: payloadLabel(payload),
@@ -197,8 +224,11 @@ export function QrStage() {
         style: { ...style },
         imageUrl: imageUrl?.startsWith("blob:") ? null : imageUrl,
         thumb,
+        caption,
+        frame,
       });
-      toast.success("PNG saved (2048px)");
+      if (pngReport.ok) toast.success("PNG saved (2048px) — jsQR read native / 480 / 360");
+      else toast.error("PNG saved, but jsQR could not read the file. Try Fix scan before print.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     }
@@ -208,9 +238,14 @@ export function QrStage() {
     try {
       const encoded = tryEncodePayload(payload, style);
       if (!encoded.ok) throw new Error(encoded.error);
-      const svg = exportQrSvg(encoded.qr, style, 1000);
+      if (style.imageMode !== "none" && imageUrl) {
+        toast.message("Use PNG for picture codes — SVG is the style-only vector.");
+      }
+      // An art direction exports the very same plan the canvas painted —
+      // identical geometry, real vectors, no approximation.
+      const svg = exportArtDirectionSvg(encoded.qr, style, 1000) ?? exportQrSvg(encoded.qr, style, 1000);
       downloadSvg(svg, "qrwho-vector.svg");
-      toast.success("Vector SVG saved (infinite scale)");
+      toast.success("Vector SVG saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "SVG export failed");
     }
@@ -223,7 +258,7 @@ export function QrStage() {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-      toast.success("Copied image to clipboard");
+      toast.success("Copied image");
     } catch {
       toast.error("Clipboard is blocked in this browser");
     }
@@ -233,7 +268,7 @@ export function QrStage() {
     const text = buildPayload(payload);
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Copied destination text");
+      toast.success("Copied destination");
     } catch {
       toast.error("Could not copy");
     }
@@ -279,16 +314,18 @@ export function QrStage() {
     setFixing(true);
     try {
       const result = await autoFixScan(payload, style, imageUrl, logoUrl);
+      if (result.changed) useStudio.getState().patchStyle(result.patch);
+      useStudio.getState().setFixNotes(result.notes);
+      // Sync the badge with the verdict — toast and badge must never disagree.
+      if (result.report) useStudio.getState().setScan(result.report.ok, result.report.decoded);
       if (result.ok) {
-        if (Object.keys(result.patch).length === 0) {
-          toast.success("Already 100% scannable!");
-        } else {
-          useStudio.getState().patchStyle(result.patch);
-          toast.success(`Auto-fix calibrated: ${result.notes.join(", ")}`);
-        }
+        if (result.changed) toast.success(`Fixed — ${result.notes.join(" · ")}`);
+        else toast.success(result.notes[0] ?? "Reads clean — nothing to fix.");
       } else {
-        toast.error(result.error ?? "Could not optimize scannability.");
+        toast.error(result.notes[0] ?? "Could not fix the scan");
       }
+    } catch {
+      toast.error("Fix scan failed — try again");
     } finally {
       setFixing(false);
     }
@@ -296,32 +333,22 @@ export function QrStage() {
 
   const paper = style.bg;
 
-  return (
-    <div className="flex w-full flex-col items-center justify-center gap-3.5 px-3 py-3 sm:px-6 sm:py-6 sm:gap-5">
-      {/* Prominent Auto-Fix Callout Banner (Always visible if scanning needs calibration) */}
-      {scanOk === false && (
-        <div className="flex w-full max-w-[420px] items-center justify-between gap-2 rounded-xl border border-warn/40 bg-warn/15 px-3 py-2 text-xs text-warn shadow-lg backdrop-blur">
-          <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-warn animate-ping" />
-            <span className="font-medium">Camera contrast needs calibration</span>
-          </div>
-          <button
-            type="button"
-            onClick={onAutoFix}
-            disabled={fixing}
-            className="flex items-center gap-1 rounded-lg bg-warn px-2.5 py-1 text-xs font-semibold text-bg transition hover:bg-warn/90 active:scale-95 disabled:opacity-50"
-          >
-            {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />}
-            <span>Auto-Fix</span>
-          </button>
-        </div>
-      )}
+  function openPhoneTest() {
+    const canvas = workRef.current;
+    setPreview(canvas && canvas.width > 0 ? canvas.toDataURL("image/png") : "");
+    setTestOpen(true);
+  }
 
-      {/* QR Mat Card Container (Responsive size so it fits mobile screens perfectly) */}
+  return (
+    <div className="relative z-10 flex h-full min-h-0 w-full flex-col overflow-y-auto px-3 py-1.5 scrollbar-thin sm:px-6 sm:py-5">
+      {/* m-auto centers when it fits and scrolls from the top when cramped —
+          justify-center + overflow-hidden used to clip the top and bottom. */}
+      <div className="m-auto flex w-full flex-col items-center gap-1.5 sm:gap-4">
+      <div className="w-full shrink-0">
+        <DestinationDock />
+      </div>
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
       <div
-        ref={matRef}
-        onPointerMove={onTilt}
-        onPointerLeave={onTiltEnd}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
             e.preventDefault();
@@ -330,17 +357,26 @@ export function QrStage() {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDropImage}
-        className="qr-mat relative w-full max-w-[270px] xs:max-w-[300px] sm:max-w-[380px] md:max-w-[420px] rounded-2xl p-3 sm:p-6 transition-transform duration-150 will-change-transform shadow-2xl"
+        className={cn(
+          "qr-mat relative aspect-square h-full max-h-[min(100%,280px)] w-auto max-w-full p-2 transition duration-200 sm:max-h-[340px] sm:p-4 md:max-h-[400px] md:p-5 lg:max-h-[440px]",
+          frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
+        )}
+        style={{
+          transform: `scale(${zoom})`,
+          background: frame === "none" ? undefined : paper,
+        }}
       >
         <div
           ref={innerRef}
-          className="relative mx-auto aspect-square w-full overflow-hidden rounded-xl shadow-sm"
+          className="relative mx-auto aspect-square h-full w-full overflow-hidden rounded-xl"
           style={{ background: paper }}
         >
-          {preview ? (
-            <img src={preview} alt="QR code preview" className="block size-full object-contain" />
-          ) : (
-            <div className="size-full bg-surface" />
+          <canvas ref={workRef} className="block h-full w-full max-h-full max-w-full" aria-label="QR code preview" />
+          {rendering && (
+            <div className="absolute inset-0 flex items-center justify-center bg-bg/55 text-xs font-semibold tracking-wide text-fg">
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Rendering…
+            </div>
           )}
           {dragging && (
             <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-accent/60 bg-bg/70 p-4 text-center text-xs font-medium text-fg">
@@ -353,12 +389,15 @@ export function QrStage() {
             </div>
           )}
         </div>
-
-        {/* Scannability Badge & Help Popover */}
-        <div className="pointer-events-none absolute left-3 top-3 z-10 sm:left-5 sm:top-5">
-          <div
+        {caption.trim() ? (
+          <p className="mt-2 text-center text-[11px] font-bold tracking-[0.18em] text-fg sm:text-xs">
+            {caption.trim()}
+          </p>
+        ) : null}
+        <div className="pointer-events-none absolute left-2 top-2 z-10 sm:left-4 sm:top-4">
+          <span
             className={cn(
-              "pointer-events-auto relative inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-medium backdrop-blur shadow-md",
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium backdrop-blur sm:text-xs",
               scanOk
                 ? "border-ok/40 bg-bg/90 text-ok"
                 : scanOk === false
@@ -372,133 +411,192 @@ export function QrStage() {
                 scanOk ? "bg-ok" : scanOk === false ? "bg-warn animate-pulse" : "bg-muted",
               )}
             />
-            <span>{scanOk ? "Scannable" : scanOk === false ? "Needs Tune" : "Checking"}</span>
-            <button
-              type="button"
-              aria-label="Scannability info"
-              onClick={() => setHelpOpen((v) => !v)}
-              className="rounded-full opacity-70 transition hover:opacity-100 pl-0.5"
-            >
-              <Info className="size-3" />
-            </button>
-            {helpOpen && (
-              <div
-                onMouseLeave={() => setHelpOpen(false)}
-                className="absolute left-0 top-full z-30 mt-2 w-64 max-w-[80vw] rounded-xl border border-border bg-bg/95 p-3 text-left font-normal leading-relaxed text-muted shadow-2xl backdrop-blur text-xs"
-              >
-                {scanOk === false ? (
-                  <>
-                    <p className="mb-1 font-medium text-fg">
-                      To optimize camera readability:
-                    </p>
-                    <ul className="list-disc space-y-0.5 pl-3 text-[11px]">
-                      <li>Tap <span className="text-ok font-semibold">Auto-Fix</span> for instant camera calibration</li>
-                      <li>Design tab: raise Contrast or Dot weight</li>
-                      <li>Image tab: lower Opacity or switch to Paint / Mosaic</li>
-                    </ul>
-                  </>
-                ) : (
-                  <p>
-                    Decoded in real-time with camera-grade computer vision — guaranteed instant lock on any phone.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Action Buttons */}
-      <div className="flex w-full max-w-[420px] flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-        <Button onClick={onDownload} size="sm" className="h-9 px-3 text-xs sm:text-sm font-semibold">
-          <Download className="size-3.5 mr-1" />
-          PNG
-        </Button>
-        <Button variant="secondary" onClick={onDownloadSvg} size="sm" className="h-9 px-3 text-xs sm:text-sm font-semibold">
-          <FileCode2 className="size-3.5 mr-1" />
-          SVG
-        </Button>
-        <Button variant="secondary" onClick={onCopyImage} size="sm" className="h-9 px-3 text-xs sm:text-sm">
-          {copied ? <Check className="size-3.5 text-ok" /> : <ImageDown className="size-3.5 mr-1" />}
-          Copy
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onCopyPayload} className="size-9" aria-label="Copy destination">
-          <Copy className="size-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onPrint} className="size-9" aria-label="Print">
-          <Printer className="size-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={surprise} className="size-9" aria-label="Surprise preset">
-          <Shuffle className="size-3.5" />
-        </Button>
-        {scanOk === false && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onAutoFix}
-            disabled={fixing}
-            className="h-9 px-3 border border-warn text-warn hover:bg-warn/10 font-semibold text-xs"
-          >
-            {fixing ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <Wand2 className="size-3.5 mr-1" />}
-            {fixing ? "Tuning…" : "Fix scan"}
-          </Button>
-        )}
-      </div>
-
-      {/* Quick Art Presets Bar directly on stage */}
-      <div className="w-full max-w-[420px]">
-        <div className="flex items-center justify-between px-1 mb-1">
-          <span className="text-[11px] font-medium text-muted flex items-center gap-1">
-            <Sparkles className="size-3 text-ok" />
-            <span>Instant Art Styles:</span>
+            {scanOk ? "Scannable" : scanOk === false ? "Needs tune" : "Checking"}
           </span>
-          <button
-            type="button"
-            onClick={() => useStudio.getState().setMobileTab("presets")}
-            className="text-[11px] font-medium text-ok hover:underline"
-          >
-            All {PRESETS.length} →
-          </button>
         </div>
+      </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={() => setZoom((z) => Math.max(0.82, z - 0.08))}
+          className="inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-bg/80 text-fg hover:bg-white/10"
+        >
+          <Minus className="size-3.5" />
+        </button>
+        <span className="min-w-10 text-center text-[11px] font-semibold tabular-nums text-fg/80">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          onClick={() => setZoom((z) => Math.min(1.2, z + 0.08))}
+          className="inline-flex size-8 items-center justify-center rounded-full border border-white/20 bg-bg/80 text-fg hover:bg-white/10"
+        >
+          <Plus className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={openPhoneTest}
+          className="ml-1 inline-flex h-8 items-center gap-1 rounded-full border border-white/20 bg-bg/80 px-2.5 text-[11px] font-semibold text-fg hover:bg-white/10"
+        >
+          <Smartphone className="size-3.5" />
+          Test on phone
+        </button>
+      </div>
+
+      <div className={cn("w-full shrink-0", compact && "max-lg:hidden")}>
+        <ScannabilityMeter
+          scanOk={scanOk}
+          style={style}
+          hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
+          onAutoFix={onAutoFix}
+          fixing={fixing}
+          photoStatus={photoStatus}
+        />
+      </div>
+
+      <div className="action-bar z-10 flex w-full max-w-[280px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
+        <button
+          type="button"
+          onClick={onDownload}
+          className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent px-3 text-sm font-bold text-accent-fg shadow-md transition hover:brightness-110 active:scale-[0.97] sm:flex-none sm:px-4"
+        >
+          <Download className="size-4" />
+          Save PNG
+        </button>
+        <button
+          type="button"
+          onClick={onDownloadSvg}
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-bold text-fg transition hover:bg-white/20 active:scale-[0.97]"
+        >
+          <FileCode2 className="size-4" />
+          SVG
+        </button>
+        <button
+          type="button"
+          onClick={onAutoFix}
+          disabled={fixing}
+          className={cn(
+            "inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition active:scale-[0.97] disabled:opacity-60",
+            scanOk === false
+              ? "border-warn bg-warn text-bg"
+              : "border-white/25 bg-white/10 text-fg hover:bg-white/20",
+          )}
+        >
+          {fixing ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+          {fixing ? "Tuning…" : "Fix scan"}
+        </button>
+        <button
+          type="button"
+          onClick={onCopyImage}
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
+          aria-label="Copy image"
+        >
+          {copied ? <Check className="size-4 text-ok" /> : <ImageDown className="size-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={onCopyPayload}
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
+          aria-label="Copy destination"
+        >
+          <Copy className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onPrint}
+          className="hidden size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97] sm:inline-flex"
+          aria-label="Print"
+        >
+          <Printer className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={surprise}
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
+          aria-label="Surprise preset"
+        >
+          <Shuffle className="size-4" />
+        </button>
+      </div>
+
+      <div className="hidden w-full max-w-[280px] shrink-0 sm:block sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
+        <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
+          Steal a look — summit, peony, dusk
+        </p>
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {TRENDING_ART.map((t) => (
+          {GALLERY_PRESETS.map((p) => (
             <button
-              key={t.id}
+              key={p.id}
               type="button"
-              onClick={() => useStudio.getState().applyPreset(t.id)}
-              className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface/80 px-2.5 py-1 text-[11px] font-medium text-fg backdrop-blur transition hover:border-accent hover:bg-elevated active:scale-95 shadow-sm"
+              title={p.name}
+              onClick={() => useStudio.getState().applyPreset(p.id)}
+              className={cn(
+                "relative size-12 shrink-0 overflow-hidden rounded-md border sm:size-14",
+                presetId === p.id ? "border-accent ring-1 ring-accent/50" : "border-border",
+              )}
             >
-              <span>{t.icon}</span>
-              <span>{t.name}</span>
+              {p.artUrl ? (
+                <img src={p.artUrl} alt={p.name} className="size-full object-cover" />
+              ) : (
+                <span className="block size-full" style={{ background: p.style.bg }} />
+              )}
             </button>
           ))}
         </div>
       </div>
-
-      {/* Interactive Background Art Mood Switcher */}
-      <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-surface/80 p-0.5 sm:p-1 shadow-md backdrop-blur">
-        <span className="pl-2 pr-1 text-[10px] sm:text-[11px] font-medium text-muted flex items-center gap-1">
-          <Palette className="size-3 text-ok" />
-          <span>Art Mood:</span>
-        </span>
-        {BG_MOODS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => useStudio.getState().setStageBg(m.id)}
-            className={cn(
-              "rounded-full px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-medium transition",
-              stageBg === m.id
-                ? "bg-elevated text-fg shadow-sm border border-border font-semibold"
-                : "text-muted hover:text-fg",
-            )}
-          >
-            {m.icon} {m.label}
-          </button>
-        ))}
       </div>
 
-      <HookLine />
+      {testOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Test on phone"
+          onClick={() => setTestOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-bg p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="font-display text-xl italic">Point your camera here</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              This preview is the same bitmap Fix scan reads with jsQR in the browser. Phone cameras
+              can be stricter or more lenient — we do not guarantee every device.
+            </p>
+            {preview && (
+              <img
+                src={preview}
+                alt="QR preview for phone test"
+                className="mx-auto mt-4 w-full max-w-[280px] rounded-xl"
+                style={{ background: paper }}
+              />
+            )}
+            {caption.trim() ? (
+              <p className="mt-2 text-center text-xs font-bold tracking-[0.18em]">{caption.trim()}</p>
+            ) : null}
+            <button
+              type="button"
+              className="mt-4 h-11 w-full rounded-xl bg-accent text-sm font-bold text-accent-fg"
+              onClick={() => setTestOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

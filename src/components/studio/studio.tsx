@@ -1,11 +1,11 @@
 import {
   ChevronDown,
   ChevronUp,
+  FolderOpen,
   Globe,
   ImageIcon,
   LayoutGrid,
   Palette,
-  Sparkles,
   Type,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -15,72 +15,85 @@ import { AmbientArt } from "@/components/studio/ambient-art";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
+import { LibraryPanel } from "@/components/studio/library-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
-const STUDIO_TABS = [
-  { id: "content" as const, label: "Destination", icon: Type, hint: "Link, WiFi, vCard" },
-  { id: "presets" as const, label: "Presets", icon: LayoutGrid, hint: "178 styles" },
-  { id: "design" as const, label: "Design", icon: Palette, hint: "Colors & Shapes" },
-  { id: "image" as const, label: "Picture", icon: ImageIcon, hint: "Photo & Logo" },
-] as const;
+const HOOK_WORDS = ["picture", "link", "Wi-Fi", "location", "contact", "menu", "event"];
 
-const ROTATING_WORDS = ["picture", "menu", "link", "Wi-Fi", "event", "contact", "vCard"];
-
-function RotatingWord() {
+function RotatingHook() {
   const [i, setI] = useState(0);
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => setI((v) => (v + 1) % ROTATING_WORDS.length), 2100);
-    return () => window.clearInterval(t);
+    const id = window.setInterval(() => setI((n) => (n + 1) % HOOK_WORDS.length), 2600);
+    return () => window.clearInterval(id);
   }, []);
+  const word = HOOK_WORDS[i]!;
   return (
-    <span key={i} className="word-in inline-block min-w-[3.6em] text-left text-fg font-medium">
-      {ROTATING_WORDS[i]}
-    </span>
+    <p className="mt-0.5 truncate text-[11px] text-fg/85 sm:text-xs">
+      Turn any{" "}
+      <span key={word} className="word-in inline-block font-semibold text-ok">
+        {word}
+      </span>{" "}
+      into a working QR
+    </p>
   );
 }
+
+const STUDIO_TABS = [
+  { id: "content" as const, label: "Create", icon: Type },
+  { id: "image" as const, label: "Picture", icon: ImageIcon },
+  { id: "presets" as const, label: "Looks", icon: LayoutGrid },
+  { id: "design" as const, label: "Tune", icon: Palette },
+  { id: "library" as const, label: "Library", icon: FolderOpen },
+] as const;
 
 export function Studio() {
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
+  const [sheetOpen, setSheetOpen] = useState(true);
   const [showcaseOpen, setShowcaseOpen] = useState(false);
 
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
 
+  function toggleShowcase() {
+    const open = !showcaseOpen;
+    setShowcaseOpen(open);
+    // On phones the sheet and the art panel would fight for the same
+    // vertical space — close the sheet so the stage stays visible.
+    if (open && !window.matchMedia("(min-width: 1024px)").matches) setSheetOpen(false);
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-dvh flex-col overflow-x-hidden bg-bg text-fg">
-        {/* Top Header */}
-        <header className="relative shrink-0 overflow-hidden border-b border-border bg-bg/90 px-3 py-2.5 backdrop-blur-md sm:px-6 sm:py-3">
-          <div className="hero-glow pointer-events-none absolute inset-0" aria-hidden />
-          <div className="relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <img
-                src="/logo.png"
-                alt="QRWho logo"
-                className="logo-float size-8.5 sm:size-10 shrink-0 rounded-xl border border-border shadow-[0_0_24px_rgb(127_208_196/0.2)]"
-              />
-              <div>
-                <h1 className="font-display text-xl sm:text-2xl italic leading-none tracking-tight">
+      <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
+        <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
+          <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <Link to="/" aria-label="QRWho home" className="shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="QRWho"
+                  className="size-8 rounded-lg border border-border sm:size-10 sm:rounded-xl"
+                />
+              </Link>
+              <div className="min-w-0">
+                <h1 className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
                   <span className="wordmark-shimmer">QRWho</span>
                 </h1>
-                <p className="mt-0.5 text-[11px] sm:text-xs text-muted">
-                  Turn any <RotatingWord /> into a working QR code · 100% on-device & private
-                </p>
+                <RotatingHook />
               </div>
             </div>
 
-            {/* Category Quick Chips */}
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <div className="hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
               {PRESET_CATEGORIES.filter((c) => c !== "All").map((c) => (
                 <button
                   key={c}
@@ -93,31 +106,51 @@ export function Studio() {
                     useStudio.getState().setCategory(c);
                     useStudio.getState().applyPreset(pick.id);
                   }}
-                  className="chip-vibe h-7 rounded-full border border-border bg-elevated/70 px-2 sm:px-2.5 text-[11px] sm:text-xs font-medium text-muted backdrop-blur transition hover:-translate-y-0.5 hover:border-border-strong hover:text-fg active:scale-95"
+                  className="h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg"
                 >
-                  <Sparkles className="mr-0.5 sm:mr-1 inline size-2.5 sm:size-3 text-ok" aria-hidden />
                   {c}
                 </button>
               ))}
-              <span className="ml-1 text-[11px] sm:text-xs tabular-nums text-subtle font-mono hidden xs:inline">
-                {PRESETS.length} presets
-              </span>
             </div>
           </div>
         </header>
 
-        {/* Main Studio Workspace: 2-Column Desktop Grid, Fluid Mobile Stack */}
-        <div className="relative flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
-          {/* Left Canvas: QR Stage on Radiant Background Art */}
-          <main className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
+          <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
             <AmbientArt />
-            <QrStage />
+            <QrStage compact={sheetOpen} />
           </main>
 
-          {/* Right Column: Unified Studio Control Dock */}
-          <aside className="flex flex-col bg-elevated/40 lg:min-h-[calc(100dvh-65px)] border-t border-border lg:border-t-0">
-            {/* Control Tabs Header */}
-            <div className="grid grid-cols-4 border-b border-border bg-surface/80 p-1 sm:p-1.5 backdrop-blur sticky top-0 z-20">
+          <aside
+            className={cn(
+              "z-20 flex min-h-0 flex-col border-t border-border bg-elevated lg:h-full lg:border-t-0",
+              sheetOpen
+                ? "h-[min(42dvh,420px)] shrink-0 lg:h-auto lg:max-h-none"
+                : "h-12 shrink-0 lg:h-auto lg:max-h-none",
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => setSheetOpen((v) => !v)}
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-2 border-b border-border-strong lg:hidden",
+                sheetOpen ? "bg-surface text-fg" : "bg-accent text-accent-fg",
+              )}
+              aria-expanded={sheetOpen}
+            >
+              <span className={cn("h-1.5 w-11 rounded-full", sheetOpen ? "bg-fg/70" : "bg-accent-fg/80")} />
+              <span className="text-xs font-semibold tracking-wide">
+                {sheetOpen ? "Close studio" : "Open presets & design"}
+              </span>
+              {sheetOpen ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+            </button>
+
+            <div
+              className={cn(
+                "sticky top-0 z-20 grid grid-cols-5 border-b border-border bg-surface p-1",
+                !sheetOpen && "hidden lg:grid",
+              )}
+            >
               {STUDIO_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = mobileTab === tab.id;
@@ -125,46 +158,61 @@ export function Studio() {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setMobileTab(tab.id)}
+                    onClick={() => {
+                      setSheetOpen(true);
+                      setMobileTab(tab.id);
+                    }}
                     className={cn(
-                      "flex h-11 sm:h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
+                      "flex h-11 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
                       active
-                        ? "bg-elevated text-fg shadow-sm border border-border/80 font-semibold"
-                        : "text-muted hover:text-fg hover:bg-surface/50",
+                        ? "border border-border-strong bg-elevated font-semibold text-fg shadow-sm"
+                        : "text-fg/75 hover:bg-surface-hover hover:text-fg",
                     )}
                   >
                     <Icon className="size-3.5 sm:size-4" />
-                    <span className="text-[10px] sm:text-[11px] leading-none">{tab.label}</span>
+                    <span className="text-[10px] leading-none sm:text-[11px]">{tab.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Active Control Panel Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 scrollbar-thin">
+            <div
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin sm:p-5",
+                !sheetOpen && "hidden lg:block",
+              )}
+            >
               {mobileTab === "content" && <ContentPanel />}
               {mobileTab === "presets" && <PresetGallery />}
               {mobileTab === "design" && <DesignPanel />}
               {mobileTab === "image" && <ImagePanel />}
+              {mobileTab === "library" && <LibraryPanel />}
             </div>
           </aside>
         </div>
 
-        {/* Expandable SEO & Art Gallery Showcase Footer */}
-        <div className="border-t border-border bg-surface/60">
-          <button
-            type="button"
-            onClick={() => setShowcaseOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 text-xs font-medium text-muted hover:text-fg transition"
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="size-4 text-ok" />
-              <span>Explore Art Directions, Business Use Cases & Enterprise Specs</span>
-            </span>
-            {showcaseOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          </button>
-          {showcaseOpen && <ArtShowcase />}
-        </div>
+        {/* Art directions & print specs — inline in the studio (never navigates
+            away). Always visible, high contrast, mobile + desktop. */}
+        {showcaseOpen && (
+          <div className="z-30 max-h-[52dvh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46dvh]">
+            <ArtShowcase
+              onTry={(id) => {
+                useStudio.getState().applyPreset(id);
+                setShowcaseOpen(false);
+              }}
+            />
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={toggleShowcase}
+          aria-expanded={showcaseOpen}
+          className="flex shrink-0 items-center justify-center gap-2 border-t border-border-strong bg-surface px-4 py-2.5 text-xs font-bold text-fg transition hover:bg-surface-hover"
+        >
+          <Globe className="size-4 text-ok" />
+          <span>Art directions &amp; print specs</span>
+          {showcaseOpen ? <ChevronUp className="size-4 text-fg/70" /> : <ChevronDown className="size-4 text-fg/70" />}
+        </button>
 
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>
