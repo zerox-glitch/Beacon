@@ -81,7 +81,7 @@ function PresetThumb({
       ref={hostRef}
       type="button"
       onClick={onPick}
-      title={preset.name}
+      title={preset.blurb ? `${preset.name} — ${preset.blurb}` : preset.name}
       className={cn(
         "group flex min-w-0 flex-col gap-1.5 rounded-md border p-1.5 text-left transition-all duration-150",
         "hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgb(0_0_0/0.35)] active:scale-[0.97]",

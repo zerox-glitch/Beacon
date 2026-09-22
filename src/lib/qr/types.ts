@@ -98,6 +98,17 @@ export interface QrStyle {
   accentOnLight?: boolean;
   /** Photo QR kernel candidate; set by Fix scan escalation (photo engine). */
   photoKernel?: "detail" | "structure" | "balanced" | "camera-safe" | "robust";
+  /**
+   * Art QR Style System direction (src/lib/qr/art-directions.ts). When set,
+   * the renderer paints a deterministic design system instead of a flat
+   * module loop — and `artRelax` records how far the relax ladder had to walk
+   * to keep it camera-scannable.
+   */
+  artDirection?: string;
+  /** Relax-ladder rung actually rendered (0 = the direction as authored). */
+  artRelax?: number;
+  /** Force the direction's camera-safe fallback (last relax rung). */
+  artCameraSafe?: boolean;
 }
 
 export interface Payload {
@@ -135,6 +146,8 @@ export interface Preset {
   name: string;
   category: string;
   featured?: boolean;
+  /** One-line design note shown in the gallery (art directions). */
+  blurb?: string;
   /** When set, applying this preset loads this picture into the QR. */
   artUrl?: string;
   style: QrStyle;
@@ -253,3 +266,134 @@ export const DEFAULT_STYLE: QrStyle = {
   effect: "none",
   maskPattern: -1,
 };
+
+/* ------------------------------------------------------------------ *
+ * Art QR Style System — vocabulary
+ *
+ * An "art direction" is a deterministic design system, not a palette swap.
+ * Each one names at least five visual dimensions: module shape + corner
+ * radius, grouping geometry, distortion, gradient behaviour, accent
+ * frequency, finder styling and timing/alignment styling. Everything is
+ * data (see src/lib/qr/art-directions.ts) so the renderer, the relax
+ * ladder and the validation harness all read the same definition.
+ * ------------------------------------------------------------------ */
+
+/** Per-cell module geometry. `pill`/`petal`/`pebble`/`gem`/`facet` are art-system additions. */
+export type ArtShape =
+  | ModuleShape
+  | "pill"
+  | "petal"
+  | "pebble"
+  | "gem"
+  | "facet"
+  | "capsule";
+
+/** How dark modules join into larger, camera-survivable shapes. */
+export type ArtGeometry =
+  | "single"
+  | "runs-h"
+  | "runs-v"
+  | "runs-both"
+  | "blocks"
+  | "components"
+  | "traces";
+
+/** Medium-scale distortion. Never sub-module noise. */
+export type ArtDistortion = "none" | "jitter" | "taper" | "wobble" | "bands" | "steps";
+
+export type ArtGradient =
+  | "none"
+  | "linear-x"
+  | "linear-y"
+  | "diagonal"
+  | "radial"
+  | "ramp"
+  | "spectrum"
+  | "bands"
+  | "split";
+
+export type ArtFinder =
+  | "solid"
+  | "ringed"
+  | "bracket"
+  | "chamfer"
+  | "diamond"
+  | "circle"
+  | "floral"
+  | "circuit"
+  | "gothic"
+  | "deco"
+  | "soft"
+  | "ring8"
+  | "halo"
+  | "cut";
+
+export type ArtTiming = "solid" | "pill" | "dot";
+
+export type ArtAccent = "none" | "fleck" | "spark" | "ring" | "tick";
+
+/**
+ * Rendered size budget. `ppm` = finalRenderedPixels / QRModuleCount.
+ * Rich allows full decoration; lean is the camera-safe simplification the
+ * renderer falls back to automatically as modules get small.
+ */
+export type ArtDetailLevel = "rich" | "standard" | "lean";
+
+export interface ArtLodTweaks {
+  geometry?: ArtGeometry;
+  distortion?: ArtDistortion;
+  accent?: ArtAccent;
+  gradient?: ArtGradient;
+  shape?: ArtShape;
+  radius?: number;
+  gap?: number;
+  mass?: number;
+  /** Extra luminance separation applied at this level (0 = none). */
+  contrastBoost?: number;
+}
+
+export interface ArtDirection {
+  id: string;
+  name: string;
+  category: string;
+  /** One line shown in the gallery — what makes this direction itself. */
+  blurb: string;
+  /** Dark-module colour stops (stop[0] is the base ink). */
+  stops: string[];
+  bg: string;
+  /** Finder ring / ball colours when they differ from the ink ramp. */
+  eye?: string;
+  ball?: string;
+  accent?: string;
+  shape: ArtShape;
+  /** Corner radius as a fraction of the module (0 = hard, 0.5 = round). */
+  radius: number;
+  geometry: ArtGeometry;
+  distortion: ArtDistortion;
+  gradient: ArtGradient;
+  /** Extra stops for spectrum/ramp gradients. */
+  ramp?: string[];
+  finder: ArtFinder;
+  timing: ArtTiming;
+  alignment: ArtTiming | "ring";
+  accentMark: ArtAccent;
+  /** 0–1: how often the accent appears. */
+  accentFreq: number;
+  accentOnLight?: boolean;
+  /** Filled-area target for a dark module (QR mass). Clamped by the renderer. */
+  mass: number;
+  /** Module inset as a fraction of the cell. */
+  gap: number;
+  /** Artistic strength the direction is safe at (0–1). */
+  strength: number;
+  quietZone: number;
+  /** Minimum luminance separation this direction is allowed to render at. */
+  minSeparation?: number;
+  lod?: Partial<Record<ArtDetailLevel, ArtLodTweaks>>;
+  /** Deterministic fallback used when validation cannot pass otherwise. */
+  cameraSafe?: ArtLodTweaks;
+}
+
+export interface QrStyleArtRef {
+  directionId: string;
+}

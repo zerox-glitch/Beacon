@@ -26,7 +26,7 @@ import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { GALLERY_PRESETS, PRESETS } from "@/lib/qr/presets";
 import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
 import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
-import { downloadSvg, exportQrSvg } from "@/lib/qr/svg-export";
+import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -241,7 +241,9 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       if (style.imageMode !== "none" && imageUrl) {
         toast.message("Use PNG for picture codes — SVG is the style-only vector.");
       }
-      const svg = exportQrSvg(encoded.qr, style, 1000);
+      // An art direction exports the very same plan the canvas painted —
+      // identical geometry, real vectors, no approximation.
+      const svg = exportArtDirectionSvg(encoded.qr, style, 1000) ?? exportQrSvg(encoded.qr, style, 1000);
       downloadSvg(svg, "qrwho-vector.svg");
       toast.success("Vector SVG saved");
     } catch (err) {

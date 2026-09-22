@@ -9,3 +9,4 @@ grok-workspace.zip
 screenshots/
 .node_modules.lock
 dist/
+.tmp/

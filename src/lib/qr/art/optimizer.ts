@@ -3,6 +3,7 @@ import { buildPayload } from "../payload";
 import { loadImage, renderQr } from "../render";
 import { decodeScaled, inspectRenderedQr, type ScanReport } from "../scan-engine";
 import type { Payload, QrStyle } from "../types";
+import { relaxLadder } from "./relax";
 
 export interface OptimizeResult {
   ok: boolean;
@@ -50,6 +51,10 @@ function describe(base: QrStyle, patch: Partial<QrStyle>): string[] {
     else if (p.imageMode === "none") bits.push("art off");
     else if (p.imageMode === "paint") bits.push("photo QR");
   }
+  if (typeof p.artRelax === "number" && p.artRelax > Number(s.artRelax ?? 0)) {
+    bits.push("simplified art");
+  }
+  if (p.artCameraSafe) bits.push("camera-safe art");
   if (p.ecc && p.ecc !== s.ecc) bits.push(`ECC ${String(p.ecc)}`);
   if (p.maskPattern !== undefined && p.maskPattern !== s.maskPattern) bits.push("auto mask");
   if (p.eyeShape && p.eyeShape !== s.eyeShape) bits.push("square finders");
@@ -112,6 +117,15 @@ export async function optimizeScan(
   const s0 = { ...style };
   let steps: QrStyle[];
   if (!pictured) {
+    // Art directions get their own ladder first: the relax rungs dial the
+    // artwork back dimension by dimension (decoration → gaps → quiet zone →
+    // grouping → ink/ECC) and only if none of those survive do we fall
+    // through to the generic structure ladder below.
+    const artSteps: QrStyle[] = style.artDirection
+      ? relaxLadder(s0)
+          .slice(1)
+          .map((rung) => ({ ...s0, ...rung.patch }))
+      : [];
     // Style-only ladder: dot weight → colors → structure.
     const a = {
       ...s0,
@@ -122,7 +136,7 @@ export async function optimizeScan(
     };
     const b = { ...a, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
     const c = { ...b, ecc: "H" as const, maskPattern: -1, eyeShape: "square" as const };
-    steps = [a, b, c];
+    steps = [...artSteps, a, b, c];
   } else {
     // Photo ladder (PhotoQrV2): safer kernel candidates first — they keep the
     // photo recognizable while growing the guaranteed QR signal — then

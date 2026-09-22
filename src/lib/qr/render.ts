@@ -1,5 +1,8 @@
 import { QrCodeDataType } from "uqr";
 import { renderArtisticQr } from "./art-engine";
+import { getArtDirection } from "./art-directions";
+import { buildArtPlan } from "./art/art-plan";
+import { paintArtPlan } from "./art/paint";
 import type { EncodedQr } from "./encode";
 import type { EyeShape, ModuleShape, QrStyle } from "./types";
 
@@ -518,6 +521,35 @@ export function renderQr(
         return c;
       })()
     : prepareCanvas(canvas, px);
+
+  /* ---- ART QR STYLE SYSTEM: a direction paints the whole frame itself ---- */
+  const direction = getArtDirection(style.artDirection);
+  if (direction) {
+    const artCtx = opts.exportScale
+      ? (() => {
+          canvas.width = px;
+          canvas.height = px;
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
+          const c = canvas.getContext("2d", { willReadFrequently: true });
+          if (!c) throw new Error("Canvas is not available");
+          c.setTransform(1, 0, 0, 1, 0, 0);
+          c.imageSmoothingEnabled = true;
+          c.imageSmoothingQuality = "high";
+          return c;
+        })()
+      : prepareCanvas(canvas, px);
+    const plan = buildArtPlan({
+      qr,
+      style,
+      direction,
+      px,
+      relax: style.artRelax ?? 0,
+      cameraSafe: Boolean(style.artCameraSafe),
+    });
+    paintArtPlan(artCtx, plan);
+    return;
+  }
 
   const pictured = Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
   const qz = pictured
