@@ -1,4 +1,5 @@
 import { DEFAULT_STYLE, type ModuleShape, type EyeShape, type Preset, type QrStyle } from "./types";
+import { ART_DIRECTION_CATEGORY, TEMPLATE_CATEGORY, artDirectionPresets } from "./art-directions";
 
 interface Palette {
   id: string;
@@ -1438,14 +1439,27 @@ const SCENE_PRESETS: Preset[] = [
   }),
 ];
 
-export const PRESETS: Preset[] = [...buildPresets(), ...ART_PRESETS, ...SCENE_PRESETS];
+/**
+ * The 50 art directions live in `art-directions.ts` as data (palette, module
+ * shape, corner radius, grouping, distortion, gradient, accent frequency,
+ * finder/timing/alignment styling, safe artistic strength and a camera-safe
+ * fallback). They are merged in here so the whole studio — gallery, random
+ * "surprise me", landing samples, validation — sees one preset list.
+ */
+export const STYLE_PRESETS: Preset[] = artDirectionPresets();
+
+export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...ART_PRESETS, ...SCENE_PRESETS];
 
 export const GALLERY_PRESETS: Preset[] = PRESETS.filter((p) => Boolean(p.artUrl));
 
 export const PRESET_CATEGORIES: string[] = [
   "All",
+  ART_DIRECTION_CATEGORY,
+  TEMPLATE_CATEGORY,
   "Gallery",
-  ...Array.from(new Set(PRESETS.map((p) => p.category))).filter((c) => c !== "Gallery"),
+  ...Array.from(new Set(PRESETS.map((p) => p.category))).filter(
+    (c) => c !== "Gallery" && c !== ART_DIRECTION_CATEGORY && c !== TEMPLATE_CATEGORY,
+  ),
 ];
 
 export function getPreset(id: string): Preset | undefined {
