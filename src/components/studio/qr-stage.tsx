@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { autoSafetyBoost } from "@/lib/qr/art/optimizer";
 import { autoFixScan } from "@/lib/qr/autofix";
+import { weaveMode } from "@/lib/qr/art-engine";
+import { forgetPhoto, refinePhotoQr, type CandidateId } from "@/lib/qr/photo/photo-engine";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DestinationDock } from "@/components/studio/destination-dock";
@@ -49,11 +51,19 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
   const [fixing, setFixing] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [testOpen, setTestOpen] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<{
+    candidate: CandidateId;
+    robustness: number;
+    fidelity: number;
+    cameraRobust: boolean;
+  } | null>(null);
+  const [selVer, setSelVer] = useState(0);
   const setImageUrl = useStudio((s) => s.setImageUrl);
   const caption = useStudio((s) => s.caption);
   const frame = useStudio((s) => s.frame);
   const rendering = useStudio((s) => s.rendering);
   const boostRef = useRef(0);
+  const prevImgRef = useRef<string | null>(null);
 
   function onDropImage(e: React.DragEvent<HTMLDivElement>) {
     setDragging(false);
@@ -81,6 +91,8 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     useStudio.getState().setRendering(true);
+    setPhotoStatus(null);
+    if (imageUrl) forgetPhoto(imageUrl);
     const handle = window.setTimeout(async () => {
       const encoded = tryEncodePayload(payload, style);
       if (!encoded.ok) {
@@ -130,6 +142,27 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           boostRef.current = 0;
         }
         if (!cancelled) useStudio.getState().setScan(report.ok, report.decoded);
+        // Background candidate refinement (photo mode): scores all five
+        // kernel candidates against the camera-stress battery, chunked so
+        // the UI never blocks. Promotes a safer candidate only when the
+        // analytic default fails the camera gate — then repaints once.
+        const wm = pictured ? weaveMode(style.imageMode) : null;
+        if (pictured && art && wm) {
+          void refinePhotoQr({ art, qr: encoded.qr, style, mode: wm, expected })
+            .then((entry) => {
+              if (cancelled || !entry) return;
+              setPhotoStatus({
+                candidate: entry.chosen,
+                robustness: entry.robustness,
+                fidelity: entry.fidelity,
+                cameraRobust: entry.defaultEligible || entry.robustness >= 0.62,
+              });
+              if (!entry.defaultEligible) setSelVer((v) => v + 1);
+            })
+            .catch(() => undefined);
+        } else {
+          setPhotoStatus(null);
+        }
       } catch {
         if (!cancelled) useStudio.getState().setScan(null, null);
       } finally {
@@ -140,7 +173,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [payload, style, imageUrl, logoUrl, px]);
+  }, [payload, style, imageUrl, logoUrl, px, selVer]);
 
   async function renderExport(size: number) {
     const encoded = tryEncodePayload(payload, style);
@@ -419,6 +452,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
           onAutoFix={onAutoFix}
           fixing={fixing}
+          photoStatus={photoStatus}
         />
       </div>
 

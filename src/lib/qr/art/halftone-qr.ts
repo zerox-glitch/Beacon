@@ -1,3 +1,13 @@
+/**
+ * LEGACY — sub-cell Chu lattice (NOT in the render path since the Photo QR
+ * rebuild). Kept as the measurement baseline for scripts/photo-report.ts and
+ * its unit tests; the live photo pipeline is src/lib/qr/photo/*.
+ *
+ * Old behaviour (why it was replaced): photographic features lived in 1/S-of-
+ * a-module subcells (≈1–2px on a phone) — isotropic high-frequency noise that
+ * camera downsampling destroys, and only 1/S² of each module carried the bit.
+ */
+
 import type { EncodedQr } from "../encode";
 import { cellRole, isDark, isProtectedRole } from "../structure";
 

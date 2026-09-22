@@ -124,28 +124,31 @@ export async function optimizeScan(
     const c = { ...b, ecc: "H" as const, maskPattern: -1, eyeShape: "square" as const };
     steps = [a, b, c];
   } else {
-    // Photo ladder: lock bits → colors → dot weight → weave density → ink mode.
-    const a = {
-      ...s0,
+    // Photo ladder (PhotoQrV2): safer kernel candidates first — they keep the
+    // photo recognizable while growing the guaranteed QR signal — then
+    // tone/contrast, then mono ink, then logo, then plain.
+    const a: QrStyle = { ...s0, photoKernel: "camera-safe" };
+    const b: QrStyle = { ...a, photoKernel: "robust" };
+    const c: QrStyle = {
+      ...b,
       contrast: Math.max(s0.contrast, 0.92),
       dotScale: Math.max(s0.dotScale, 0.8),
-      moduleShape: "square" as const,
+      moduleShape: "square",
       quietZone: Math.max(s0.quietZone, 3),
     };
-    const b = { ...a, contrast: 1, imageOpacity: Math.min(s0.imageOpacity, 0.4) };
-    const c = { ...b, dotScale: 0.95 };
-    const d = { ...c, artisticStrength: Math.min(s0.artisticStrength, 0.22) };
-    const e = { ...d, imageMode: "halftone" as const, imageOpacity: 0.6, fg: "#121014", bg: "#f5f0e6" };
-    const f = { ...s0, imageMode: "logo" as const, logoScale: 0.18, quietZone: Math.max(s0.quietZone, 3) };
-    const g = {
+    const d: QrStyle = { ...c, contrast: 1, imageOpacity: Math.min(s0.imageOpacity, 0.4) };
+    const e: QrStyle = { ...d, artisticStrength: Math.min(s0.artisticStrength, 0.22) };
+    const f: QrStyle = { ...e, imageMode: "halftone", imageOpacity: 0.6, fg: "#121014", bg: "#f5f0e6" };
+    const g: QrStyle = { ...s0, imageMode: "logo", logoScale: 0.18, quietZone: Math.max(s0.quietZone, 3) };
+    const h: QrStyle = {
       ...s0,
-      imageMode: "none" as const,
-      moduleShape: "square" as const,
+      imageMode: "none",
+      moduleShape: "square",
       moduleGap: 0,
       dotScale: 1,
       quietZone: Math.max(s0.quietZone, 3),
     };
-    steps = [a, b, c, d, e, f, g];
+    steps = [a, b, c, d, e, f, g, h];
   }
 
   let lastReport = current?.report ?? null;

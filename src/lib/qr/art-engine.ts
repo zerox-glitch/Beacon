@@ -1,5 +1,5 @@
-import { pickSubmodules, weaveHalftoneQr, type HalftoneKind } from "./art/halftone-qr";
 import { kernelFrac as sizedKernel, kernelTarget } from "./art/kernel";
+import { renderPhotoQrV2 } from "./photo/photo-engine";
 import type { EncodedQr } from "./encode";
 import { cellRole, isDark, isProtectedRole } from "./structure";
 import type { ImageMode, QrStyle } from "./types";
@@ -82,7 +82,7 @@ function fitDraw(
 
 const atlasCache = new Map<string, { n: number; canvas: HTMLCanvasElement; data: Uint8ClampedArray }>();
 
-function atlasFor(img: HTMLImageElement, n: number) {
+export function atlasFor(img: HTMLImageElement, n: number) {
   const key = `${img.src}|${n}|${img.naturalWidth}x${img.naturalHeight}`;
   const hit = atlasCache.get(key);
   if (hit) return hit;
@@ -340,7 +340,7 @@ function fillRound(
   ctx.fill();
 }
 
-function drawPhotoFinders(
+export function drawPhotoFinders(
   ctx: CanvasRenderingContext2D,
   qr: EncodedQr,
   style: QrStyle,
@@ -394,18 +394,12 @@ function drawPhotoFinders(
   }
 }
 
-function kindFor(mode: WeaveMode): HalftoneKind {
-  if (mode === "halftone") return "halftone";
-  if (mode === "duotone") return "duotone";
-  if (mode === "mono") return "mono";
-  return "photo";
-}
-
 /**
- * Chu-style HalftonePhotoQRRenderer: the photograph is built from the QR.
- * Each module is S×S submodules; the centroid is the QR bit; the surround is
- * a Floyd–Steinberg / Bayer halftone of the cover. Nearest-neighbour blit
- * so the lattice stays crisp for cameras.
+ * Photo QR — dedicated ArtisticPhotoQRRenderer (photo-engine.ts).
+ * The old sub-cell halftone lattice (halftone-qr.ts) was replaced: its
+ * photographic features were 1/5 of a module — smaller than any phone
+ * camera preserves. The new renderer embeds the photo at module/group
+ * scale while the QR bit lives in guaranteed centre kernels.
  */
 export function renderHalftonePhotoQr(
   ctx: CanvasRenderingContext2D,
@@ -419,65 +413,7 @@ export function renderHalftonePhotoQr(
   kernelBoost: number,
   mode: WeaveMode,
 ) {
-  const kind = kindFor(mode);
-  const strength = artisticStrength(style);
-  const contrast = clamp(style.contrast, 0.3, 1);
-  const sub = pickSubmodules(kind, strength, qr.size, kernelBoost);
-  const atlas = atlasFor(art, qr.size * sub);
-  const pixels = new Uint8ClampedArray(atlas.data);
-  const duo = kind === "duotone" ? duotonePair(atlas) : null;
-  const fg = parseHex(style.fg) ?? [18, 18, 18];
-  const bgParsed = parseHex(style.bg);
-  const bg: [number, number, number] =
-    bgParsed && luma(bgParsed[0], bgParsed[1], bgParsed[2]) >= 0.42 ? bgParsed : [243, 238, 230];
-
-  weaveHalftoneQr(pixels, qr, {
-    sub,
-    kind,
-    contrast,
-    strength,
-    boost: kernelBoost,
-    dotScale: style.dotScale,
-    chroma: clamp(style.imageOpacity, 0.1, 1),
-    dither: style.moduleShape === "dots" || style.moduleShape === "bubbles" ? "bayer" : "fs",
-    fg,
-    bg,
-    duoDark: duo?.dark,
-    duoLight: duo?.light,
-  });
-
-  const W = qr.size * sub;
-  const woven = document.createElement("canvas");
-  woven.width = W;
-  woven.height = W;
-  const wx = woven.getContext("2d");
-  if (!wx) throw new Error("canvas");
-  wx.putImageData(new ImageData(pixels, W, W), 0, 0);
-
-  const hi = sample(atlas, 0.5, 0.1);
-  const matSrc = bgParsed ?? hi;
-  const mat = setLuminance(matSrc[0], matSrc[1], matSrc[2], 0.92);
-  ctx.fillStyle = rgbStr(mat[0], mat[1], mat[2]);
-  ctx.fillRect(0, 0, px, px);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(origin, origin, body, body);
-  ctx.clip();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(woven, origin, origin, body, body);
-  ctx.restore();
-
-  if (style.effect === "shadow" || style.effect === "glow") {
-    ctx.save();
-    ctx.shadowColor = style.effect === "glow" ? "rgba(255,220,140,0.55)" : "rgba(0,0,0,0.4)";
-    ctx.shadowBlur = cell * (style.effect === "glow" ? 1.6 : 0.9);
-    ctx.shadowOffsetY = style.effect === "shadow" ? cell * 0.2 : 0;
-    drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
-    ctx.restore();
-  } else {
-    drawPhotoFinders(ctx, qr, style, atlas, origin, cell);
-  }
+  renderPhotoQrV2(ctx, qr, style, art, origin, body, cell, px, kernelBoost, mode);
 }
 
 /**

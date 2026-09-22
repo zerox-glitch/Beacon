@@ -96,6 +96,8 @@ export interface QrStyle {
   accentColor?: string;
   /** When true the accent dots decorate the *light* cells instead of replacing dark modules. */
   accentOnLight?: boolean;
+  /** Photo QR kernel candidate; set by Fix scan escalation (photo engine). */
+  photoKernel?: "detail" | "structure" | "balanced" | "camera-safe" | "robust";
 }
 
 export interface Payload {

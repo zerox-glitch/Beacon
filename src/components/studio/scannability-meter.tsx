@@ -4,12 +4,21 @@ import { cn } from "@/lib/utils";
 import { type QrStyle } from "@/lib/qr/types";
 import { useStudio } from "@/lib/store";
 
+interface PhotoStatus {
+  candidate: string;
+  robustness: number;
+  fidelity: number;
+  cameraRobust: boolean;
+}
+
 interface ScannabilityMeterProps {
   scanOk: boolean | null;
   style: QrStyle;
   hasImage: boolean;
   onAutoFix: () => void;
   fixing: boolean;
+  /** Camera-stress + fidelity verdict from the photo engine (photo mode only). */
+  photoStatus?: PhotoStatus | null;
 }
 
 type Band = "checking" | "high" | "good" | "fair" | "low" | "unscannable";
@@ -48,6 +57,7 @@ export function ScannabilityMeter({
   hasImage,
   onAutoFix,
   fixing,
+  photoStatus,
 }: ScannabilityMeterProps) {
   const notes = useStudio((s) => s.lastFixNotes);
   const band = readBand(scanOk, style, hasImage);
@@ -100,6 +110,15 @@ export function ScannabilityMeter({
         <span>Weak</span>
         <span className="text-danger">Fail</span>
       </div>
+      {photoStatus && (
+        <p className="mt-1.5 text-[10px] leading-snug text-fg/75">
+          {photoStatus.cameraRobust
+            ? `Camera-sim robust · ${photoStatus.candidate} kernels · photo fidelity ${Math.round(
+                photoStatus.fidelity * 100,
+              )}% — still test on a real phone before print.`
+            : `Static decode only — risky on real cameras (${photoStatus.candidate} kernels failed the stress battery). Tap Fix scan.`}
+        </p>
+      )}
       {notes.length > 0 && (() => {
         const first = notes[0] ?? "";
         const failed = first.startsWith("No look");
