@@ -1448,7 +1448,114 @@ const SCENE_PRESETS: Preset[] = [
  */
 export const STYLE_PRESETS: Preset[] = artDirectionPresets();
 
-export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...ART_PRESETS, ...SCENE_PRESETS];
+/**
+ * PHOTO TEMPLATES — curated for the "clean overlay" mode: the picture shows
+ * in full underneath and the module layer floats on top with finder plates,
+ * the poster look that always scans. These are the presets the gallery keeps
+ * visible while a photo is in the frame.
+ */
+const PHOTO_PRESETS: Preset[] = [
+  {
+    id: "photo-poster-dots",
+    name: "Poster Dots",
+    category: "Photo",
+    blurb: "Bright dots on the full photo, white finder plates — the classic poster look.",
+    imageCompatible: true,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "clean",
+      moduleShape: "dots",
+      fg: "#fdfbf4",
+      bg: "#141310",
+      eyeColor: "#141310",
+      ballColor: "#141310",
+      moduleGap: 0.16,
+      dotScale: 1,
+      quietZone: 2,
+      imageOpacity: 0.96,
+    },
+  },
+  {
+    id: "photo-poster-blocks",
+    name: "Poster Blocks",
+    category: "Photo",
+    blurb: "Solid square modules with a hairline gap — maximal contrast, maximal scan rate.",
+    imageCompatible: true,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "clean",
+      moduleShape: "square",
+      fg: "#ffffff",
+      bg: "#101014",
+      eyeColor: "#101014",
+      ballColor: "#101014",
+      moduleGap: 0.06,
+      quietZone: 2,
+      imageOpacity: 1,
+    },
+  },
+  {
+    id: "photo-ivory-lens",
+    name: "Ivory Lens",
+    category: "Photo",
+    blurb: "Warm paper frame, soft rounded ink, photo faded behind a scrim.",
+    imageCompatible: true,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "clean",
+      moduleShape: "rounded",
+      fg: "#191512",
+      bg: "#f4efe6",
+      eyeColor: "#191512",
+      ballColor: "#a3372c",
+      moduleGap: 0.12,
+      quietZone: 3,
+      imageOpacity: 0.72,
+    },
+  },
+  {
+    id: "photo-duotone-film",
+    name: "Duotone Film",
+    category: "Photo",
+    blurb: "Two inks sampled from the photo — the woven film look for moody pictures.",
+    imageCompatible: true,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "duotone",
+      moduleShape: "dots",
+      fg: "#1d1a16",
+      bg: "#efe9dc",
+      eyeColor: "#1d1a16",
+      ballColor: "#1d1a16",
+      moduleGap: 0.1,
+      quietZone: 2,
+      imageOpacity: 0.85,
+      artisticStrength: 0.55,
+    },
+  },
+  {
+    id: "photo-weave-halftone",
+    name: "Newsprint",
+    category: "Photo",
+    blurb: "The photo printed as a black-ink halftone — newspaper texture, real data.",
+    imageCompatible: true,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "halftone",
+      moduleShape: "dots",
+      fg: "#17140f",
+      bg: "#f3eee2",
+      eyeColor: "#17140f",
+      ballColor: "#17140f",
+      moduleGap: 0.08,
+      quietZone: 2,
+      imageOpacity: 0.9,
+      artisticStrength: 0.5,
+    },
+  },
+];
+
+export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS];
 
 export const GALLERY_PRESETS: Preset[] = PRESETS.filter((p) => Boolean(p.artUrl));
 

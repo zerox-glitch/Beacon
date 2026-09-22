@@ -133,11 +133,22 @@ export const useStudio = create<StudioState>((set, get) => ({
       return;
     }
     const keepPhoto = Boolean(current.imageUrl) && current.imageUrl !== DEFAULT_ART_URL;
-    const nextMode = keepPhoto
-      ? current.style.imageMode === "none"
-        ? "paint"
-        : current.style.imageMode
-      : "none";
+    // A photo-aware template (clean/duotone/halftone/…) brings its own weave;
+    // flat templates keep whatever photo mode is already active so applying a
+    // palette never silently drops the user's picture.
+    const declaredMode =
+      preset.style.imageMode && preset.style.imageMode !== "none" && preset.style.imageMode !== "logo"
+        ? preset.style.imageMode
+        : null;
+    const nextMode = declaredMode
+      ? keepPhoto || Boolean(preset.artUrl)
+        ? declaredMode
+        : "none"
+      : keepPhoto
+        ? current.style.imageMode === "none"
+          ? "paint"
+          : current.style.imageMode
+        : "none";
     set({
       presetId: id,
       style: {
@@ -176,6 +187,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   setCaption: (caption) => set({ caption }),
   setFrame: (frame) => set({ frame }),
   applyUseCase: (id) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- plain lookup fn, not a hook
     const rec = useCaseById(id);
     set((s) => ({
       useCase: id,

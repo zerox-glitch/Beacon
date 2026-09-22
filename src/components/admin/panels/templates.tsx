@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
+  Crown,
   Eye,
   EyeOff,
   Pencil,
@@ -52,7 +53,8 @@ export function TemplatesPanel() {
   const [cat, setCat] = useState("All");
   const [editing, setEditing] = useState<Row | null>(null);
   const flags = useAdminMutation(
-    (input: { id: string; hidden?: boolean; featured?: boolean }) => setTemplateFlags({ data: input }),
+    (input: { id: string; hidden?: boolean; featured?: boolean; defaultTemplate?: boolean }) =>
+      setTemplateFlags({ data: input }),
     { success: "Template updated" },
   );
   const remove = useAdminMutation(
@@ -101,6 +103,7 @@ export function TemplatesPanel() {
                 isCustom: true,
                 sort: 0,
                 overridden: false,
+                isDefault: false,
               })
             }
           >
@@ -146,6 +149,7 @@ export function TemplatesPanel() {
                   {r.isCustom ? <Badge tone="accent">custom</Badge> : null}
                   {r.overridden && !r.isCustom ? <Badge>override</Badge> : null}
                   {r.style?.artDirection ? <Badge tone="accent">art</Badge> : null}
+                  {r.isDefault ? <Badge tone="accent">studio default</Badge> : null}
                   {r.featured ? <Star className="size-3 fill-ok text-ok" /> : null}
                   {r.hidden ? <EyeOff className="size-3 text-danger" /> : null}
                 </p>
@@ -171,6 +175,16 @@ export function TemplatesPanel() {
                   onClick={() => flags.mutate({ id: r.id, featured: !r.featured })}
                 >
                   <Star className={`size-3.5 ${r.featured ? "fill-accent text-accent" : ""}`} />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  title={r.isDefault ? "Unset as studio default" : "Open the studio with this template"}
+                  disabled={flags.isPending || (!r.isDefault && r.hidden)}
+                  onClick={() => flags.mutate({ id: r.id, defaultTemplate: !r.isDefault })}
+                >
+                  <Crown className={`size-3.5 ${r.isDefault ? "fill-ok text-ok" : "text-subtle hover:text-fg"}`} />
                 </Button>
                 <Button type="button" size="icon-sm" variant="ghost" title="Edit" onClick={() => setEditing(r)}>
                   <Pencil className="size-3.5" />
@@ -371,6 +385,8 @@ type Draft = {
   featured: boolean;
   hidden: boolean;
   sort: number;
+  /** "auto" = derive from the style's image mode (what the studio does). */
+  imageCompat: "auto" | "yes" | "no";
   style: QrStyle;
 };
 
@@ -384,6 +400,12 @@ function initDraft(row: Row): Draft {
     featured: Boolean(row.featured),
     hidden: Boolean(row.hidden),
     sort: row.sort ?? 0,
+    imageCompat:
+      (row as { imageCompatible?: boolean | null }).imageCompatible === true
+        ? "yes"
+        : (row as { imageCompatible?: boolean | null }).imageCompatible === false
+          ? "no"
+          : "auto",
     // The editor mirrors the RAW stored overrides for custom rows and the full
     // merged style for built-ins — either way it opens on THIS template.
     style: { ...DEFAULT_STYLE, ...(row.style ?? {}) } as QrStyle,
@@ -447,6 +469,7 @@ function TemplateEditorModal({
       hidden: draft.hidden,
       sort: Math.max(-1000, Math.min(1000, Math.trunc(draft.sort) || 0)),
       style,
+      ...(draft.imageCompat === "auto" ? {} : { imageCompatible: draft.imageCompat === "yes" }),
     };
     if (row.isCustom) payload.id = row.id;
     else payload.overrideId = row.id;
@@ -540,6 +563,27 @@ function TemplateEditorModal({
                 />
                 <MiniSelect label="Image mode" value={draft.style.imageMode} options={IMAGE_MODES.map((o) => ({ value: o.id, label: o.label }))} onChange={(v) => patchStyle({ imageMode: v as QrStyle["imageMode"] })} />
                 <MiniSelect label="ECC" value={draft.style.ecc} options={["L", "M", "Q", "H"].map((v) => ({ value: v, label: v }))} onChange={(v) => patchStyle({ ecc: v as QrStyle["ecc"] })} />
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-subtle">
+                While a visitor has a photo in the frame, the gallery only lists photo-compatible templates.
+                “Auto” keeps this one compatible exactly when its image mode uses the picture — pin it to
+                show it in photo mode anyway, or to hide it there.
+              </p>
+              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                {(["auto", "yes", "no"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => patch({ imageCompat: v })}
+                    className={`h-9 rounded-md border text-xs font-medium capitalize transition ${
+                      draft.imageCompat === v
+                        ? "border-accent bg-accent text-accent-fg"
+                        : "border-border bg-elevated text-muted hover:text-fg"
+                    }`}
+                  >
+                    Photo mode: {v === "auto" ? "Auto" : v === "yes" ? "Allowed" : "Hidden"}
+                  </button>
+                ))}
               </div>
             </Field>
 

@@ -179,6 +179,8 @@ export const templateSaveSchema = z.object({
   featured: z.boolean().default(false),
   hidden: z.boolean().default(false),
   sort: z.number().int().min(-1000).max(1000).default(0),
+  /** Pin photo compatibility; omitted = derive from the style's image mode. */
+  imageCompatible: z.boolean().optional(),
 });
 export type TemplateSaveInput = z.infer<typeof templateSaveSchema>;
 

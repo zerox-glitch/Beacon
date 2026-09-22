@@ -23,6 +23,8 @@ export interface CmsState {
   content: ContentDoc;
   seo: SeoDoc;
   presetCount: number;
+  /** Template the admin pinned as the studio's opening look (null = stock). */
+  defaultTemplate: string | null;
   error: string | null;
 }
 
@@ -33,6 +35,7 @@ const INITIAL: CmsState = {
   content: DEFAULT_CONTENT,
   seo: DEFAULT_SEO,
   presetCount: PRESETS.length,
+  defaultTemplate: null,
   error: null,
 };
 
@@ -71,6 +74,7 @@ export function ensureCms(force = false): Promise<void> {
         content: bundle.content,
         seo: bundle.seo,
         presetCount: PRESETS.length + bundle.templates.filter((t) => t.isCustom).length,
+        defaultTemplate: bundle.defaultTemplate ?? null,
         error: null,
       };
     } catch (err) {

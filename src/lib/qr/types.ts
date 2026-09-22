@@ -55,6 +55,7 @@ export type GradientType = "none" | "linear" | "radial" | "diagonal" | "image";
 export type ImageMode =
   | "none"
   | "logo"
+  | "clean"
   | "backdrop"
   | "mosaic"
   | "halftone"
@@ -152,6 +153,12 @@ export interface Preset {
   blurb?: string;
   /** When set, applying this preset loads this picture into the QR. */
   artUrl?: string;
+  /**
+   * Usable while a photo drives the QR. NULL/undefined = auto: true when the
+   * preset itself declares a photo image mode. The studio gallery filters
+   * templates that cannot carry a photo, and admins can pin either way.
+   */
+  imageCompatible?: boolean;
   style: QrStyle;
 }
 
@@ -193,6 +200,7 @@ export const EYE_SHAPES: { id: EyeShape; label: string }[] = [
 
 export const IMAGE_MODES: { id: ImageMode; label: string; hint: string }[] = [
   { id: "paint", label: "Photo QR", hint: "The photograph is built from the QR. Each module’s center is the bit; the rest is a photo halftone." },
+  { id: "clean", label: "Clean overlay", hint: "The photo sits underneath at full strength; crisp modules with finder plates float on top — the poster look, maximum scannability." },
   { id: "mosaic", label: "Color blend", hint: "Each module is one contrast-normalized color from the photo" },
   { id: "halftone", label: "Halftone", hint: "Same lattice in black ink on paper — newspaper dots, not colored rings" },
   { id: "duotone", label: "Duotone", hint: "Two inks sampled from the photo, same center-locked weave" },

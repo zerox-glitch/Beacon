@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { assessPassword, assertStrongPassword, guardCheck, guardOnFail, LOCKOUT } from "./policy.ts";
-import { mergeCatalog, adminCatalog, rowToPreset, newTemplateId } from "./catalog-merge.ts";
+import { mergeCatalog, adminCatalog, rowToPreset, newTemplateId, worksWithImages } from "./catalog-merge.ts";
 import { sniffImage, sanitizeFilename, isSafeImageUrl, parseUpload, MAX_MEDIA_BYTES } from "./media-format.ts";
 import { seoKeyForPath, brandSchema, templateSaveSchema } from "./schemas.ts";
 import type { Preset } from "../qr/types.ts";
@@ -174,6 +174,32 @@ describe("mergeCatalog", () => {
     // The admin view renames too, so chips and rows agree.
     const adm = adminCatalog(base, rows, { categories: { renames: { Neon: "Lights" } } });
     assert.equal(adm.find((p) => p.id === "cms-1")!.category, "Lights");
+  });
+
+  it("derives photo compatibility from the image mode unless pinned", () => {
+    assert.equal(worksWithImages({ style: { imageMode: "clean" as const } as never }), true);
+    assert.equal(worksWithImages({ style: { imageMode: "none" } as never }), false);
+    assert.equal(worksWithImages({ imageCompatible: false, style: { imageMode: "clean" as const } as never }), false);
+    assert.equal(worksWithImages({ imageCompatible: true, style: { imageMode: "none" } as never }), true);
+  });
+
+  it("an override switching to a photo mode flips compat; isDefault surfaces in the admin view", () => {
+    const rows = [
+      { id: "ink-cut", name: null, category: null, blurb: null, artUrl: null, style: { imageMode: "clean" as const }, featured: null, hidden: false, sort: 0, isCustom: false, isDefault: true },
+      { id: "cms-photo", name: "Pinned flat", category: "Photo", blurb: null, artUrl: null, style: { imageMode: "duotone" as const }, featured: null, hidden: false, sort: 0, isCustom: true, imageCompatible: false },
+    ];
+    const r = mergeCatalog(base, rows);
+    assert.equal(r.presets.find((p) => p.id === "ink-cut")!.imageCompatible, true); // re-derived from the override
+    const r2 = mergeCatalog(base, rows, { categories: undefined });
+    assert.equal(r2.presets.find((p) => p.id === "cms-photo")!.imageCompatible, false); // pin beats derivation
+    const adm = adminCatalog(base, rows);
+    assert.equal(adm.find((p) => p.id === "ink-cut")!.isDefault, true);
+    assert.equal(adm.find((p) => p.id === "ink-cut")!.imageCompatible, true);
+    assert.equal(adm.find((p) => p.id === "art-royal")!.isDefault, false);
+    // Rows without a DB override carry no explicit pin — the gallery derives
+    // compatibility from the style at read time (worksWithImages above).
+    assert.equal(adm.find((p) => p.id === "art-royal")!.imageCompatible, undefined);
+    assert.equal(worksWithImages(adm.find((p) => p.id === "art-royal")!), false);
   });
 
   it("ignores identity renames and orders listed tabs first", () => {

@@ -51,6 +51,10 @@ export interface TemplateRow {
   hidden: boolean;
   sort: number;
   isCustom: boolean;
+  /** NULL/undefined = auto: compatible iff the template declares a photo mode. */
+  imageCompatible?: boolean | null;
+  /** Admin-picked: the studio applies this template when it opens. */
+  isDefault?: boolean;
 }
 
 export interface VisibleCatalog {
@@ -115,14 +119,18 @@ function showCategory(preset: Preset, show: (c: string | null | undefined) => st
 }
 
 function applyOverride(preset: Preset, row: TemplateRow): Preset {
+  const style = row.style ? { ...preset.style, ...row.style } : preset.style;
   return {
     ...preset,
+    // An override that switches the image mode re-derives compat — unless the
+    // admin pinned it explicitly.
+    imageCompatible: row.imageCompatible ?? (row.style ? worksWithImages({ style }) : (preset.imageCompatible ?? worksWithImages({ style: preset.style }))),
+    style,
     name: row.name ?? preset.name,
     category: row.category ?? preset.category,
     blurb: row.blurb ?? preset.blurb,
     artUrl: row.artUrl ?? preset.artUrl,
     featured: row.featured ?? preset.featured,
-    style: row.style ? { ...preset.style, ...row.style } : preset.style,
   };
 }
 
@@ -135,8 +143,20 @@ export function rowToPreset(row: TemplateRow): Preset {
     blurb: row.blurb ?? undefined,
     artUrl: row.artUrl ?? undefined,
     featured: row.featured ?? false,
+    imageCompatible: row.imageCompatible ?? worksWithImages({ style }),
     style,
   };
+}
+
+/**
+ * Can this template carry a photo? Explicit admin flag wins; otherwise a
+ * template is photo-ready exactly when it declares a photo image mode.
+ * (Takes the shape loosely so rowToPreset can bootstrap from a style alone.)
+ */
+export function worksWithImages(preset: { imageCompatible?: boolean; style?: QrStyle }): boolean {
+  if (typeof preset.imageCompatible === "boolean") return preset.imageCompatible;
+  const mode = preset.style?.imageMode;
+  return mode !== undefined && mode !== "none";
 }
 
 /** Admin list view: every row against the built-ins, hidden ones retained + flagged. */
@@ -144,10 +164,10 @@ export function adminCatalog(
   base: Preset[],
   rows: TemplateRow[],
   opts: { categories?: CategoryDoc } = {},
-): Array<Preset & { hidden: boolean; isCustom: boolean; sort: number; overridden: boolean }> {
+): Array<Preset & { hidden: boolean; isCustom: boolean; sort: number; overridden: boolean; isDefault: boolean }> {
   const show = (c: string | null | undefined) => displayCategory(c, opts.categories?.renames);
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const out: Array<Preset & { hidden: boolean; isCustom: boolean; sort: number; overridden: boolean }> = [];
+  const out: Array<Preset & { hidden: boolean; isCustom: boolean; sort: number; overridden: boolean; isDefault: boolean }> = [];
   for (const preset of base) {
     const row = byId.get(preset.id);
     out.push({
@@ -156,6 +176,7 @@ export function adminCatalog(
       isCustom: false,
       sort: row?.sort ?? 0,
       overridden: Boolean(row),
+      isDefault: row?.isDefault ?? false,
     });
   }
   for (const row of rows) {
@@ -166,6 +187,7 @@ export function adminCatalog(
       isCustom: true,
       sort: row.sort,
       overridden: true,
+      isDefault: row.isDefault ?? false,
     });
   }
   return out;

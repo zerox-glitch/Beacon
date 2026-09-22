@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useCms } from "@/lib/cms/runtime";
+import { worksWithImages } from "@/lib/cms/catalog-merge";
 import { cachedPresetThumb, renderPresetThumb } from "@/lib/qr/preset-thumb";
 import type { Preset, QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
@@ -110,6 +111,9 @@ export function PresetGallery() {
   const presetId = useStudio((s) => s.presetId);
   const setCategory = useStudio((s) => s.setCategory);
   const applyPreset = useStudio((s) => s.applyPreset);
+  const style = useStudio((s) => s.style);
+  const imageUrl = useStudio((s) => s.imageUrl);
+  const [showAll, setShowAll] = useState(false);
 
   // CMS-merged: built-ins + admin custom templates, hidden ones filtered out.
   const { catalog } = useCms();
@@ -117,7 +121,16 @@ export function PresetGallery() {
   const GALLERY_PRESETS = PRESETS.filter((p) => Boolean(p.artUrl));
   const PRESET_CATEGORIES = ["All", ...catalog.categories];
 
-  const list = category === "All" ? PRESETS : PRESETS.filter((p) => p.category === category);
+  // With a photo driving the QR, only templates that can CARRY the photo are
+  // offered by default — flat weave-less styles would drop it. Admins pin the
+  // verdict per template (imageCompatible); the toggle reveals the rest.
+  const photoActive =
+    Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
+  const baseList = category === "All" ? PRESETS : PRESETS.filter((p) => p.category === category);
+  const list = photoActive && !showAll
+    ? baseList.filter((p) => worksWithImages(p) || p.id === presetId)
+    : baseList;
+  const hiddenCount = baseList.length - list.length;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -155,6 +168,22 @@ export function PresetGallery() {
         </div>
       )}
 
+      {photoActive ? (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-snug text-subtle">
+          <span>
+            {showAll
+              ? "All styles shown — flat ones leave the picture out."
+              : `Photo is on: ${list.length} photo-ready look${list.length === 1 ? "" : "s"} shown.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="font-semibold text-accent hover:underline"
+          >
+            {showAll ? "Show only photo styles" : `Show all (${hiddenCount} more)`}
+          </button>
+        </p>
+      ) : null}
       <p className="text-xs tabular-nums text-subtle">{list.length} looks — each tile is a real QR</p>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
         {list.map((p) => (

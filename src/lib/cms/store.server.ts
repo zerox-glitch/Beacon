@@ -142,7 +142,7 @@ export async function saveCategories(doc: unknown, actor: string): Promise<impor
 function rowFromDb(r: {
   id: string; name: string | null; category: string | null; blurb: string | null;
   art_url: string | null; style: unknown; featured: boolean | null; hidden: boolean;
-  sort: number; is_custom: boolean;
+  sort: number; is_custom: boolean; image_compatible?: boolean | null; is_default?: boolean | null;
 }): TemplateRow & { updatedAt: string } {
   return {
     id: r.id,
@@ -155,6 +155,8 @@ function rowFromDb(r: {
     hidden: r.hidden,
     sort: r.sort,
     isCustom: r.is_custom,
+    imageCompatible: r.image_compatible ?? null,
+    isDefault: r.is_default === true,
     updatedAt: toIso(r.id), // replaced below when caller selects updated_at
   };
 }
@@ -185,6 +187,8 @@ export interface TemplateSaveRow {
   featured?: boolean;
   hidden?: boolean;
   sort?: number;
+  imageCompatible?: boolean | null;
+  isDefault?: boolean;
 }
 
 export async function upsertTemplate(input: TemplateSaveRow, actor: string): Promise<void> {
@@ -192,12 +196,14 @@ export async function upsertTemplate(input: TemplateSaveRow, actor: string): Pro
   if (input.isCustom) {
     await sql.query(
       `insert into qr_templates
-         (id, name, category, blurb, art_url, style, featured, hidden, sort, is_custom, updated_at, updated_by)
-       values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,true,now(),$10)
+         (id, name, category, blurb, art_url, style, featured, hidden, sort, is_custom, image_compatible, is_default, updated_at, updated_by)
+       values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,true,$11,$12,now(),$10)
        on conflict (id) do update set
          name=excluded.name, category=excluded.category, blurb=excluded.blurb,
          art_url=excluded.art_url, style=excluded.style, featured=excluded.featured,
-         hidden=excluded.hidden, sort=excluded.sort, updated_at=now(), updated_by=excluded.updated_by`,
+         hidden=excluded.hidden, sort=excluded.sort,
+         image_compatible=excluded.image_compatible, is_default=excluded.is_default,
+         updated_at=now(), updated_by=excluded.updated_by`,
       [
         input.id,
         input.name ?? "Untitled template",
@@ -209,6 +215,8 @@ export async function upsertTemplate(input: TemplateSaveRow, actor: string): Pro
         input.hidden ?? false,
         input.sort ?? 0,
         actor,
+        input.imageCompatible ?? null,
+        input.isDefault ?? false,
       ],
     );
     invalidateCmsCache();
@@ -217,12 +225,14 @@ export async function upsertTemplate(input: TemplateSaveRow, actor: string): Pro
   // Override row for a built-in: only the changed flags are stored.
   await sql.query(
     `insert into qr_templates
-       (id, name, category, blurb, art_url, style, featured, hidden, sort, is_custom, updated_at, updated_by)
-     values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,false,now(),$10)
+       (id, name, category, blurb, art_url, style, featured, hidden, sort, is_custom, image_compatible, is_default, updated_at, updated_by)
+     values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,false,$11,$12,now(),$10)
      on conflict (id) do update set
        name=excluded.name, category=excluded.category, blurb=excluded.blurb,
        art_url=excluded.art_url, style=excluded.style, featured=excluded.featured,
-       hidden=excluded.hidden, sort=excluded.sort, updated_at=now(), updated_by=excluded.updated_by`,
+       hidden=excluded.hidden, sort=excluded.sort,
+       image_compatible=excluded.image_compatible, is_default=excluded.is_default,
+       updated_at=now(), updated_by=excluded.updated_by`,
     [
       input.id,
       input.name ?? null,
@@ -234,8 +244,42 @@ export async function upsertTemplate(input: TemplateSaveRow, actor: string): Pro
       input.hidden ?? false,
       input.sort ?? 0,
       actor,
+      input.imageCompatible ?? null,
+      input.isDefault ?? false,
     ],
   );
+  invalidateCmsCache();
+}
+
+/**
+ * Studio default: exactly one VISIBLE template may carry is_default. Setting a
+ * new default clears the old one atomically; `null` simply removes the default
+ * (the studio then opens on the stock style). Built-ins get a minimal override
+ * row so the pin survives without restyling anything.
+ */
+export async function setDefaultTemplate(id: string | null, actor: string): Promise<void> {
+  const sql = await getSql();
+  await sql`update qr_templates set is_default = false where is_default = true`;
+  if (id) {
+    const existing = await sql.query<{ id: string; hidden: boolean }>(
+      "select id, hidden from qr_templates where id = $1",
+      [id],
+    );
+    if (existing.length) {
+      if (existing[0]!.hidden) throw new Error("A hidden template cannot be the studio default — unhide it first");
+      await sql.query(
+        "update qr_templates set is_default = true, updated_at = now(), updated_by = $2 where id = $1",
+        [id, actor],
+      );
+    } else {
+      await sql.query(
+        `insert into qr_templates (id, is_custom, is_default, hidden, sort)
+         values ($1, false, true, false, 0)
+         on conflict (id) do update set is_default = true, updated_at = now(), updated_by = $2`,
+        [id, actor],
+      );
+    }
+  }
   invalidateCmsCache();
 }
 
@@ -541,7 +585,8 @@ export async function getPublicBundle(): Promise<PublicBundle> {
     listTemplateRows(false),
     getCategories(),
   ]);
-  const data: PublicBundle = { brand, content, seo, templates: rows, categories };
+  const defaultTemplate = rows.find((r) => r.isDefault === true)?.id ?? null;
+  const data: PublicBundle = { brand, content, seo, templates: rows, categories, defaultTemplate };
   bundleCache = { at: now, data };
   return data;
 }

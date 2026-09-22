@@ -315,6 +315,8 @@ const templateFlagsSchema = z.object({
   hidden: z.boolean().optional(),
   featured: z.boolean().optional(),
   sort: z.number().int().min(-1000).max(1000).optional(),
+  /** Studio default (singleton — setting one clears the rest; false clears). */
+  defaultTemplate: z.boolean().optional(),
 });
 
 export const saveTemplate = createServerFn({ method: "POST" })
@@ -327,6 +329,11 @@ export const saveTemplate = createServerFn({ method: "POST" })
     if (!id) throw new Error("Template id required");
     const isCustom = id.startsWith("cms-");
     if (isCustom && !data.name?.trim()) throw new Error("Custom templates need a name");
+    // The editor saves the whole row — carry over the default pin so styling
+    // changes never silently un-set it.
+    const before = await store.listTemplateRows(true);
+    const existing = before.find((r) => r.id === id);
+    if (data.hidden && existing?.isDefault) throw new Error("Unpin it as studio default before hiding — or hide it from the list");
     await store.upsertTemplate(
       {
         id,
@@ -339,6 +346,8 @@ export const saveTemplate = createServerFn({ method: "POST" })
         featured: data.featured,
         hidden: data.hidden,
         sort: data.sort,
+        imageCompatible: data.imageCompatible ?? null,
+        isDefault: existing?.isDefault ?? false,
       },
       admin.userId,
     );
@@ -374,10 +383,17 @@ export const setTemplateFlags = createServerFn({ method: "POST" })
         featured: data.featured ?? existing?.featured ?? undefined,
         hidden: data.hidden ?? existing?.hidden ?? false,
         sort: data.sort ?? existing?.sort ?? 0,
+        imageCompatible: existing?.imageCompatible ?? null,
+        isDefault: existing?.isDefault ?? false,
       },
       admin.userId,
     );
-    await store.audit(admin.userId, "template.flags", data.id, { hidden: data.hidden, featured: data.featured, sort: data.sort }, reqMeta(), admin.name);
+    if (data.defaultTemplate !== undefined) {
+      // Runs after the flag upsert: validates visibility and keeps the
+      // is_default singleton intact.
+      await store.setDefaultTemplate(data.defaultTemplate ? data.id : null, admin.userId);
+    }
+    await store.audit(admin.userId, "template.flags", data.id, { hidden: data.hidden, featured: data.featured, sort: data.sort, defaultTemplate: data.defaultTemplate }, reqMeta(), admin.name);
     store.invalidateCmsCache();
     return { ok: true as const };
   });

@@ -8,7 +8,7 @@ import {
   Palette,
   Type,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { AmbientArt } from "@/components/studio/ambient-art";
@@ -19,7 +19,8 @@ import { LibraryPanel } from "@/components/studio/library-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useCms } from "@/lib/cms/runtime";
+import { getPresetMerged, useCms } from "@/lib/cms/runtime";
+import { getPreset } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -53,7 +54,7 @@ const STUDIO_TABS = [
 ] as const;
 
 export function Studio() {
-  const { catalog, brand } = useCms();
+  const { catalog, brand, defaultTemplate } = useCms();
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
@@ -63,6 +64,21 @@ export function Studio() {
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
+
+  // Admin-picked opening look: applied ONCE per session, and only over the
+  // seeded default view — a visitor who already started designing is never
+  // overwritten. Falls back to the stock seeded preset when no default is set.
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (!defaultTemplate || defaultApplied.current) return;
+    defaultApplied.current = true;
+    const s = useStudio.getState();
+    if (s.presetId !== "art-alpine-summit") return;
+    const preset = getPresetMerged(defaultTemplate) ?? getPreset(defaultTemplate);
+    if (!preset) return;
+    s.applyPreset(defaultTemplate);
+    if (preset.category) s.setCategory(preset.category);
+  }, [defaultTemplate]);
 
   function toggleShowcase() {
     const open = !showcaseOpen;

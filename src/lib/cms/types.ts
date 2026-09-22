@@ -30,4 +30,6 @@ export interface PublicBundle {
   templates: TemplateRow[];
   /** Gallery category rename/order layer (see catalog-merge). */
   categories: CategoryDoc;
+  /** Template the admin pinned to open the studio with; null = stock style. */
+  defaultTemplate: string | null;
 }

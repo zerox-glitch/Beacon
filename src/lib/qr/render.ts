@@ -492,6 +492,104 @@ export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRend
   return ctx;
 }
 
+/**
+ * CLEAN photo mode — the "poster" treatment: the photograph carries the
+ * frame, a crisp module layer plus white finder plates float on top. Unlike
+ * the weave engines nothing is sampled from the photo into the modules, so
+ * contrast (and scan rate) is dominated by the template, not the picture.
+ * `imageOpacity` fades the photo; a soft auto-scrim keeps the dots readable
+ * on bright images.
+ */
+function renderCleanPhotoQr(
+  ctx: CanvasRenderingContext2D,
+  qr: EncodedQr,
+  style: QrStyle,
+  art: HTMLImageElement,
+  origin: number,
+  body: number,
+  cell: number,
+  px: number,
+  fill: string | CanvasGradient,
+) {
+  const bgRgb = parseHex(style.bg);
+  const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  const paper = bgLum >= 0.42 ? style.bg : "#f3eee6";
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, px, px);
+
+  // Photo, letterboxed over the whole frame like the studio stage, then a
+  // gentle scrim so light dots never fight a bright picture.
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.12, Math.min(1, style.imageOpacity));
+  coverDraw(ctx, art, 0, 0, px, px, art.naturalWidth, art.naturalHeight);
+  ctx.restore();
+  const fgRgb = parseHex(style.fg);
+  const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
+  ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
+  ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
+
+  // Finder plates: an opaque rounded island per eye + separator.
+  const corners: [number, number][] = [
+    [0, 0],
+    [qr.size - 7, 0],
+    [0, qr.size - 7],
+  ];
+  const g = cell * 0.45;
+  for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+    const sepX = ex === 0 ? ox : ox - cell;
+    const sepY = ey === 0 ? oy : oy - cell;
+    ctx.fillStyle = paper;
+    roundedRect(ctx, sepX - g, sepY - g, cell * 8 + g * 2, cell * 8 + g * 2, cell * 0.9, cell * 0.9, cell * 0.9, cell * 0.9);
+    ctx.fill();
+  }
+
+  // Modules. Data cells keep the template's shape; protected cells stay
+  // square solids — the timing/alignment rhythm must not be decorated.
+  const gap = Math.max(0, Math.min(0.35, style.moduleGap));
+  const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+  const eyeInk = style.eyeColor || style.fg;
+  for (let y = 0; y < qr.size; y++) {
+    for (let x = 0; x < qr.size; x++) {
+      if (isFinderCell(x, y, qr.size)) continue;
+      const dark = isDark(qr, x, y);
+      const type = qr.types[y]![x]!;
+      const px0 = origin + x * cell;
+      const py0 = origin + y * cell;
+      const protectedPattern =
+        type === QrCodeDataType.Function ||
+        type === QrCodeDataType.Timing ||
+        type === QrCodeDataType.Alignment;
+      if (protectedPattern) {
+        if (dark) {
+          ctx.fillStyle = fill;
+          ctx.fillRect(px0, py0, cell, cell);
+        }
+        continue;
+      }
+      if (!dark) continue;
+      const pad = cell * gap * 0.5;
+      const mSize = (cell - pad * 2) * dotWeight;
+      const mOffset = (cell - mSize) / 2;
+      ctx.fillStyle = fill;
+      drawModuleShape(ctx, px0 + mOffset, py0 + mOffset, mSize, style.moduleShape, undefined, {
+        gx: x,
+        gy: y,
+        size: qr.size,
+      });
+    }
+  }
+
+  // Eyes last, on their plates: ink = eye color, ball = ball color.
+  for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+    drawEye(ctx, ox, oy, cell, style.eyeShape, style.ballShape, eyeInk, style.ballColor || eyeInk, paper);
+  }
+}
+
 export function renderQr(
   canvas: HTMLCanvasElement,
   qr: EncodedQr,
@@ -599,6 +697,11 @@ export function renderQr(
 
   const fill = makeFill(ctx, style, origin, origin, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
+
+  if (opts.art && mode === "clean") {
+    renderCleanPhotoQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
+    return;
+  }
 
   if (
     opts.art &&
