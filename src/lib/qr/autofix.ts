@@ -1,10 +1,12 @@
-import { optimizeScan } from "./art/optimizer";
+import { optimizeScan, type OptimizeResult } from "./art/optimizer";
 import type { Payload, QrStyle } from "./types";
 
 export interface AutoFixOutcome {
   ok: boolean;
+  changed: boolean;
   patch: Partial<QrStyle>;
   notes: string[];
+  report: OptimizeResult["report"];
   error?: string;
 }
 
@@ -38,11 +40,13 @@ export async function autoFixScan(
   imageUrl: string | null,
   logoUrl: string | null,
 ): Promise<AutoFixOutcome> {
-  const result = await optimizeScan(payload, style, imageUrl, logoUrl, 480);
+  const result = await optimizeScan(payload, style, imageUrl, logoUrl);
   return {
     ok: result.ok,
+    changed: result.changed,
     patch: result.patch,
     notes: result.notes,
+    report: result.report,
     error: result.ok ? undefined : result.notes[0],
   };
 }

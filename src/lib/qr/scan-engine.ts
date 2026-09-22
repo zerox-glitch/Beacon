@@ -92,6 +92,21 @@ export async function inspectRenderedQr(
   return { decoded, ok, contrast, quietZoneOk, finderOk, notes };
 }
 
+/** Downscale a canvas and decode it — a robustness margin for phone cameras. */
+export async function decodeScaled(canvas: HTMLCanvasElement, size: number): Promise<string | null> {
+  const jsQR = (await import("jsqr")).default;
+  const off = document.createElement("canvas");
+  off.width = size;
+  off.height = size;
+  const cx = off.getContext("2d", { willReadFrequently: true });
+  if (!cx) return null;
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = "high";
+  cx.drawImage(canvas, 0, 0, size, size);
+  const img = cx.getImageData(0, 0, size, size);
+  return jsQR(img.data, size, size, { inversionAttempts: "attemptBoth" })?.data ?? null;
+}
+
 /** Decode a downloaded PNG blob at native size, then 480 and 360 via verifyQr. */
 export async function inspectPngBlob(blob: Blob, expected?: string | null): Promise<ScanReport> {
   const url = URL.createObjectURL(blob);

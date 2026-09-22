@@ -1,143 +1,193 @@
 import { tryEncodePayload } from "../encode";
 import { buildPayload } from "../payload";
 import { loadImage, renderQr } from "../render";
-import { inspectRenderedQr, type ScanReport } from "../scan-engine";
+import { decodeScaled, inspectRenderedQr, type ScanReport } from "../scan-engine";
 import type { Payload, QrStyle } from "../types";
 
 export interface OptimizeResult {
   ok: boolean;
+  changed: boolean;
   patch: Partial<QrStyle>;
+  /** Change fragments ("more contrast", …) when fixed; a full sentence when clean or failed. */
   notes: string[];
   report: ScanReport | null;
 }
 
-function pictured(style: QrStyle, imageUrl: string | null): boolean {
-  return Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
+/** Same bitmap the preview paints, so Fix scan and the badge can never disagree. */
+const PX = 512;
+
+function diffStyle(base: QrStyle, next: QrStyle): Partial<QrStyle> {
+  const patch: Record<string, unknown> = {};
+  for (const key of Object.keys(next) as (keyof QrStyle)[]) {
+    if (JSON.stringify(base[key]) !== JSON.stringify(next[key])) patch[key as string] = next[key];
+  }
+  return patch as Partial<QrStyle>;
+}
+
+/** Human-readable fragments for every knob the patch actually touched. */
+function describe(base: QrStyle, patch: Partial<QrStyle>): string[] {
+  const s = base as unknown as Record<string, unknown>;
+  const p = patch as Record<string, unknown>;
+  const bits: string[] = [];
+  if (p.fg || p.eyeColor || p.ballColor) bits.push("darker ink");
+  if (p.bg) bits.push("lighter paper");
+  if (typeof p.contrast === "number" && p.contrast > (s.contrast as number)) bits.push("more contrast");
+  if (typeof p.dotScale === "number") {
+    bits.push(p.dotScale > (s.dotScale as number) ? "heavier dots" : "lighter dots");
+  }
+  if (p.moduleShape && p.moduleShape !== s.moduleShape) bits.push("square modules");
+  if (typeof p.moduleGap === "number" && p.moduleGap < (s.moduleGap as number)) bits.push("removed gaps");
+  if (typeof p.quietZone === "number" && p.quietZone > (s.quietZone as number)) bits.push("wider quiet zone");
+  if (typeof p.artisticStrength === "number" && p.artisticStrength < (s.artisticStrength as number)) {
+    bits.push("coarser weave");
+  }
+  if (typeof p.imageOpacity === "number" && p.imageOpacity < (s.imageOpacity as number)) {
+    bits.push("crushed photo tones");
+  }
+  if (p.imageMode) {
+    if (p.imageMode === "halftone") bits.push("newspaper ink");
+    else if (p.imageMode === "logo") bits.push("photo into logo center");
+    else if (p.imageMode === "none") bits.push("art off");
+    else if (p.imageMode === "paint") bits.push("photo QR");
+  }
+  if (p.ecc && p.ecc !== s.ecc) bits.push(`ECC ${String(p.ecc)}`);
+  if (p.maskPattern !== undefined && p.maskPattern !== s.maskPattern) bits.push("auto mask");
+  if (p.eyeShape && p.eyeShape !== s.eyeShape) bits.push("square finders");
+  if (p.effect && p.effect !== s.effect) bits.push("effects off");
+  if (!bits.length) bits.push("re-tuned");
+  return bits;
 }
 
 /**
- * Multi-pass Fix Scan. Least-destructive steps first.
- * ok is true only when jsQR recovered the payload.
+ * Real Fix scan. Walks a ladder of concrete style changes — colors, dot
+ * weight, gaps, quiet zone, weave density, ink mode, logo, plain QR —
+ * rendering each candidate at the preview's exact bitmap and decoding it with
+ * jsQR. A candidate wins only when it survives BOTH the 512px read and a 320px
+ * downscale read (phone-camera margin). Success is reported only when the
+ * decoder actually came back with the payload.
  */
 export async function optimizeScan(
   payload: Payload,
   style: QrStyle,
   imageUrl: string | null,
   logoUrl: string | null,
-  pixelSize = 480,
 ): Promise<OptimizeResult> {
   const expected = buildPayload(payload).trim() || null;
   const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
   const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
   const canvas = document.createElement("canvas");
+  const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
 
-  const paint = (s: QrStyle, boost = 0): boolean => {
+  const paint = (s: QrStyle, boost: number): boolean => {
     const enc = tryEncodePayload(payload, s);
     if (!enc.ok) return false;
-    renderQr(canvas, enc.qr, s, { pixelSize, art, logo, exportScale: true, kernelBoost: boost });
+    renderQr(canvas, enc.qr, s, { pixelSize: PX, art, logo, exportScale: true, kernelBoost: boost });
     return true;
   };
 
-  if (!paint(style)) {
-    return { ok: false, patch: {}, notes: ["Nothing to encode."], report: null };
-  }
-  const first = await inspectRenderedQr(canvas, expected);
-  if (first.ok) {
-    return { ok: true, patch: {}, notes: ["Already scannable."], report: first };
-  }
-
-  const hasPic = pictured(style, imageUrl);
-
-  const steps: { patch: Partial<QrStyle>; note: string }[] = hasPic
-    ? [
-        {
-          patch: {
-            contrast: Math.min(1, style.contrast + 0.08),
-          },
-          note: "raised contrast",
-        },
-        {
-          patch: {
-            contrast: Math.min(1, Math.max(style.contrast, 0.88)),
-            dotScale: Math.min(0.92, Math.max(style.dotScale, 0.78)),
-            effect: "none",
-          },
-          note: "plus-shaped bit lock, dropped effects",
-        },
-        {
-          patch: {
-            moduleShape: "square",
-            artisticStrength: Math.max(0.18, style.artisticStrength - 0.16),
-            contrast: Math.min(1, Math.max(style.contrast, 0.9)),
-            gradientType: "none",
-            effect: "none",
-            dotScale: Math.min(0.94, Math.max(style.dotScale, 0.88)),
-          },
-          note: "3×3 weave, larger bit lock",
-        },
-        {
-          patch: {
-            quietZone: Math.max(style.quietZone, 3),
-            artisticStrength: Math.max(0.12, style.artisticStrength - 0.28),
-            contrast: 0.94,
-            moduleShape: "square",
-            effect: "none",
-            gradientType: "none",
-            dotScale: 0.9,
-          },
-          note: "wider quiet zone, coarser lattice",
-        },
-        {
-          patch: {
-            imageMode: "paint",
-            artisticStrength: 0.18,
-            contrast: 0.96,
-            quietZone: Math.max(style.quietZone, 4),
-            moduleShape: "square",
-            effect: "none",
-            gradientType: "none",
-            dotScale: 0.9,
-            imageOpacity: Math.min(style.imageOpacity, 0.55),
-          },
-          note: "safer Photo QR (3×3, crushed tones)",
-        },
-        {
-          patch: {
-            imageMode: "halftone",
-            artisticStrength: 0.12,
-            contrast: 0.98,
-            quietZone: 4,
-            moduleShape: "square",
-            effect: "none",
-            gradientType: "none",
-            dotScale: 0.92,
-          },
-          note: "binary halftone last resort",
-        },
-      ]
-    : [
-        { patch: { contrast: Math.min(1, style.contrast + 0.12), dotScale: Math.min(0.92, style.dotScale + 0.12) }, note: "raised contrast and dot size" },
-        { patch: { quietZone: Math.max(style.quietZone, 3), moduleGap: Math.min(style.moduleGap, 0.04) }, note: "wider quiet zone" },
-        { patch: { moduleShape: "square", ecc: "H", contrast: 0.9 }, note: "square modules, ECC H" },
-      ];
-
-  let last: ScanReport = first;
-  for (const step of steps) {
-    const next = { ...style, ...step.patch };
-    if (!paint(next)) continue;
-    last = await inspectRenderedQr(canvas, expected);
-    if (last.ok) {
-      return { ok: true, patch: step.patch, notes: [`Optimized ✓ — ${step.note}`], report: last };
+  const check = async (s: QrStyle): Promise<{ report: ScanReport; strong: boolean } | null> => {
+    let report: ScanReport | null = null;
+    for (const boost of [0, 0.7]) {
+      if (!paint(s, boost)) return null;
+      report = await inspectRenderedQr(canvas, expected);
+      if (report.ok) break;
     }
+    if (!report || !report.ok) return report ? { report, strong: false } : null;
+    const small = await decodeScaled(canvas, 320);
+    const strong = expected ? small === expected : Boolean(small);
+    return { report, strong };
+  };
+
+  const current = await check(style);
+  if (current?.report.ok) {
+    return {
+      ok: true,
+      changed: false,
+      patch: {},
+      notes: [current.strong ? "Reads clean — nothing to fix." : "Reads at preview size — nothing to fix."],
+      report: current.report,
+    };
+  }
+
+  const s0 = { ...style };
+  let steps: QrStyle[];
+  if (!pictured) {
+    // Style-only ladder: dot weight → colors → structure.
+    const a = {
+      ...s0,
+      dotScale: Math.min(1, Math.max(s0.dotScale, 0.92)),
+      moduleShape: "square" as const,
+      moduleGap: 0,
+      quietZone: Math.max(s0.quietZone, 3),
+    };
+    const b = { ...a, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
+    const c = { ...b, ecc: "H" as const, maskPattern: -1, eyeShape: "square" as const };
+    steps = [a, b, c];
+  } else {
+    // Photo ladder: lock bits → colors → dot weight → weave density → ink mode.
+    const a = {
+      ...s0,
+      contrast: Math.max(s0.contrast, 0.92),
+      dotScale: Math.max(s0.dotScale, 0.8),
+      moduleShape: "square" as const,
+      quietZone: Math.max(s0.quietZone, 3),
+    };
+    const b = { ...a, contrast: 1, imageOpacity: Math.min(s0.imageOpacity, 0.4) };
+    const c = { ...b, dotScale: 0.95 };
+    const d = { ...c, artisticStrength: Math.min(s0.artisticStrength, 0.22) };
+    const e = { ...d, imageMode: "halftone" as const, imageOpacity: 0.6, fg: "#121014", bg: "#f5f0e6" };
+    const f = { ...s0, imageMode: "logo" as const, logoScale: 0.18, quietZone: Math.max(s0.quietZone, 3) };
+    const g = {
+      ...s0,
+      imageMode: "none" as const,
+      moduleShape: "square" as const,
+      moduleGap: 0,
+      dotScale: 1,
+      quietZone: Math.max(s0.quietZone, 3),
+    };
+    steps = [a, b, c, d, e, f, g];
+  }
+
+  let lastReport = current?.report ?? null;
+  let weak: { next: QrStyle; report: ScanReport } | null = null;
+  for (const next of steps) {
+    const r = await check(next);
+    if (!r) continue;
+    lastReport = r.report;
+    if (r.strong) {
+      const patch = diffStyle(style, next);
+      const changed = Object.keys(patch).length > 0;
+      return {
+        ok: true,
+        changed,
+        patch,
+        notes: changed ? describe(style, patch) : ["Reads clean — nothing to fix."],
+        report: r.report,
+      };
+    }
+    weak ??= { next, report: r.report };
+  }
+
+  if (weak) {
+    const patch = diffStyle(style, weak.next);
+    const changed = Object.keys(patch).length > 0;
+    return {
+      ok: true,
+      changed,
+      patch,
+      notes: changed
+        ? [...describe(style, patch), "reads at preview size — print at full scale"]
+        : ["Reads at preview size — nothing to fix."],
+      report: weak.report,
+    };
   }
 
   return {
     ok: false,
+    changed: false,
     patch: {},
-    notes: [
-      "Unable to maintain scan reliability at this artistic strength. Try a simpler photo, a shorter payload, or a lower strength.",
-    ],
-    report: last,
+    notes: ["No look survived the decoder — shorten the destination or pick a simpler photo."],
+    report: lastReport,
   };
 }
 

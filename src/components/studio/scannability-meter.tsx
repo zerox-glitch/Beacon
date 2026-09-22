@@ -19,7 +19,7 @@ const BANDS: { id: Band; label: string; pos: number; color: string }[] = [
   { id: "good", label: "Good", pos: 30, color: "#a3c46a" },
   { id: "fair", label: "Fair — image interference", pos: 52, color: "#c4b45a" },
   { id: "low", label: "Weak", pos: 74, color: "#c47a3a" },
-  { id: "unscannable", label: "Not reading in-browser", pos: 94, color: "#c45c4a" },
+  { id: "unscannable", label: "Not scanning", pos: 94, color: "#c45c4a" },
 ];
 
 function readBand(scanOk: boolean | null, style: QrStyle, hasImage: boolean): Band {
@@ -100,16 +100,21 @@ export function ScannabilityMeter({
         <span>Weak</span>
         <span className="text-danger">Fail</span>
       </div>
-      {notes.length > 0 && (
-        <p
-          className={cn(
-            "mt-1.5 text-[10px] leading-snug",
-            notes[0]?.startsWith("Unable") ? "text-danger" : "text-ok",
-          )}
-        >
-          {notes[0]?.startsWith("Unable") ? notes.join(" · ") : `Changed: ${notes.join(" · ")}`}
-        </p>
-      )}
+      {notes.length > 0 && (() => {
+        const first = notes[0] ?? "";
+        const failed = first.startsWith("No look");
+        const sentence = failed || first.startsWith("Reads");
+        return (
+          <p
+            className={cn(
+              "mt-1.5 text-[10px] leading-snug",
+              failed ? "text-danger" : "text-ok",
+            )}
+          >
+            {sentence ? first : `Fixed — ${notes.join(" · ")}`}
+          </p>
+        );
+      })()}
       {hint ? (
         <p className="mt-1.5 text-[10px] leading-snug text-fg/80">{hint} Fix scan tries each knob.</p>
       ) : hasImage ? (

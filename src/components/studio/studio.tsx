@@ -107,14 +107,14 @@ export function Studio() {
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_470px]">
           <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
             <AmbientArt />
-            <QrStage />
+            <QrStage compact={sheetOpen} />
           </main>
 
           <aside
             className={cn(
               "z-20 flex min-h-0 flex-col border-t border-border bg-elevated lg:h-full lg:border-t-0",
               sheetOpen
-                ? "h-[min(48dvh,440px)] shrink-0 lg:h-auto lg:max-h-none"
+                ? "h-[min(42dvh,420px)] shrink-0 lg:h-auto lg:max-h-none"
                 : "h-12 shrink-0 lg:h-auto lg:max-h-none",
             )}
           >

@@ -105,12 +105,13 @@ export const useStudio = create<StudioState>((set, get) => ({
   lastFixNotes: [],
   smartArt: false,
   rendering: false,
-  setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind } })),
-  patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch } })),
+  setKind: (kind) => set((s) => ({ payload: { ...s.payload, kind }, lastFixNotes: [] })),
+  patchPayload: (patch) => set((s) => ({ payload: { ...s.payload, ...patch }, lastFixNotes: [] })),
   patchStyle: (patch) =>
     set((s) => ({
       style: { ...s.style, ...patch },
       presetId: null,
+      lastFixNotes: [],
     })),
   applyPreset: (id) => {
     const preset = getPreset(id);
@@ -124,6 +125,7 @@ export const useStudio = create<StudioState>((set, get) => ({
           ...preset.style,
           imageMode: preset.style.imageMode || "paint",
         },
+        lastFixNotes: [],
       });
       return;
     }
@@ -139,6 +141,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         ...preset.style,
         imageMode: nextMode,
       },
+      lastFixNotes: [],
     });
   },
   setImageUrl: (url) =>
@@ -152,6 +155,7 @@ export const useStudio = create<StudioState>((set, get) => ({
           ...s.style,
           imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
         },
+        lastFixNotes: [],
       };
     }),
   setLogoUrl: (url) =>
@@ -174,6 +178,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       useCase: id,
       caption: rec.caption,
       style: { ...s.style, ...rec.patch },
+      lastFixNotes: [],
     }));
   },
   setFixNotes: (lastFixNotes) => set({ lastFixNotes }),
@@ -199,6 +204,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       presetId: null,
       caption: item.caption ?? "",
       frame: item.frame ?? "none",
+      lastFixNotes: [],
     });
   },
   deleteHistoryItem: (id) => {
@@ -216,6 +222,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       frame: item.frame ?? "none",
       presetId: null,
       mobileTab: "content",
+      lastFixNotes: [],
     });
   },
   hydrateHistory: () => {

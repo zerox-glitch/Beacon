@@ -32,7 +32,7 @@ function makeCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
 }
 
-export function QrStage() {
+export function QrStage({ compact = false }: { compact?: boolean }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
   const payload = useStudio((s) => s.payload);
@@ -279,13 +279,18 @@ export function QrStage() {
     setFixing(true);
     try {
       const result = await autoFixScan(payload, style, imageUrl, logoUrl);
+      if (result.changed) useStudio.getState().patchStyle(result.patch);
       useStudio.getState().setFixNotes(result.notes);
-      if (Object.keys(result.patch).length === 0) {
-        toast.success("Already scannable");
+      // Sync the badge with the verdict — toast and badge must never disagree.
+      if (result.report) useStudio.getState().setScan(result.report.ok, result.report.decoded);
+      if (result.ok) {
+        if (result.changed) toast.success(`Fixed — ${result.notes.join(" · ")}`);
+        else toast.success(result.notes[0] ?? "Reads clean — nothing to fix.");
       } else {
-        useStudio.getState().patchStyle(result.patch);
-        toast.success(`Fix scan: ${result.notes[result.notes.length - 1]}`);
+        toast.error(result.notes[0] ?? "Could not fix the scan");
       }
+    } catch {
+      toast.error("Fix scan failed — try again");
     } finally {
       setFixing(false);
     }
@@ -300,7 +305,10 @@ export function QrStage() {
   }
 
   return (
-    <div className="relative z-10 flex h-full min-h-0 w-full flex-col items-center justify-center gap-1.5 overflow-hidden px-3 py-1.5 sm:gap-4 sm:px-6 sm:py-5">
+    <div className="relative z-10 flex h-full min-h-0 w-full flex-col overflow-y-auto px-3 py-1.5 scrollbar-thin sm:px-6 sm:py-5">
+      {/* m-auto centers when it fits and scrolls from the top when cramped —
+          justify-center + overflow-hidden used to clip the top and bottom. */}
+      <div className="m-auto flex w-full flex-col items-center gap-1.5 sm:gap-4">
       <div className="w-full shrink-0">
         <DestinationDock />
       </div>
@@ -404,7 +412,7 @@ export function QrStage() {
         </button>
       </div>
 
-      <div className="w-full shrink-0">
+      <div className={cn("w-full shrink-0", compact && "max-lg:hidden")}>
         <ScannabilityMeter
           scanOk={scanOk}
           style={style}
@@ -448,7 +456,10 @@ export function QrStage() {
         <button
           type="button"
           onClick={onCopyImage}
-          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
           aria-label="Copy image"
         >
           {copied ? <Check className="size-4 text-ok" /> : <ImageDown className="size-4" />}
@@ -456,7 +467,10 @@ export function QrStage() {
         <button
           type="button"
           onClick={onCopyPayload}
-          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
           aria-label="Copy destination"
         >
           <Copy className="size-4" />
@@ -472,7 +486,10 @@ export function QrStage() {
         <button
           type="button"
           onClick={surprise}
-          className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
+            compact && "max-lg:hidden",
+          )}
           aria-label="Surprise preset"
         >
           <Shuffle className="size-4" />
@@ -503,6 +520,7 @@ export function QrStage() {
             </button>
           ))}
         </div>
+      </div>
       </div>
 
       {testOpen && (
