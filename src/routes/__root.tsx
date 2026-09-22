@@ -1,12 +1,12 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { PRESETS } from "@/lib/qr/presets";
 import appCss from "../styles.css?url";
 
 const APP_TITLE =
   "QRWho — Free Artistic QR Code Generator | Custom AI QR Art, Logo, Menu, WiFi & vCard Maker (Vector SVG & PNG)";
-const APP_DESC =
-  "Create beautiful, custom artistic QR codes online for free. Transform any URL, WiFi, vCard, photo, restaurant menu or social link into a scannable work of art. 178+ designer presets, photo blending, vector SVG & 2048px PNG print export, 100% private & on-device with zero watermarks.";
+const APP_DESC = `Create beautiful, custom artistic QR codes online for free. Transform any URL, WiFi, vCard, photo, restaurant menu or social link into a scannable work of art. ${PRESETS.length}+ designer presets, photo blending, vector SVG & 2048px PNG print export, 100% private & on-device with zero watermarks.`;
 const APP_KEYWORDS = [
   "free qr code generator",
   "custom qr code art",
@@ -60,7 +60,7 @@ const SCHEMA_JSON_LD = JSON.stringify({
         "priceCurrency": "USD",
       },
       "featureList": [
-        "178+ Curated Artistic Presets (Japanese Ukiyo-e, Cyberpunk, Royal Gold, Sakura, Solarpunk, Retro Vaporwave)",
+        `${PRESETS.length}+ Curated Artistic Presets (Japanese Ukiyo-e, Cyberpunk, Royal Gold, Sakura, Solarpunk, Retro Vaporwave)`,
         "Photo-to-QR and Image Blending with Mosaic & Halftone filters",
         "Infinitely Scalable Vector SVG and 2048px PNG Export for 300 DPI print",
         "Real-Time Camera Scannability Engine and 1-Click Auto-Fix",

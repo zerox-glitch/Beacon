@@ -1,4 +1,5 @@
 import { Lock, Palette, ShieldCheck, Sparkles } from "lucide-react";
+import { PRESETS } from "@/lib/qr/presets";
 
 export function AmbientArt() {
   return (
@@ -14,7 +15,7 @@ export function AmbientArt() {
 
         <div className="absolute left-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">
           <Sparkles className="size-3.5 text-ok" />
-          <span>178 styles · still a real QR</span>
+          <span>{PRESETS.length} styles · still a real QR</span>
         </div>
 
         <div className="absolute right-4 top-4 hidden items-center gap-2 rounded-full border border-white/15 bg-bg/80 px-3 py-1 text-xs text-fg shadow-xl backdrop-blur sm:flex">

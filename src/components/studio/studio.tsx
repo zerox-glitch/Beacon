@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   ChevronDown,
   ChevronUp,
   FolderOpen,
@@ -12,7 +13,6 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { AmbientArt } from "@/components/studio/ambient-art";
-import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
 import { LibraryPanel } from "@/components/studio/library-panel";
@@ -21,6 +21,7 @@ import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 const HOOK_WORDS = ["picture", "link", "Wi-Fi", "location", "contact", "menu", "event"];
@@ -55,7 +56,6 @@ export function Studio() {
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
-  const [showcaseOpen, setShowcaseOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(true);
 
   useEffect(() => {
@@ -69,11 +69,13 @@ export function Studio() {
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <img
-                src="/logo.png"
-                alt="QRWho"
-                className="size-8 shrink-0 rounded-lg border border-border sm:size-10 sm:rounded-xl"
-              />
+              <Link to="/" aria-label="QRWho home" className="shrink-0">
+                <img
+                  src="/logo.png"
+                  alt="QRWho"
+                  className="size-8 rounded-lg border border-border sm:size-10 sm:rounded-xl"
+                />
+              </Link>
               <div className="min-w-0">
                 <h1 className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
                   <span className="wordmark-shimmer">QRWho</span>
@@ -180,20 +182,16 @@ export function Studio() {
           </aside>
         </div>
 
-        <div className="hidden border-t border-border bg-surface/60 sm:block">
-          <button
-            type="button"
-            onClick={() => setShowcaseOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-4 py-3 text-xs font-medium text-muted transition hover:text-fg sm:px-6"
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="size-4 text-ok" />
-              <span>Art directions & print specs</span>
-            </span>
-            {showcaseOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          </button>
-          {showcaseOpen && <ArtShowcase />}
-        </div>
+        {/* Always visible (mobile + desktop) — high contrast, opens the landing's
+            art-direction & print-specs page. */}
+        <Link
+          to="/"
+          className="flex shrink-0 items-center justify-center gap-2 border-t border-border-strong bg-surface px-4 py-2.5 text-xs font-semibold text-fg transition hover:bg-surface-hover"
+        >
+          <Globe className="size-4 text-ok" />
+          <span>Art directions &amp; print specs</span>
+          <ArrowUpRight className="size-3.5 text-fg/60" />
+        </Link>
 
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>

@@ -162,10 +162,14 @@ const FAQS = [
   },
 ];
 
-export function ArtShowcase() {
+export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
   const applyPreset = useStudio((s) => s.applyPreset);
 
   const handleApply = (id: string) => {
+    if (onTry) {
+      onTry(id);
+      return;
+    }
     applyPreset(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
