@@ -1,4 +1,5 @@
-import { kindMeta, PRIMARY_KINDS, MORE_KINDS } from "@/lib/qr/kinds";
+import type { ChangeEvent } from "react";
+import { DOCK_FIELDS, kindMeta, PRIMARY_KINDS, MORE_KINDS, type DockField } from "@/lib/qr/kinds";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { Payload, PayloadKind } from "@/lib/qr/types";
@@ -10,6 +11,7 @@ export function DestinationDock() {
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const meta = kindMeta(payload.kind);
   const value = String(payload[meta.field] ?? "");
+  const extra = DOCK_FIELDS[payload.kind] ?? [];
 
   function onKind(id: PayloadKind) {
     setKind(id);
@@ -65,6 +67,70 @@ export function DestinationDock() {
         className="mt-1.5 h-11 w-full rounded-xl border border-white/20 bg-bg/90 px-3 text-sm text-fg shadow-lg outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-accent/40"
         onChange={(e) => patch({ [meta.field]: e.target.value } as Partial<Payload>)}
       />
+
+      {/* Multi-field types: every field sits right above the QR — the same
+          store the side panel edits, so both stay in sync. */}
+      {extra.length > 0 && (
+        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+          {extra.map((f) => (
+            <DockInput key={String(f.field)} f={f} payload={payload} patch={patch} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+const inputCls =
+  "h-8 w-full rounded-lg border border-white/15 bg-bg/85 px-2 text-xs text-fg outline-none placeholder:text-muted/80 focus-visible:ring-2 focus-visible:ring-accent/40";
+
+function DockInput({
+  f,
+  payload,
+  patch,
+}: {
+  f: DockField;
+  payload: Payload;
+  patch: (p: Partial<Payload>) => void;
+}) {
+  if (f.check) {
+    const on = Boolean(payload[f.field]);
+    return (
+      <label className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-bg/85 px-2 text-xs font-medium text-fg/85">
+        <input
+          type="checkbox"
+          checked={on}
+          className="size-3.5 accent-[var(--accent,#a3c46a)]"
+          onChange={(e) => patch({ [f.field]: e.target.checked } as Partial<Payload>)}
+        />
+        {f.label}
+      </label>
+    );
+  }
+  if (f.options) {
+    return (
+      <select
+        aria-label={f.label}
+        value={String(payload[f.field] ?? "")}
+        className={inputCls}
+        onChange={(e: ChangeEvent<HTMLSelectElement>) => patch({ [f.field]: e.target.value } as Partial<Payload>)}
+      >
+        {f.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <input
+      type={f.type ?? "text"}
+      aria-label={f.label}
+      placeholder={f.placeholder}
+      value={String(payload[f.field] ?? "")}
+      className={inputCls}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => patch({ [f.field]: e.target.value } as Partial<Payload>)}
+    />
   );
 }

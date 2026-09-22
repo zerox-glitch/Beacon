@@ -450,7 +450,12 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         </button>
       </div>
 
-      <div className={cn("w-full shrink-0", compact && "max-lg:hidden")}>
+      <div
+        className={cn(
+          "mx-auto w-full max-w-[280px] shrink-0 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]",
+          compact && "max-lg:hidden",
+        )}
+      >
         <ScannabilityMeter
           scanOk={scanOk}
           style={style}

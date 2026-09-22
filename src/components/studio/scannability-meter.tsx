@@ -67,7 +67,7 @@ export function ScannabilityMeter({
   const hint = needsTune ? adviceText(style, hasImage) : null;
 
   return (
-    <div className="w-full max-w-[210px] rounded-xl border border-border-strong bg-elevated p-2 sm:max-w-[300px] sm:p-2.5 md:max-w-[380px] lg:max-w-[420px]">
+    <div className="w-full rounded-xl border border-border-strong bg-elevated p-2 sm:p-2.5">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <span

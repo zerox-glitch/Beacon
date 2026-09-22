@@ -10,15 +10,18 @@ import { useStudio } from "@/lib/store";
 
 function Field({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
     <label className="grid gap-1.5">
       <Label>{label}</Label>
       {children}
+      {hint ? <p className="text-[10px] leading-snug text-subtle">{hint}</p> : null}
     </label>
   );
 }
@@ -185,28 +188,14 @@ export function ContentPanel() {
       )}
 
       {payload.kind === "email" && (
-        <>
-          <Field label="To">
-            <Input
-              value={payload.email}
-              placeholder="name@studio.com"
-              inputMode="email"
-              onChange={(e) => patch({ email: e.target.value })}
-            />
-          </Field>
-          <Field label="Subject">
-            <Input
-              value={payload.emailSubject}
-              onChange={(e) => patch({ emailSubject: e.target.value })}
-            />
-          </Field>
-          <Field label="Body">
-            <Textarea
-              value={payload.emailBody}
-              onChange={(e) => patch({ emailBody: e.target.value })}
-            />
-          </Field>
-        </>
+        <Field label="Email address" hint="The scan opens the mail app ready to write to this address. Subject/body stay out of the QR — they would need a tiny, fragile code.">
+          <Input
+            value={payload.email}
+            placeholder="name@studio.com"
+            inputMode="email"
+            onChange={(e) => patch({ email: e.target.value })}
+          />
+        </Field>
       )}
 
       {payload.kind === "whatsapp" && (

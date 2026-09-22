@@ -118,7 +118,9 @@ export interface Payload {
   phone: string;
   smsBody: string;
   email: string;
+  /** Legacy: no longer embedded in the QR (mailto opens a plain composer). */
   emailSubject: string;
+  /** Legacy: no longer embedded in the QR (mailto opens a plain composer). */
   emailBody: string;
   whatsapp: string;
   whatsappText: string;
