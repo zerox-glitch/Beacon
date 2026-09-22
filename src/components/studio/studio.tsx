@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   ChevronDown,
   ChevronUp,
   FolderOpen,
@@ -13,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { AmbientArt } from "@/components/studio/ambient-art";
+import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
 import { LibraryPanel } from "@/components/studio/library-panel";
@@ -57,10 +57,19 @@ export function Studio() {
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
   const [sheetOpen, setSheetOpen] = useState(true);
+  const [showcaseOpen, setShowcaseOpen] = useState(false);
 
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
+
+  function toggleShowcase() {
+    const open = !showcaseOpen;
+    setShowcaseOpen(open);
+    // On phones the sheet and the art panel would fight for the same
+    // vertical space — close the sheet so the stage stays visible.
+    if (open && !window.matchMedia("(min-width: 1024px)").matches) setSheetOpen(false);
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -182,16 +191,28 @@ export function Studio() {
           </aside>
         </div>
 
-        {/* Always visible (mobile + desktop) — high contrast, opens the landing's
-            art-direction & print-specs page. */}
-        <Link
-          to="/"
-          className="flex shrink-0 items-center justify-center gap-2 border-t border-border-strong bg-surface px-4 py-2.5 text-xs font-semibold text-fg transition hover:bg-surface-hover"
+        {/* Art directions & print specs — inline in the studio (never navigates
+            away). Always visible, high contrast, mobile + desktop. */}
+        {showcaseOpen && (
+          <div className="z-30 max-h-[52dvh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46dvh]">
+            <ArtShowcase
+              onTry={(id) => {
+                useStudio.getState().applyPreset(id);
+                setShowcaseOpen(false);
+              }}
+            />
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={toggleShowcase}
+          aria-expanded={showcaseOpen}
+          className="flex shrink-0 items-center justify-center gap-2 border-t border-border-strong bg-surface px-4 py-2.5 text-xs font-bold text-fg transition hover:bg-surface-hover"
         >
           <Globe className="size-4 text-ok" />
           <span>Art directions &amp; print specs</span>
-          <ArrowUpRight className="size-3.5 text-fg/60" />
-        </Link>
+          {showcaseOpen ? <ChevronUp className="size-4 text-fg/70" /> : <ChevronDown className="size-4 text-fg/70" />}
+        </button>
 
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>
