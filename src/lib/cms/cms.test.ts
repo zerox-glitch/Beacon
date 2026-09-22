@@ -159,6 +159,28 @@ describe("mergeCatalog", () => {
   it("makes unique cms ids", () => {
     assert.match(newTemplateId(), /^cms-[a-z0-9]{6,}$/);
   });
+
+  it("renames categories across built-ins AND customs without touching rows", () => {
+    const rows = [
+      { id: "cms-1", name: "Neon Thing", category: "Neon", blurb: null, artUrl: null, style: null, featured: null, hidden: false, sort: 0, isCustom: true },
+    ];
+    const r = mergeCatalog(base, rows, {
+      categories: { renames: { Neon: "Lights", Classic: "Heritage" }, order: ["Lights", "Heritage"] },
+    });
+    assert.equal(r.presets.find((p) => p.id === "art-royal")!.category, "Heritage");
+    assert.equal(r.presets.find((p) => p.id === "cms-1")!.category, "Lights");
+    assert.deepEqual(r.categories, ["Lights", "Heritage"]); // admin order wins, then first-seen
+    assert.ok(!r.categories.includes("Classic"));
+    // The admin view renames too, so chips and rows agree.
+    const adm = adminCatalog(base, rows, { categories: { renames: { Neon: "Lights" } } });
+    assert.equal(adm.find((p) => p.id === "cms-1")!.category, "Lights");
+  });
+
+  it("ignores identity renames and orders listed tabs first", () => {
+    const b = [preset("a", { category: "Zed" }), preset("b", { category: "Alpha" }), preset("c", { category: "Mid" })];
+    const r = mergeCatalog(b, [], { categories: { renames: { Mid: "Mid" }, order: ["Mid"] } });
+    assert.deepEqual(r.categories, ["Mid", "Zed", "Alpha"]);
+  });
 });
 
 /* ------------------------------ upload validation ----------------------------- */

@@ -3,7 +3,7 @@
  * server modules (no runtime deps). The server store implements these; the
  * public API returns them; UI consumes them.
  */
-import type { BrandDoc, ContentDoc, SeoDoc } from "./schemas";
+import type { BrandDoc, CategoryDoc, ContentDoc, SeoDoc } from "./schemas";
 import type { TemplateRow } from "./catalog-merge";
 
 /** Per-page SEO head payload (server-computed, SSR-safe). */
@@ -28,4 +28,6 @@ export interface PublicBundle {
   content: ContentDoc;
   seo: SeoDoc;
   templates: TemplateRow[];
+  /** Gallery category rename/order layer (see catalog-merge). */
+  categories: CategoryDoc;
 }

@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 import { isSafeImageUrl } from "./media-format.ts";
+import { EYE_SHAPES, IMAGE_MODES, MODULE_SHAPES, QR_EFFECTS } from "../qr/types.ts";
 
 const short = (max: number) => z.string().trim().max(max);
 const urlish = z
@@ -119,28 +120,23 @@ const hexColor = z
   .trim()
   .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, "Must be a hex color like #1a2b3c");
 
-const MODULE_SHAPES = [
-  "square", "rounded", "dots", "diamond", "star", "plus", "classy", "leaf",
-  "fluid", "hex", "heart", "squircle", "confetti", "dash", "cross", "diag",
-  "radial", "bubbles", "hbar", "vbar",
-] as const;
-const EYE_SHAPES = [
-  "square", "rounded", "circle", "leaf", "diamond", "extra-rounded", "classy",
-  "hex", "target", "ticks",
-] as const;
-const IMAGE_MODES = [
-  "none", "logo", "backdrop", "mosaic", "halftone", "paint", "duotone", "mono",
-] as const;
+/** Enums are derived from the studio's own option tables (src/lib/qr/types.ts)
+ * so the admin can never offer — or reject — a value the engine disagrees
+ * with. The cast only proves non-emptiness to zod. */
+const moduleShapeIds = MODULE_SHAPES.map((m) => m.id) as unknown as [string, ...string[]];
+const eyeShapeIds = EYE_SHAPES.map((m) => m.id) as unknown as [string, ...string[]];
+const imageModeIds = IMAGE_MODES.map((m) => m.id) as unknown as [string, ...string[]];
+const effectIds = QR_EFFECTS.map((m) => m.id) as unknown as [string, ...string[]];
 const GRADIENTS = ["none", "linear", "radial", "diagonal", "image"] as const;
-const EFFECTS = ["none", "shadow", "glow", "outline", "emboss", "extrude"] as const;
+const EFFECTS = z.enum(effectIds);
 const ECC = ["L", "M", "Q", "H"] as const;
 
 /** Admin-editable subset of QrStyle (everything the design panel exposes). */
 export const templateStyleSchema = z
   .object({
-    moduleShape: z.enum(MODULE_SHAPES).optional(),
-    eyeShape: z.enum(EYE_SHAPES).optional(),
-    ballShape: z.enum(EYE_SHAPES).optional(),
+    moduleShape: z.enum(moduleShapeIds).optional(),
+    eyeShape: z.enum(eyeShapeIds).optional(),
+    ballShape: z.enum(eyeShapeIds).optional(),
     fg: hexColor.optional(),
     bg: hexColor.optional(),
     eyeColor: hexColor.optional(),
@@ -150,7 +146,7 @@ export const templateStyleSchema = z
     accentColor: hexColor.optional(),
     quietZone: z.number().int().min(0).max(8).optional(),
     moduleGap: z.number().min(0).max(0.5).optional(),
-    imageMode: z.enum(IMAGE_MODES).optional(),
+    imageMode: z.enum(imageModeIds).optional(),
     imageOpacity: z.number().min(0).max(1).optional(),
     dotScale: z.number().min(0.2).max(1).optional(),
     contrast: z.number().min(-1).max(1).optional(),
@@ -159,10 +155,15 @@ export const templateStyleSchema = z
     ecc: z.enum(ECC).optional(),
     transparentBg: z.boolean().optional(),
     artisticStrength: z.number().min(0).max(1).optional(),
-    effect: z.enum(EFFECTS).optional(),
+    effect: EFFECTS.optional(),
     maskPattern: z.number().int().min(-1).max(7).optional(),
-    accentShape: z.enum(MODULE_SHAPES).optional(),
+    accentShape: z.enum(moduleShapeIds).optional(),
     accentOnLight: z.boolean().optional(),
+    /** Art-direction id (see src/lib/qr/art-directions.ts). Sets the whole
+     * design system; the flat-style knobs above tune on top of it. */
+    artDirection: short(60).optional(),
+    artRelax: z.number().int().min(0).max(8).optional(),
+    artCameraSafe: z.boolean().optional(),
   })
   .partial();
 export type TemplateStyleInput = z.infer<typeof templateStyleSchema>;
@@ -180,6 +181,23 @@ export const templateSaveSchema = z.object({
   sort: z.number().int().min(-1000).max(1000).default(0),
 });
 export type TemplateSaveInput = z.infer<typeof templateSaveSchema>;
+
+/* ------------------------------ template categories --------------------------- */
+
+/**
+ * The category layer is a rename/order map, not a table of rows: renaming a
+ * category re-labels every template in it (built-ins included) without
+ * editing a single template, and it can always be undone by clearing the
+ * mapping. `order` is the public gallery tab order.
+ */
+export const categoryDocSchema = z.object({
+  renames: z
+    .record(z.string().trim().min(1).max(40), z.string().trim().min(1).max(40))
+    .refine((r) => Object.keys(r).length <= 100, "Too many renames")
+    .default({}),
+  order: z.array(short(40)).max(60).default([]),
+});
+export type CategoryDoc = z.infer<typeof categoryDocSchema>;
 
 /* ---------------------------------- media ----------------------------------- */
 
@@ -222,9 +240,11 @@ export const settingsDocSchemas = {
   brand: brandSchema,
   content: contentSchema,
   seo: seoSchema,
+  categories: categoryDocSchema,
 } as const;
 export type SettingsKey = keyof typeof settingsDocSchemas;
 
 export const DEFAULT_BRAND: BrandDoc = brandSchema.parse({});
 export const DEFAULT_CONTENT: ContentDoc = contentSchema.parse({});
 export const DEFAULT_SEO: SeoDoc = seoSchema.parse({});
+export const DEFAULT_CATEGORIES: CategoryDoc = categoryDocSchema.parse({});

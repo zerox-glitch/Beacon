@@ -66,7 +66,7 @@ export function ensureCms(force = false): Promise<void> {
       const bundle = await getPublicCms();
       state = {
         status: "ready",
-        catalog: mergeCatalog(PRESETS, bundle.templates),
+        catalog: mergeCatalog(PRESETS, bundle.templates, { categories: bundle.categories }),
         brand: bundle.brand,
         content: bundle.content,
         seo: bundle.seo,

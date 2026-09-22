@@ -23,6 +23,8 @@ import {
   type BrandDoc,
   type ContentDoc,
   type SeoDoc,
+  categoryDocSchema,
+  DEFAULT_CATEGORIES,
 } from "./schemas";
 import { encodeBase64, MEDIA_KINDS, parseUpload, sanitizeFilename, type MediaKind } from "./media-format";
 import type { TemplateRow } from "./catalog-merge";
@@ -124,6 +126,15 @@ export async function saveContent(doc: unknown, actor: string): Promise<ContentD
 export async function saveSeo(doc: unknown, actor: string): Promise<SeoDoc> {
   await writeSetting("seo", doc, actor);
   return getSeo();
+}
+
+export async function getCategories(): Promise<import("./schemas").CategoryDoc> {
+  return readSetting("categories", categoryDocSchema, DEFAULT_CATEGORIES);
+}
+export async function saveCategories(doc: unknown, actor: string): Promise<import("./schemas").CategoryDoc> {
+  await writeSetting("categories", doc, actor);
+  invalidateCmsCache();
+  return getCategories();
 }
 
 /* ------------------------------ templates table ----------------------------- */
@@ -523,13 +534,14 @@ export type { PageMeta, PublicBundle };
 export async function getPublicBundle(): Promise<PublicBundle> {
   const now = Date.now();
   if (bundleCache && now - bundleCache.at < TTL_MS) return bundleCache.data;
-  const [brand, content, seo, rows] = await Promise.all([
+  const [brand, content, seo, rows, categories] = await Promise.all([
     getBrand(),
     getContent(),
     getSeo(),
     listTemplateRows(false),
+    getCategories(),
   ]);
-  const data: PublicBundle = { brand, content, seo, templates: rows };
+  const data: PublicBundle = { brand, content, seo, templates: rows, categories };
   bundleCache = { at: now, data };
   return data;
 }

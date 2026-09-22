@@ -33,6 +33,7 @@ import {
   setupSchema,
   signInSchema,
   templateSaveSchema,
+  categoryDocSchema,
 } from "./schemas";
 
 /* ------------------------------ shared plumbing ----------------------------- */
@@ -238,16 +239,17 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
     const store = await import("./store.server");
-    const [brand, content, seo, templates, admin, media] = await Promise.all([
+    const [brand, content, seo, templates, categories, admin, media] = await Promise.all([
       store.getBrand(),
       store.getContent(),
       store.getSeo(),
       store.listTemplateRows(true),
+      store.getCategories(),
       store.getAdmin(),
       store.listMedia(),
     ]);
     const { dbSource } = await import("../db");
-    return { brand, content, seo, templates, admin, media, meta: { dbSource } };
+    return { brand, content, seo, templates, categories, admin, media, meta: { dbSource } };
   });
 
 export const saveBrandDoc = createServerFn({ method: "POST" })
@@ -281,6 +283,29 @@ export const saveSeoDoc = createServerFn({ method: "POST" })
     const seo = await store.saveSeo(data, admin.userId);
     await store.audit(admin.userId, "settings.seo", "seo", undefined, reqMeta(), admin.name);
     return seo;
+  });
+
+/* ------------------------------ category layer ------------------------------- */
+
+/** Persist gallery category renames/order. No template rows are touched: the
+ * map is applied at merge time, so built-ins participate and every change is
+ * undoable by clearing its mapping. */
+export const saveCategories = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .validator(categoryDocSchema)
+  .handler(async ({ data, context }) => {
+    const store = await import("./store.server");
+    const admin = adminOf(context);
+    const saved = await store.saveCategories(data, admin.userId);
+    await store.audit(
+      admin.userId,
+      "settings.categories",
+      "categories",
+      { renames: Object.keys(data.renames ?? {}).length, order: (data.order ?? []).length },
+      reqMeta(),
+      admin.name,
+    );
+    return saved;
   });
 
 /* -------------------------------- templates ---------------------------------- */
