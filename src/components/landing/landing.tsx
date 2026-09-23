@@ -17,6 +17,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { ScanDecode } from "@/components/qr/scan-decode";
+import { SupportButton } from "@/components/support-button";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { PRESETS, getPreset } from "@/lib/qr/presets";
 import { getPresetMerged } from "@/lib/cms/runtime";
@@ -236,6 +237,7 @@ export function Landing() {
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
+            <SupportButton />
             <span className="hidden items-center gap-1.5 rounded-full border border-white/15 bg-elevated px-3 py-1 text-xs font-semibold text-fg/90 sm:inline-flex">
               <Palette className="size-3.5 text-ok" />
               {presetCount} art styles
@@ -314,7 +316,7 @@ export function Landing() {
                 className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/5 px-6 text-base font-semibold text-fg transition hover:bg-white/10"
               >
                 <ScanLine className="size-4.5" />
-                Scan a QR
+                Remake your old QR code
               </a>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
@@ -346,9 +348,9 @@ export function Landing() {
               Already printed one?
             </span>
             <h2 className="font-display text-3xl italic leading-tight tracking-tight sm:text-4xl">
-              That old QR can still
+              Remake your old
               <br />
-              earn a <span className="text-accent">better look</span>
+              <span className="text-accent">QR code</span> — same link, better art
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-fg/85 sm:text-base">
               Scan or upload any QR you already have — a menu, a Wi-Fi code, a

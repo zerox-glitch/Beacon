@@ -11,6 +11,8 @@ import { getPreset } from "@/lib/qr/presets";
 import { getPresetMerged } from "@/lib/cms/runtime";
 import type { FrameKind } from "@/lib/qr/finish";
 import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
+import { LOGOS, logoDataUrl } from "@/lib/qr/logo-set";
+import { readSessionCookie, writeSessionCookie } from "@/lib/session-cookie";
 
 export interface HistoryItem {
   id: string;
@@ -84,24 +86,28 @@ function persist(history: HistoryItem[]) {
   }
 }
 
+const saved = readSessionCookie();
+
 export const useStudio = create<StudioState>((set, get) => ({
-  payload: {
-    ...emptyPayload(),
-    url: "https://qrwho.vercel.app",
-  },
-  style: { ...DEFAULT_STYLE },
-  imageUrl: DEFAULT_ART_URL,
-  logoUrl: null,
+  payload: saved
+    ? { ...emptyPayload(), ...saved.payload }
+    : {
+        ...emptyPayload(),
+        url: "https://qrwho.vercel.app",
+      },
+  style: saved ? { ...DEFAULT_STYLE, ...saved.style } : { ...DEFAULT_STYLE },
+  imageUrl: saved ? saved.imageUrl : DEFAULT_ART_URL,
+  logoUrl: saved?.logoId ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
   presetId: "art-alpine-summit",
   category: "Art",
+  caption: saved?.caption ?? "",
+  frame: saved?.frame ?? "none",
   stageBg: "cosmic",
   scanText: null,
   scanOk: null,
   error: null,
   history: [],
   mobileTab: "content",
-  caption: "",
-  frame: "none",
   useCase: null,
   lastFixNotes: [],
   smartArt: false,
@@ -251,3 +257,40 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
   },
 }));
+
+/**
+ * Session memory: the destination + look are mirrored into a one-year cookie
+ * so a return visit restores the code (see src/lib/session-cookie.ts).
+ * Debounced — sliders fire patchStyle on every frame.
+ */
+if (typeof window !== "undefined") {
+  let timer: number | null = null;
+  useStudio.subscribe((s, prev) => {
+    if (
+      s.payload === prev.payload &&
+      s.style === prev.style &&
+      s.imageUrl === prev.imageUrl &&
+      s.logoUrl === prev.logoUrl &&
+      s.caption === prev.caption &&
+      s.frame === prev.frame
+    ) {
+      return;
+    }
+    if (timer !== null) return;
+    timer = window.setTimeout(() => {
+      timer = null;
+      const st = useStudio.getState();
+      // Reverse-map the logo data URL back to its built-in id (compact).
+      const logo = LOGOS.find((l) => logoDataUrl(l) === st.logoUrl) ?? null;
+      writeSessionCookie({
+        payload: st.payload,
+        style: st.style,
+        logoId: logo ? logo.id : null,
+        imageUrl: st.imageUrl && !st.imageUrl.startsWith("blob:") ? st.imageUrl : null,
+        caption: st.caption,
+        frame: st.frame,
+      });
+    }, 1500);
+  });
+}
+

@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Eye } from "lucide-react";
 import { saveBrandDoc } from "@/lib/cms/admin-api";
 import type { BrandDoc } from "@/lib/cms/schemas";
 import { Badge, Card, SaveRow, TextInput, ToggleField } from "../ui";
 import { ImagePicker } from "../image-picker";
+import { SupportPopup } from "@/components/support-popup";
 import { useAdminMutation, useAdminSettings } from "../session";
 import { useDoc } from "../use-doc";
 import type { AdminSettings } from "../types";
@@ -11,6 +13,7 @@ export function BrandingPanel() {
   const { data } = useAdminSettings<AdminSettings>();
   const brand = useDoc<BrandDoc>(data?.brand);
   const [themeDraft, setThemeDraft] = useState<string | null>(null);
+  const [previewSupport, setPreviewSupport] = useState(false);
   const save = useAdminMutation(
     (doc: BrandDoc) => saveBrandDoc({ data: doc }),
     { success: "Branding saved — live on the public site", invalidate: ["admin-brand"] },
@@ -75,6 +78,14 @@ export function BrandingPanel() {
           maxLength={200}
           hint='Shown in the post-download popup, e.g. "Enjoying QRWho? A coffee keeps it free for everyone."'
         />
+        <button
+          type="button"
+          onClick={() => setPreviewSupport(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 text-xs font-semibold transition hover:bg-surface-hover"
+        >
+          <Eye className="size-3.5" />
+          Preview the popup visitors see
+        </button>
       </Card>
 
       <Card title="Announcement bar" desc="A slim full-width banner shown above every page. Leave disabled for none.">
@@ -83,6 +94,14 @@ export function BrandingPanel() {
         <TextInput label="Link (optional)" value={d.announcementLink} onValueChange={(v) => brand.patch({ announcementLink: v })} maxLength={400} placeholder="https://…" disabled={!d.announcementEnabled} />
         <SaveRow dirty={brand.dirty} saving={save.isPending} onSave={() => save.mutate(d)} onReset={brand.reset} />
       </Card>
+
+      {previewSupport ? (
+        <SupportPopup
+          url={d.kofiUrl || "https://ko-fi.com/qrwho"}
+          message={d.kofiMessage}
+          onClose={() => setPreviewSupport(false)}
+        />
+      ) : null}
     </form>
   );
 }

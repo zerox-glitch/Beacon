@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Toaster, toast } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
+import { SupportButton } from "@/components/support-button";
 import { AmbientArt } from "@/components/studio/ambient-art";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
@@ -124,7 +125,8 @@ export function Studio() {
               </div>
             </div>
 
-            <div className="hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <SupportButton />
               {catalog.categories.filter((c) => c !== "All").map((c) => (
                 <button
                   key={c}
@@ -137,7 +139,7 @@ export function Studio() {
                     useStudio.getState().setCategory(c);
                     useStudio.getState().applyPreset(pick.id);
                   }}
-                  className="h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg"
+                  className="hidden h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg lg:inline-block"
                 >
                   {c}
                 </button>
