@@ -56,7 +56,7 @@ const STUDIO_TABS = [
 ] as const;
 
 export function Studio() {
-  const { catalog, brand, defaultTemplate } = useCms();
+  const { brand, defaultTemplate } = useCms();
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
@@ -109,42 +109,23 @@ export function Studio() {
         <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <Link to="/" aria-label="QRWho home" className="shrink-0">
                 <img
                   src={brand.logoUrl || "/logo.png"}
                   alt={brand.siteName || "QRWho"}
-                  className="size-8 rounded-lg border border-border sm:size-10 sm:rounded-xl"
+                  className="size-10 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
                 />
               </Link>
               <div className="min-w-0">
-                <h1 className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
+                <h1 className="font-display text-2xl italic leading-none tracking-tight sm:text-3xl">
                   <span className="wordmark-shimmer">QRWho</span>
                 </h1>
                 <RotatingHook />
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-              <SupportButton />
-              {catalog.categories.filter((c) => c !== "All").map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  title={`Surprise me with a ${c} look`}
-                  onClick={() => {
-                    const pool = catalog.presets.filter((p) => p.category === c);
-                    const pick = pool[Math.floor(Math.random() * pool.length)];
-                    if (!pick) return;
-                    useStudio.getState().setCategory(c);
-                    useStudio.getState().applyPreset(pick.id);
-                  }}
-                  className="hidden h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg lg:inline-block"
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            <SupportButton />
           </div>
         </header>
 
