@@ -87,7 +87,7 @@ const KIT_POOL: Kit[] = [
   { key: "puff", label: "Puff", module: "squircle", eye: "extra-rounded", ball: "circle", gap: 0.03 },
 ];
 
-function styleFrom(p: Palette, kit: Kit, featured: boolean): QrStyle {
+function styleFrom(p: Palette, kit: Kit, _featured: boolean): QrStyle {
   const useGrad = Boolean(p.to) && (kit.key === "bloom" || kit.key === "soft" || kit.key === "puff");
   return {
     ...DEFAULT_STYLE,
@@ -335,7 +335,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-sakura",
+    id: "art-sakura-bloom",
     name: "Sakura Bloom",
     category: "Art",
     featured: true,
@@ -351,7 +351,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-galaxy",
+    id: "art-galaxy-burst",
     name: "Galaxy Burst",
     category: "Art",
     style: {
@@ -555,7 +555,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-vaporwave",
+    id: "art-vaporwave-1995",
     name: "Vaporwave 1995",
     category: "Art",
     featured: true,
@@ -603,7 +603,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-fire",
+    id: "art-dragon-fire",
     name: "Dragon Fire",
     category: "Art",
     style: {
@@ -650,7 +650,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-bauhaus",
+    id: "art-bauhaus-primary",
     name: "Bauhaus Primary",
     category: "Art",
     style: {
@@ -935,7 +935,7 @@ const ART_PRESETS: Preset[] = [
     },
   }),
   art({
-    id: "art-ocean-glass",
+    id: "art-ocean-glass-deep",
     name: "Ocean Glass",
     category: "Art",
     style: {
@@ -1555,7 +1555,74 @@ const PHOTO_PRESETS: Preset[] = [
   },
 ];
 
-export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS];
+/**
+ * "Salon" — 30 hand-mixed flat designs across six moods. Pure vector styles
+ * (no photo), each pairing a module shape, eye language, gradient and finish
+ * for a distinct look. Shown as extra gallery tabs alongside the classics.
+ */
+function salon(p: Omit<Preset, "style"> & { style: Partial<QrStyle> }): Preset {
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    featured: p.featured,
+    blurb: p.blurb,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "none",
+      minVersion: 6,
+      ecc: "H",
+      quietZone: 3,
+      ...p.style,
+    },
+  };
+}
+
+const SALON_PRESETS: Preset[] = [
+  // ------------------------------- Neon (4) -------------------------------
+  salon({ id: "neon-pulse", name: "Neon Pulse", category: "Neon", blurb: "Hot magenta dots on midnight, glow finish", featured: true, style: { moduleShape: "dots", eyeShape: "circle", ballShape: "circle", fg: "#ff2d95", bg: "#0d0217", eyeColor: "#22e4ff", ballColor: "#22e4ff", gradientType: "radial", gradientTo: "#7a2bff", effect: "glow", maskPattern: 1 } }),
+  salon({ id: "cyan-grid", name: "Cyan Grid", category: "Neon", blurb: "Electric cyan squares, 3D extrude on black", style: { moduleShape: "square", eyeShape: "square", ballShape: "square", fg: "#00e5ff", bg: "#020617", eyeColor: "#a5f3fc", ballColor: "#020617", effect: "extrude", maskPattern: 4 } }),
+  salon({ id: "lime-arcade", name: "Lime Arcade", category: "Neon", blurb: "Volt-green plus-shapes, dark ink outline", style: { moduleShape: "plus", eyeShape: "target", ballShape: "target", fg: "#a3e635", bg: "#101402", eyeColor: "#d9f99d", ballColor: "#101402", effect: "outline", maskPattern: 2 } }),
+  salon({ id: "violet-heat", name: "Violet Heat", category: "Neon", blurb: "Purple gradient diamonds with soft eyes", style: { moduleShape: "diamond", eyeShape: "extra-rounded", ballShape: "extra-rounded", fg: "#c026d3", bg: "#17021f", eyeColor: "#f0abfc", ballColor: "#17021f", gradientType: "diagonal", gradientTo: "#6d28d9", effect: "glow", maskPattern: 0 } }),
+
+  // ------------------------------ Pastel (5) ------------------------------
+  salon({ id: "blush-bloom", name: "Blush Bloom", category: "Pastel", blurb: "Rose petals on cream, heart modules", style: { moduleShape: "heart", eyeShape: "extra-rounded", ballShape: "extra-rounded", fg: "#e58aa5", bg: "#fdf3f4", eyeColor: "#c2557a", ballColor: "#c2557a", maskPattern: 5 } }),
+  salon({ id: "mint-meadow", name: "Mint Meadow", category: "Pastel", blurb: "Sage leaves on foam white, soft shadow", style: { moduleShape: "leaf", eyeShape: "leaf", ballShape: "circle", fg: "#79a98c", bg: "#f4faf4", eyeColor: "#4f7d5f", ballColor: "#4f7d5f", effect: "shadow", maskPattern: 3 } }),
+  salon({ id: "butter-squircle", name: "Butter Squircle", category: "Pastel", blurb: "Warm apricot soft squares, round eyes", style: { moduleShape: "squircle", eyeShape: "rounded", ballShape: "rounded", fg: "#e8a86c", bg: "#fff8ec", eyeColor: "#c47f3d", ballColor: "#c47f3d", maskPattern: 6 } }),
+  salon({ id: "lilac-dream", name: "Lilac Dream", category: "Pastel", blurb: "Dusty violet fluid blobs, embossed", style: { moduleShape: "fluid", eyeShape: "circle", ballShape: "circle", fg: "#a78bda", bg: "#f6f1fc", eyeColor: "#7c5cbf", ballColor: "#7c5cbf", effect: "emboss", maskPattern: 7 } }),
+  salon({ id: "peach-ripple", name: "Peach Ripple", category: "Pastel", blurb: "Soft coral ripples on warm ivory", style: { moduleShape: "dash", eyeShape: "ticks", ballShape: "ticks", fg: "#e8998a", bg: "#fdf6f0", eyeColor: "#c26a58", ballColor: "#c26a58", gradientType: "linear", gradientTo: "#f3c4a9", maskPattern: 1 } }),
+
+  // ------------------------------ Luxury (5) ------------------------------
+  salon({ id: "gold-foil", name: "Gold Foil", category: "Luxury", blurb: "Champagne gradient on black, classy eyes", featured: true, style: { moduleShape: "classy", eyeShape: "classy", ballShape: "classy", fg: "#d4af37", bg: "#0b0a08", eyeColor: "#f3e3b3", ballColor: "#f3e3b3", gradientType: "linear", gradientTo: "#8c6a1d", effect: "shadow", maskPattern: 0 } }),
+  salon({ id: "noir-onyx", name: "Noir Onyx", category: "Luxury", blurb: "Ivory lines on obsidian, sharp squares", style: { moduleShape: "square", eyeShape: "square", ballShape: "square", fg: "#ece9e2", bg: "#111110", eyeColor: "#ece9e2", ballColor: "#111110", maskPattern: 4 } }),
+  salon({ id: "emerald-velvet", name: "Emerald Velvet", category: "Luxury", blurb: "Jewel green hexes on deep pine", style: { moduleShape: "hex", eyeShape: "hex", ballShape: "hex", fg: "#34d399", bg: "#052e22", eyeColor: "#a7f3d0", ballColor: "#052e22", gradientType: "radial", gradientTo: "#059669", maskPattern: 2 } }),
+  salon({ id: "rose-champagne", name: "Rose Champagne", category: "Luxury", blurb: "Blush-gold diamonds on noir", style: { moduleShape: "diamond", eyeShape: "diamond", ballShape: "diamond", fg: "#e8b4b8", bg: "#1a1214", eyeColor: "#f7dfe0", ballColor: "#1a1214", gradientType: "diagonal", gradientTo: "#c98a8e", maskPattern: 5 } }),
+  salon({ id: "silver-thread", name: "Silver Thread", category: "Luxury", blurb: "Platinum streaks on charcoal, glow", style: { moduleShape: "diag", eyeShape: "rounded", ballShape: "rounded", fg: "#c8ccd4", bg: "#1c1e22", eyeColor: "#f2f4f8", ballColor: "#1c1e22", effect: "glow", maskPattern: 6 } }),
+
+  // ------------------------------- Retro (5) -------------------------------
+  salon({ id: "vapor-sunset", name: "Vapor Sunset", category: "Retro", blurb: "Sunset gradient dots, big soft eyes", style: { moduleShape: "dots", eyeShape: "extra-rounded", ballShape: "extra-rounded", fg: "#ff6b9d", bg: "#1a0b2e", eyeColor: "#ffd46b", ballColor: "#ffd46b", gradientType: "linear", gradientTo: "#ff9a5a", maskPattern: 0 } }),
+  salon({ id: "crt-pixel", name: "CRT Pixel", category: "Retro", blurb: "Phosphor green blocks with scanline 3D", style: { moduleShape: "square", eyeShape: "square", ballShape: "square", fg: "#33ff77", bg: "#04120a", eyeColor: "#b6ffce", ballColor: "#04120a", effect: "extrude", maskPattern: 1 } }),
+  salon({ id: "desert-fade", name: "Desert Fade", category: "Retro", blurb: "Terracotta cross marks on sand", style: { moduleShape: "cross", eyeShape: "rounded", ballShape: "rounded", fg: "#b45a3c", bg: "#f5e8d8", eyeColor: "#8a3d24", ballColor: "#8a3d24", gradientType: "linear", gradientTo: "#d99a6c", maskPattern: 3 } }),
+  salon({ id: "Miami-grid", name: "Miami Grid", category: "Retro", blurb: "Teal-pink checker energy on midnight", style: { moduleShape: "confetti", eyeShape: "circle", ballShape: "circle", fg: "#2ee6c8", bg: "#14041f", eyeColor: "#ff71ce", ballColor: "#ff71ce", gradientType: "diagonal", gradientTo: "#ff71ce", maskPattern: 7 } }),
+  salon({ id: "cassette-teal", name: "Cassette Teal", category: "Retro", blurb: "Deep teal rounded tiles on ivory", style: { moduleShape: "rounded", eyeShape: "rounded", ballShape: "rounded", fg: "#0f6b66", bg: "#f2efe6", eyeColor: "#083f3c", ballColor: "#083f3c", effect: "shadow", maskPattern: 2 } }),
+
+  // ------------------------------ Playful (5) ------------------------------
+  salon({ id: "bubblegum-pop", name: "Bubblegum Pop", category: "Playful", blurb: "Pink bubbles on lemon, shadow finish", style: { moduleShape: "dots", eyeShape: "circle", ballShape: "circle", fg: "#ff5fa2", bg: "#fffbe0", eyeColor: "#d92b77", ballColor: "#d92b77", effect: "shadow", maskPattern: 5 } }),
+  salon({ id: "candy-confetti", name: "Candy Confetti", category: "Playful", blurb: "Multi-confetti squares on cream", style: { moduleShape: "confetti", eyeShape: "rounded", ballShape: "rounded", fg: "#e75480", bg: "#fff7f0", eyeColor: "#f9a03f", ballColor: "#3f7fd9", maskPattern: 6 } }),
+  salon({ id: "doodle-ink", name: "Doodle Ink", category: "Playful", blurb: "Hand-drawn ink dashes on paper", style: { moduleShape: "dash", eyeShape: "ticks", ballShape: "ticks", fg: "#22252b", bg: "#f7f4ec", eyeColor: "#22252b", ballColor: "#22252b", maskPattern: 4 } }),
+  salon({ id: "skittle-stars", name: "Skittle Stars", category: "Playful", blurb: "Star modules, orange on midnight blue", style: { moduleShape: "star", eyeShape: "target", ballShape: "target", fg: "#ffa94d", bg: "#151d3d", eyeColor: "#ffe8cc", ballColor: "#151d3d", maskPattern: 0 } }),
+  salon({ id: "jelly-bean", name: "Jelly Bean", category: "Playful", blurb: "Violet fluid blobs, candy glow", featured: true, style: { moduleShape: "fluid", eyeShape: "circle", ballShape: "circle", fg: "#9d4edd", bg: "#160a24", eyeColor: "#cda7ff", ballColor: "#cda7ff", gradientType: "radial", gradientTo: "#ff6ad5", effect: "glow", maskPattern: 3 } }),
+
+  // ------------------------------ Minimal (6) ------------------------------
+  salon({ id: "ink-line", name: "Ink Line", category: "Minimal", blurb: "Pure black hairline squares on white", style: { moduleShape: "square", eyeShape: "square", ballShape: "square", fg: "#111110", bg: "#ffffff", eyeColor: "#111110", ballColor: "#111110", moduleGap: 0.08, maskPattern: 2 } }),
+  salon({ id: "porcelain", name: "Porcelain", category: "Minimal", blurb: "Warm grey soft dots on bone", style: { moduleShape: "dots", eyeShape: "circle", ballShape: "circle", fg: "#6b6f76", bg: "#f5f2ea", eyeColor: "#3c4046", ballColor: "#3c4046", maskPattern: 1 } }),
+  salon({ id: "slate-grid", name: "Slate Grid", category: "Minimal", blurb: "Slate plus-shapes on pale steel", style: { moduleShape: "plus", eyeShape: "rounded", ballShape: "rounded", fg: "#46505c", bg: "#eef1f4", eyeColor: "#2b333d", ballColor: "#2b333d", moduleGap: 0.06, maskPattern: 6 } }),
+  salon({ id: "graphite-soft", name: "Graphite Soft", category: "Minimal", blurb: "Charcoal squircles with quiet shadow", style: { moduleShape: "squircle", eyeShape: "extra-rounded", ballShape: "extra-rounded", fg: "#3a3d42", bg: "#f4f4f2", eyeColor: "#22242a", ballColor: "#22242a", effect: "shadow", maskPattern: 5 } }),
+  salon({ id: "bone-diamond", name: "Bone Diamond", category: "Minimal", blurb: "Ivory diamonds on warm charcoal", style: { moduleShape: "diamond", eyeShape: "diamond", ballShape: "diamond", fg: "#e9e2d4", bg: "#26241f", eyeColor: "#f4efe6", ballColor: "#26241f", maskPattern: 3 } }),
+  salon({ id: "mono-lathe", name: "Mono Lathe", category: "Minimal", blurb: "Turned-lathe circles, single ink", style: { moduleShape: "dots", eyeShape: "circle", ballShape: "circle", fg: "#1f2937", bg: "#f8fafc", eyeColor: "#111827", ballColor: "#111827", dotScale: 0.55, moduleGap: 0.1, maskPattern: 0 } }),
+];
+
+export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS, ...SALON_PRESETS];
 
 export const GALLERY_PRESETS: Preset[] = PRESETS.filter((p) => Boolean(p.artUrl));
 

@@ -638,7 +638,32 @@ export async function robotsText(origin: string): Promise<string> {
   if (seo.robotsTxt?.trim()) return seo.robotsTxt.trim();
   const base = seo.canonicalBaseUrl || origin;
   if (!seo.indexSite) return "User-agent: *\nDisallow: /\n";
-  return ["User-agent: *", "Allow: /", "", `Sitemap: ${base}/sitemap.xml`].join("\n");
+  // Explicit opt-in for AI search/assistant crawlers: the default "User-agent: *"
+  // already allows them, but several engines (OpenAI, Perplexity, Claude,
+  // Gemini, Cognition) respect per-agent rules, and being explicit is what gets
+  // the site cited in AI answers.
+  const AI_AGENTS = [
+    "GPTBot",
+    "OAI-SearchBot",
+    "ChatGPT-User",
+    "PerplexityBot",
+    "ClaudeBot",
+    "Claude-SearchBot",
+    "Claude-User",
+    "Google-Extended",
+    "CCBot",
+    "Amazonbot",
+    "Applebot-Extended",
+    "Meta-ExternalAgent",
+    "Bytespider",
+  ];
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "",
+    ...AI_AGENTS.flatMap((a) => [`User-agent: ${a}`, "Allow: /", ""]),
+    `Sitemap: ${base}/sitemap.xml`,
+  ].join("\n");
 }
 
 export async function sitemapXml(origin: string): Promise<string> {

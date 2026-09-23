@@ -80,14 +80,75 @@ export const seoSchema = z.object({
       "Must be an absolute http(s) origin without a trailing slash",
     ),
   indexSite: z.boolean().default(true),
-  defaults: pageSeoSchema.default({}),
+  /** Shared fallbacks — every page inherits these unless it overrides. */
+  defaults: pageSeoSchema.default({
+    title: SEO_FALLBACK_TITLE,
+    description: SEO_FALLBACK_DESCRIPTION,
+    keywords: SEO_FALLBACK_KEYWORDS,
+    ogTitle: "QRWho — Turn Anything Into a Beautiful, Scannable QR",
+    ogDescription:
+      "Free artistic QR code generator. Blend photos, drop 50 built-in center logos, pick from 300+ designer styles, verify scannability live, and export 2048px PNG + vector SVG — 100% in your browser.",
+    ogImageUrl: "/og.jpg",
+  }),
   pages: z
     .object({
-      home: pageSeoSchema.default({}),
-      studio: pageSeoSchema.default({}),
-      lab: pageSeoSchema.default({}),
+      home: pageSeoSchema.default({
+        title: SEO_FALLBACK_TITLE,
+        description: SEO_FALLBACK_DESCRIPTION,
+        keywords: SEO_FALLBACK_KEYWORDS,
+        ogTitle: "QRWho — Free Artistic QR Code Generator (Photo, Logo, Wi-Fi, Menu, vCard)",
+        ogDescription:
+          "Every sample is a real, decoded QR. Photo blending, 50 center logos, 300+ styles, verified scan — free forever, zero watermarks, zero uploads.",
+      }),
+      studio: pageSeoSchema.default({
+        title: "QR Studio — Design, Tune & Download Artistic QR Codes | QRWho",
+        description:
+          "Design custom QR codes online: 300+ artistic styles, photo QR blending, 50 built-in center logos (WhatsApp, Instagram, Wi-Fi, PayPal and more), real-time camera-grade scan verification, and 2048px PNG / vector SVG export. Free, private, 100% on-device.",
+        keywords:
+          "qr code studio, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
+        ogTitle: "QR Studio — Design & Download Artistic QR Codes",
+        ogDescription:
+          "300+ designer styles, photo blending, 50 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
+      }),
+      lab: pageSeoSchema.default({
+        title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",
+        description:
+          "Push the pixels: the QR Art Lab explores halftone, mosaic and paint-fuse QR rendering with a live scannability meter, so even experimental art still reads on a phone camera.",
+        keywords: "qr art, experimental qr code, halftone qr code, artistic barcode, qr art generator",
+        ogTitle: "QR Art Lab — Experimental QR Art That Still Scans",
+        ogDescription:
+          "Halftone, mosaic and paint-fuse QR rendering with a live scannability meter — art first, camera-verified.",
+      }),
     })
-    .default({ home: {}, studio: {}, lab: {} }),
+    .default({
+      home: {
+        title: SEO_FALLBACK_TITLE,
+        description: SEO_FALLBACK_DESCRIPTION,
+        keywords: SEO_FALLBACK_KEYWORDS,
+        ogTitle: "QRWho — Free Artistic QR Code Generator (Photo, Logo, Wi-Fi, Menu, vCard)",
+        ogDescription:
+          "Every sample is a real, decoded QR. Photo blending, 50 center logos, 300+ styles, verified scan — free forever, zero watermarks, zero uploads.",
+      },
+      studio: {
+        title: "QR Studio — Design, Tune & Download Artistic QR Codes | QRWho",
+        description:
+          "Design custom QR codes online: 300+ artistic styles, photo QR blending, 50 built-in center logos (WhatsApp, Instagram, Wi-Fi, PayPal and more), real-time camera-grade scan verification, and 2048px PNG / vector SVG export. Free, private, 100% on-device.",
+        keywords:
+          "qr code studio, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
+        ogTitle: "QR Studio — Design & Download Artistic QR Codes",
+        ogDescription:
+          "300+ designer styles, photo blending, 50 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
+      },
+      lab: {
+        title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",
+        description:
+          "Push the pixels: the QR Art Lab explores halftone, mosaic and paint-fuse QR rendering with a live scannability meter, so even experimental art still reads on a phone camera.",
+        keywords: "qr art, experimental qr code, halftone qr code, artistic barcode, qr art generator",
+        ogTitle: "QR Art Lab — Experimental QR Art That Still Scans",
+        ogDescription:
+          "Halftone, mosaic and paint-fuse QR rendering with a live scannability meter — art first, camera-verified.",
+      },
+    }),
   robotsTxt: z.string().trim().max(4000).optional(),
   sitemapPaths: z
     .array(z.object({ path: short(200), priority: short(8).optional(), changefreq: short(20).optional() }))

@@ -1,4 +1,5 @@
-import { ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { BadgeCheck, ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -8,6 +9,7 @@ import { WEAVE_PRESETS } from "@/lib/qr/art/weave-presets";
 import { loadImage } from "@/lib/qr/render";
 import { IMAGE_MODES } from "@/lib/qr/types";
 import { SAMPLE_IMAGES } from "@/lib/qr/presets";
+import { LOGOS, LOGO_CATEGORIES, logoDataUrl } from "@/lib/qr/logo-set";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 
@@ -131,6 +133,15 @@ export function ImagePanel() {
           ))}
         </div>
       </div>
+
+      <LogoGallery
+        logoUrl={logoUrl}
+        onPick={(url) => {
+          setLogoUrl(url);
+          patchStyle({ imageMode: "logo" });
+        }}
+        onClear={() => setLogoUrl(null)}
+      />
 
       <div>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave</p>
@@ -333,6 +344,98 @@ export function ImagePanel() {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+/** 50 built-in brand/emoji center logos + upload fallback. */
+function LogoGallery({
+  logoUrl,
+  onPick,
+  onClear,
+}: {
+  logoUrl: string | null;
+  onPick: (url: string) => void;
+  onClear: () => void;
+}) {
+  const [cat, setCat] = useState<(typeof LOGO_CATEGORIES)[number] | "All">("All");
+  const list = useMemo(() => (cat === "All" ? LOGOS : LOGOS.filter((l) => l.category === cat)), [cat]);
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium tracking-wide text-muted">
+          Center logo <span className="text-subtle">— {LOGOS.length} built-in marks</span>
+        </p>
+        {logoUrl && (
+          <button
+            type="button"
+            className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] text-danger hover:bg-danger/10 transition"
+            onClick={onClear}
+          >
+            <X className="size-3" />
+            Remove logo
+          </button>
+        )}
+      </div>
+      <div className="mb-2 flex flex-wrap gap-1">
+        {(["All", ...LOGO_CATEGORIES] as const).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className={cn(
+              "h-7 rounded-full border px-2.5 text-[11px] font-medium transition",
+              cat === c ? "border-accent bg-accent text-accent-fg" : "border-border text-muted hover:text-fg",
+            )}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+        {list.map((logo) => {
+          const url = logoDataUrl(logo);
+          return (
+            <button
+              key={logo.id}
+              type="button"
+              title={logo.name}
+              onClick={() => onPick(url)}
+              className={cn(
+                "relative aspect-square overflow-hidden rounded-lg border bg-white/5 transition-all active:scale-95",
+                logoUrl === url ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
+              )}
+            >
+              <img src={url} alt={logo.name} loading="lazy" className="size-full object-cover" />
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => logoRef.current?.click()}
+        className="mt-1.5 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-elevated px-2.5 text-[11px] font-medium text-muted hover:text-fg transition"
+      >
+        <ImagePlus className="size-3.5" />
+        Or use your own logo
+      </button>
+      <input
+        ref={logoRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onPick(URL.createObjectURL(file));
+          e.target.value = "";
+        }}
+      />
+      <p className="mt-1.5 flex items-center gap-1 text-[11px] leading-snug text-subtle">
+        <BadgeCheck className="size-3 text-ok" />
+        The mark gets a quiet plate behind it, so it stays readable on any template.
+      </p>
     </div>
   );
 }
