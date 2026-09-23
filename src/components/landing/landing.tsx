@@ -45,23 +45,22 @@ function RotatingWord({ words = HOOK_WORDS }: { words?: string[] }) {
 
 function useSamples(entries: { id: string; url?: string }[], px: number) {
   const [samples, setSamples] = useState<SampleImage[]>([]);
-  const done = useRef(false);
+  // Per-id start tracking (not a one-shot latch): the admin's samples doc
+  // arrives AFTER the first paint with the curated fallback, and the new
+  // entries must still render — while double-effect re-runs stay no-ops.
+  const started = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (done.current) return;
-    done.current = true;
-    let live = true;
     entries.forEach(({ id, url }) => {
+      if (started.current.has(id)) return;
+      started.current.add(id);
       const preset = getPresetMerged(id) ?? getPreset(id);
       if (!preset) return;
       renderSamplePreset(preset, px, url)
         .then((s) => {
-          if (live) setSamples((prev) => (prev.some((p) => p.preset.id === s.preset.id) ? prev : [...prev, s]));
+          setSamples((prev) => (prev.some((p) => p.preset.id === s.preset.id) ? prev : [...prev, s]));
         })
         .catch(() => {});
     });
-    return () => {
-      live = false;
-    };
   }, [entries, px]);
   return samples;
 }
@@ -127,7 +126,11 @@ const HERO_SAMPLE_IDS = ["art-neon-tokyo", "art-royal", "gal-duo-aurora"] as con
 
 function HeroFan({ entries }: { entries: SampleRef[] }) {
   const samples = useSamples(entries.map((e) => ({ id: e.preset.id, url: e.url })), 320);
-  const tilts = ["-rotate-6 -translate-x-6", "rotate-2 translate-y-2", "rotate-8 translate-x-6"];
+  const tilts = [
+    "z-0 -rotate-10 -translate-x-[46%] translate-y-6",
+    "z-10 -translate-y-1",
+    "z-0 rotate-10 translate-x-[46%] translate-y-6",
+  ];
   return (
     <div className="relative mx-auto flex h-64 w-full max-w-md items-center justify-center sm:h-80">
       {entries.slice(0, 3).map((entry, i) => {
@@ -136,9 +139,8 @@ function HeroFan({ entries }: { entries: SampleRef[] }) {
           <div
             key={entry.preset.id}
             className={cn(
-              "art-floating-card absolute size-44 overflow-hidden rounded-2xl sm:size-56",
+              "art-floating-card absolute size-40 overflow-hidden rounded-2xl sm:size-56",
               tilts[i],
-              i === 1 ? "z-10" : "",
             )}
           >
             {s ? (
