@@ -244,7 +244,7 @@ export function resolveSamples(
     return out.slice(0, cap);
   };
   return {
-    grid: resolve(doc?.grid, fallback.grid, 8),
+    grid: resolve(doc?.grid, fallback.grid, 30),
     hero: resolve(doc?.hero, fallback.hero, 3),
   };
 }

@@ -238,11 +238,11 @@ describe("mergeCatalog", () => {
     assert.equal(r2.hero[0]!.label, "Neon"); // label trimmed
   });
 
-  it("resolveSamples: caps at 8 grid / 3 hero entries", () => {
-    const presets = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, category: "Art", style: {} })) as unknown as Preset[];
+  it("resolveSamples: caps at 30 grid / 3 hero entries", () => {
+    const presets = Array.from({ length: 32 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, category: "Art", style: {} })) as unknown as Preset[];
     const ids = presets.map((p) => p.id);
     const r = resolveSamples({ grid: ids.map((presetId) => ({ presetId })), hero: ids.map((presetId) => ({ presetId })) }, presets, new Set(), { grid: [], hero: [] });
-    assert.equal(r.grid.length, 8);
+    assert.equal(r.grid.length, 30);
     assert.equal(r.hero.length, 3);
   });
 

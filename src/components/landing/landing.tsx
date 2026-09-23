@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
+  X,
   ArrowUpRight,
   CheckCircle2,
   Download,
@@ -76,10 +77,35 @@ function VerifiedBadge({ verified }: { verified: boolean }) {
   );
 }
 
-function SampleCard({ sample, label, onTry }: { sample?: SampleImage; label?: string; onTry: (id: string) => void }) {
+function SampleCard({
+  sample,
+  label,
+  onTry,
+  onZoom,
+}: {
+  sample?: SampleImage;
+  label?: string;
+  onTry: (id: string) => void;
+  onZoom: () => void;
+}) {
   const isPlaceholder = !sample;
   return (
-    <figure className="group relative overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-2xl">
+    <figure
+      role="button"
+      tabIndex={isPlaceholder ? -1 : 0}
+      aria-label={isPlaceholder ? undefined : `Enlarge ${label ?? sample.preset.name}`}
+      onClick={() => !isPlaceholder && onZoom()}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && !isPlaceholder) {
+          e.preventDefault();
+          onZoom();
+        }
+      }}
+      className={
+        "group relative overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-2xl" +
+        (isPlaceholder ? "" : " cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent")
+      }
+    >
       {isPlaceholder ? (
         <div className="aspect-square w-full animate-pulse bg-elevated" />
       ) : (
@@ -102,7 +128,10 @@ function SampleCard({ sample, label, onTry }: { sample?: SampleImage; label?: st
       <button
         type="button"
         disabled={isPlaceholder}
-        onClick={() => sample && onTry(sample.preset.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (sample) onTry(sample.preset.id);
+        }}
         className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white opacity-0 backdrop-blur transition group-hover:opacity-100 hover:bg-black/80 disabled:hidden"
       >
         Try it
@@ -112,15 +141,112 @@ function SampleCard({ sample, label, onTry }: { sample?: SampleImage; label?: st
   );
 }
 
+// Curated landing grid — 30 of the 335, mixed across every category so the
+// wall shows the full range. (An owner-saved samples list in admin overrides.)
+/**
+ * Click-to-enlarge lightbox for the samples wall: the code zooms to the
+ * middle of the screen with a "Try it" button over it; X, backdrop click or
+ * Escape sends it back to its place.
+ */
+function SampleLightbox({
+  image,
+  label,
+  onTry,
+  onClose,
+}: {
+  image: SampleImage;
+  label: string;
+  onTry: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${label} — enlarged`}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute right-4 top-4 z-10 flex size-11 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white backdrop-blur transition hover:bg-black/85"
+      >
+        <X className="size-5" />
+      </button>
+      <div className="relative w-full max-w-[min(86vw,560px)]">
+        <img
+          src={image.url}
+          alt={`${label} QR code — enlarged`}
+          className="w-full rounded-2xl border border-border-strong shadow-2xl"
+        />
+        <button
+          type="button"
+          onClick={onTry}
+          className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-bold text-accent-fg shadow-[0_0_30px_-6px_var(--color-accent)] transition hover:brightness-110 active:scale-[0.97]"
+        >
+          <Wand2 className="size-4" />
+          Try it
+        </button>
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex items-end justify-between px-2">
+          <div className="min-w-0 rounded-xl bg-black/70 px-3 py-1.5 backdrop-blur">
+            <p className="truncate text-xs font-bold text-white">{label}</p>
+            <p className="text-[10px] text-white/70">{image.preset.category}</p>
+          </div>
+          <VerifiedBadge verified={image.verified} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const GRID_SAMPLE_IDS = [
   "art-neon-tokyo",
   "art-royal",
   "gal-duo-aurora",
   "art-alpine-summit",
   "gal-peony",
-  "art-sakura",
+  "art-sakura-bloom",
   "gal-mono-lake",
   "art-ukiyo",
+  "art-stained-glass",
+  "art-synthwave",
+  "art-matrix",
+  "art-candy",
+  "art-galaxy-burst",
+  "art-solarpunk",
+  "art-bauhaus-primary",
+  "art-dragon-fire",
+  "gal-marble",
+  "gal-blossom",
+  "gal-duo-dusk",
+  "gal-mono-mountain",
+  "bubble-gum",
+  "circuit-teal",
+  "gold-foil",
+  "emerald-velvet",
+  "porcelain",
+  "neon-pulse",
+  "blush-bloom",
+  "Miami-grid",
+  "photo-duotone-film",
+  "scene-cafe",
 ] as const;
 
 const HERO_SAMPLE_IDS = ["art-neon-tokyo", "art-royal", "gal-duo-aurora"] as const;
@@ -201,6 +327,7 @@ function wordsList(csv: string): string[] {
 
 export function Landing() {
   const navigate = useNavigate();
+  const [zoomed, setZoomed] = useState<{ image: SampleImage; label: string; url: string } | null>(null);
   const applyPreset = useStudio((s) => s.applyPreset);
   const { catalog, presetCount, brand, content, samplesDoc } = useCms();
   // Curated fallback = the original hardcoded ids plus any custom art
@@ -212,7 +339,7 @@ export function Landing() {
     grid: [...GRID_SAMPLE_IDS, ...customArtIds],
     hero: [...HERO_SAMPLE_IDS],
   });
-  const samples = useSamples(sampleRefs.grid.map((r) => ({ id: r.preset.id, url: r.url })), 512);
+  const samples = useSamples(sampleRefs.grid.map((r) => ({ id: r.preset.id, url: r.url })), 640);
 
   function tryInStudio(id: string, url?: string) {
     applyPreset(id);
@@ -411,13 +538,17 @@ export function Landing() {
               with jsQR at export size. If the badge is there, a camera can read it too.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
             {sampleRefs.grid.map((ref) => (
               <SampleCard
                 key={ref.preset.id}
                 sample={samples.find((s) => s.preset.id === ref.preset.id)}
                 label={ref.label}
                 onTry={() => tryInStudio(ref.preset.id, ref.url)}
+                onZoom={() => {
+                  const image = samples.find((x) => x.preset.id === ref.preset.id);
+                  if (image) setZoomed({ image, label: ref.label, url: ref.url });
+                }}
               />
             ))}
           </div>
@@ -462,6 +593,20 @@ export function Landing() {
           </div>
         </div>
       </section>
+
+      {zoomed && (
+        <SampleLightbox
+          image={zoomed.image}
+          label={zoomed.label}
+          onTry={() => {
+            const id = zoomed.image.preset.id;
+            const url = zoomed.url;
+            setZoomed(null);
+            tryInStudio(id, url);
+          }}
+          onClose={() => setZoomed(null)}
+        />
+      )}
 
       {/* Art direction, promise, use cases, FAQ, footer */}
       <ArtShowcase onTry={tryInStudio} />
