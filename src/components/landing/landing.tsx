@@ -221,7 +221,7 @@ export function Landing() {
   }
 
   return (
-    <div className="min-h-dvh bg-bg text-fg">
+    <div className="min-h-app bg-bg text-fg">
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">

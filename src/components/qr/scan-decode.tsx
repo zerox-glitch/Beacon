@@ -31,13 +31,24 @@ export function ScanDecode({
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [camOn, setCamOn] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [stream]);
+
+  // Attach the stream only AFTER React has rendered the <video> element.
+  // (The old requestAnimationFrame could fire before the element existed —
+  // on iPhone Safari the camera then stayed black forever.)
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      const played = videoRef.current.play();
+      if (played) played.catch(() => undefined);
+    }
+  }, [stream, camOn]);
 
   async function run(fn: () => Promise<string | null>) {
     setBusy(true);
@@ -57,23 +68,52 @@ export function ScanDecode({
   }
 
   async function startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("This browser can't use the camera — upload a screenshot instead");
+      return;
+    }
+    // Embedded previews can deny camera via permissions policy — say so.
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      streamRef.current = stream;
-      setCamOn(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      });
+      const perm = await navigator.permissions.query({ name: "camera" as PermissionName });
+      if (perm.state === "denied") {
+        toast.error("Camera is blocked — allow it in your browser's site settings (or open the site directly if you're in a preview), then tap Use camera again");
+        return;
+      }
     } catch {
-      toast.error("Camera is blocked in this browser — upload a screenshot instead");
+      /* permissions API unsupported — proceed to getUserMedia */
+    }
+    try {
+      let got: MediaStream;
+      try {
+        got = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+      } catch (err) {
+        const overconstrained =
+          err instanceof DOMException &&
+          (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError");
+        if (!overconstrained) throw err;
+        got = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+      setStream(got);
+      setCamOn(true);
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        toast.error("Camera access was blocked — allow it in your browser's site settings, then tap Use camera again");
+      } else if (name === "NotReadableError") {
+        toast.error("The camera is busy in another app — close it and try again");
+      } else if (name === "NotFoundError") {
+        toast.error("No camera found on this device — upload a screenshot instead");
+      } else {
+        toast.error("Camera is blocked in this browser — upload a screenshot instead");
+      }
     }
   }
 
   function stopCamera() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    stream?.getTracks().forEach((t) => t.stop());
+    setStream(null);
     setCamOn(false);
   }
 

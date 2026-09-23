@@ -118,7 +118,7 @@ function Dashboard() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-fg">
+    <div className="flex min-h-app flex-col bg-bg text-fg">
       <AdminTopBar logoUrl={brand.logoUrl} siteName={brand.siteName} signedInAs={me?.name ?? null} onSignOut={signOut} />
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-3 py-5 sm:px-5 lg:flex-row lg:gap-7">
         <nav className="flex shrink-0 gap-1 overflow-x-auto pb-1 lg:w-48 lg:flex-col lg:overflow-visible lg:pb-0" aria-label="Admin sections">
@@ -158,7 +158,7 @@ function Gate() {
 
   if (isLoading || (me === null && setupAvailable === null)) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-bg">
+      <div className="flex min-h-app items-center justify-center bg-bg">
         <div className="flex items-center gap-2 text-sm text-muted">
           <RefreshCw className="size-4 animate-spin" />
           Checking your admin session…
@@ -173,7 +173,7 @@ function Gate() {
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgb(143_166_122/0.08),transparent)] px-4 py-10">
+    <div className="flex min-h-app flex-col items-center justify-center gap-6 bg-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgb(143_166_122/0.08),transparent)] px-4 py-10">
       <div className="text-center">
         <img src="/logo.png" alt="" className="mx-auto size-12 rounded-xl border border-border" />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-subtle">QRWho · Restricted area</p>

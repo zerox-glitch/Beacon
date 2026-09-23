@@ -26,6 +26,16 @@
   --radius-2xl: 32px;
 }
 
+@utility h-app {
+  height: 100vh;
+  height: 100svh;
+}
+
+@utility min-h-app {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -35,14 +45,20 @@
   html,
   body,
   #app {
-    height: 100dvh;
-    min-height: 100dvh;
+    /* Stable viewport height: on iOS Safari dvh *resizes* with the browser
+       toolbar, which re-lays-out the whole app (the studio's QR canvas
+       visibly shrank while using it). svh is the smallest viewport — a
+       constant — with 100vh as the fallback for pre-iOS-15.4 browsers. */
+    height: 100vh;
+    height: 100svh;
+    min-height: 100vh;
+    min-height: 100svh;
     background: var(--color-bg);
     color: var(--color-fg);
   }
 
   /* Landing & lab pages scroll the document normally (the studio shell
-     clips itself with its own h-dvh/overflow-hidden root). Clip stray
+     clips itself with its own h-app/overflow-hidden root). Clip stray
      horizontal overflow without disabling vertical scroll. */
   html {
     overflow-x: clip;

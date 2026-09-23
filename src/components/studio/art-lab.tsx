@@ -88,7 +88,7 @@ export function ArtLab() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-bg px-4 py-8 text-fg">
+    <div className="min-h-app bg-bg px-4 py-8 text-fg">
       <div className="mx-auto max-w-5xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ok">Weaver lab</p>
         <h1 className="font-display mt-1 text-3xl italic">Original vs weave, same matrix</h1>

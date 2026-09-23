@@ -105,7 +105,7 @@ export function Studio() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
+      <div className="flex h-app flex-col overflow-hidden bg-bg text-fg">
         <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
@@ -158,7 +158,7 @@ export function Studio() {
             className={cn(
               "z-20 flex min-h-0 flex-col border-t border-border bg-elevated lg:h-full lg:border-t-0",
               sheetOpen
-                ? "h-[min(42dvh,420px)] shrink-0 lg:h-auto lg:max-h-none"
+                ? "h-[min(42vh,420px)] shrink-0 lg:h-auto lg:max-h-none"
                 : "h-12 shrink-0 lg:h-auto lg:max-h-none",
             )}
           >
@@ -227,7 +227,7 @@ export function Studio() {
         {/* Art directions & print specs — inline in the studio (never navigates
             away). Always visible, high contrast, mobile + desktop. */}
         {showcaseOpen && (
-          <div className="z-30 max-h-[52dvh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46dvh]">
+          <div className="z-30 max-h-[52vh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46vh]">
             <ArtShowcase
               onTry={(id) => {
                 useStudio.getState().applyPreset(id);
