@@ -23,7 +23,7 @@ export function buildJsonLd(meta: PageMeta, presetCount: number): string {
           "Infinitely Scalable Vector SVG and 2048px PNG Export for 300 DPI print",
           "Real-Time Camera Scannability Engine and 1-Click Auto-Fix",
           "Static Zero-Redirect QR Codes that never expire",
-          "50 Built-in Center Logos (WhatsApp, Instagram, TikTok, Wi-Fi, PayPal, Visa, and more) plus custom uploads",
+          "66 Built-in Center Logos (WhatsApp, Instagram, TikTok, Wi-Fi, PayPal, Visa, work, health, education, and more) plus custom uploads",
           "100% On-Device Privacy — zero cloud uploads or telemetry",
           "ISO/IEC 18004 Error Correction Level H support",
         ],

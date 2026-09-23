@@ -1,6 +1,6 @@
 /**
- * 50 built-in center logos for the studio's Logo mode — social apps, payment
- * apps, Wi-Fi / web / utility marks, and a few cartoons & memes.
+ * 66 built-in center logos for the studio's Logo mode — social apps, payment
+ * apps, Wi-Fi / web / utility marks, plus cute & useful marks.
  *
  * Every logo is an inline SVG (64×64) converted to a data URL at call time,
  * so nothing needs to be hosted: the studio's `loadImage` draws them exactly
@@ -14,7 +14,7 @@
 export interface QrLogo {
   id: string;
   name: string;
-  category: "Social" | "Payments" | "Connect" | "Fun";
+  category: "Social" | "Payments" | "Connect" | "Fun" | "Cute" | "Useful";
   svg: string;
 }
 
@@ -129,7 +129,7 @@ const PAYMENTS: QrLogo[] = [
     id: "visa",
     name: "Visa",
     category: "Payments",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#1A1F71", 10)}${txt("VISA", 32, 33, 16, "#fff", 'font-style="italic" letter-spacing="1')}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#1A1F71", 10)}${txt("VISA", 32, 33, 16, "#fff", 'font-style="italic" letter-spacing="1"')}</svg>`,
   },
   {
     id: "mastercard",
@@ -343,6 +343,108 @@ const FUN: QrLogo[] = [
   },
 ];
 
-export const LOGOS: QrLogo[] = [...SOCIAL, ...PAYMENTS, ...CONNECT, ...FUN];
+const CUTE: QrLogo[] = [
+  {
+    id: "bunny",
+    name: "Bunny",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#FBCFE8")}<path d="M24 30c-3-8-4-16-1-19 3-2 7 3 9 11M40 30c3-8 4-16 1-19-3-2-7 3-9 11" fill="#fff"/><ellipse cx="32" cy="38" rx="15" ry="13" fill="#fff"/><circle cx="26" cy="36" r="2.4" fill="#334155"/><circle cx="38" cy="36" r="2.4" fill="#334155"/><path d="M30 42h4l-2 3z" fill="#F472B6"/><path d="M25 45c2 2 12 2 14 0" stroke="#F9A8D4" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: "frog",
+    name: "Frog",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#BBF7D0")}<circle cx="23" cy="22" r="8" fill="#4ADE80"/><circle cx="41" cy="22" r="8" fill="#4ADE80"/><circle cx="23" cy="22" r="3.4" fill="#fff"/><circle cx="41" cy="22" r="3.4" fill="#fff"/><circle cx="23" cy="22" r="1.5" fill="#052e16"/><circle cx="41" cy="22" r="1.5" fill="#052e16"/><ellipse cx="32" cy="40" rx="18" ry="14" fill="#4ADE80"/><path d="M22 40c4 5 16 5 20 0" stroke="#166534" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: "fox",
+    name: "Fox",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#FFF7ED", 12)}<path d="M14 18l8 10h20l8-10-4 22c-2 7-7 10-14 10s-12-3-14-10z" fill="#F97316"/><path d="M22 28c2 8 4 12 10 12s8-4 10-12c-4-3-7-4-10-4s-6 1-10 4z" fill="#fff"/><circle cx="25" cy="34" r="2.4" fill="#111827"/><circle cx="39" cy="34" r="2.4" fill="#111827"/><path d="M30 42h4l-2 3z" fill="#111827"/></svg>`,
+  },
+  {
+    id: "robot",
+    name: "Robot",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#E0F2FE", 12)}<path d="M32 14v6" stroke="#64748B" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="12" r="3" fill="#F87171"/><rect x="16" y="20" width="32" height="26" rx="6" fill="#94A3B8"/><rect x="21" y="26" width="22" height="12" rx="4" fill="#0F172A"/><circle cx="27" cy="32" r="2.6" fill="#38BDF8"/><circle cx="37" cy="32" r="2.6" fill="#38BDF8"/><path d="M27 46v6M32 46v7M37 46v6" stroke="#64748B" stroke-width="3" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: "owl",
+    name: "Owl",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#FEF3C7", 12)}<ellipse cx="32" cy="36" rx="17" ry="19" fill="#A16207"/><circle cx="24" cy="30" r="8" fill="#FDE68A"/><circle cx="40" cy="30" r="8" fill="#FDE68A"/><circle cx="24" cy="30" r="3.6" fill="#111827"/><circle cx="40" cy="30" r="3.6" fill="#111827"/><path d="M29 38l3 4 3-4z" fill="#F59E0B"/><path d="M22 48h20" stroke="#713F12" stroke-width="2" stroke-dasharray="3 3"/></svg>`,
+  },
+  {
+    id: "butterfly",
+    name: "Butterfly",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#FDF2F8", 12)}<path d="M30 32c-8-10-18-10-18-2s10 12 18 8M34 32c8-10 18-10 18-2s-10 12-18 8M30 34c-7 2-12 8-8 13 3 3 9-1 10-9M34 34c7 2 12 8 8 13-3 3-9-1-10-9" fill="#F472B6"/><rect x="30" y="22" width="4" height="24" rx="2" fill="#831843"/><path d="M30 22c-2-4-5-6-8-6M34 22c2-4 5-6 8-6" stroke="#831843" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: "icecream",
+    name: "Ice cream",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#ECFDF5", 12)}<path d="M20 28a12 12 0 0 1 24 0z" fill="#F9A8D4"/><path d="M20 30h24l-12 24z" fill="#D97706"/><path d="M24 36l16 0M27 42l10 0" stroke="#92400E" stroke-width="1.6" opacity=".5"/><circle cx="27" cy="22" r="2" fill="#FDE68A"/><circle cx="35" cy="24" r="2" fill="#FDE68A"/></svg>`,
+  },
+  {
+    id: "cupcake",
+    name: "Cupcake",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#EFF6FF", 12)}<path d="M18 34h28l-4 18h-20z" fill="#F59E0B"/><path d="M24 36l-2 14M32 36v14M40 36l2 14" stroke="#B45309" stroke-width="2" opacity=".6"/><path d="M16 34a6 6 0 0 1 4-11 8 8 0 0 1 15-3 7 7 0 0 1 11 5 6 6 0 0 1-1 9z" fill="#F9A8D4"/><circle cx="32" cy="14" r="4" fill="#EF4444"/></svg>`,
+  },
+  {
+    id: "rainbow",
+    name: "Rainbow",
+    category: "Cute",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#F0F9FF", 12)}<path d="M12 46a20 20 0 0 1 40 0" fill="none" stroke="#EF4444" stroke-width="4.5"/><path d="M17 46a15 15 0 0 1 30 0" fill="none" stroke="#F59E0B" stroke-width="4.5"/><path d="M22 46a10 10 0 0 1 20 0" fill="none" stroke="#22C55E" stroke-width="4.5"/><path d="M27 46a5 5 0 0 1 10 0" fill="none" stroke="#3B82F6" stroke-width="4.5"/><circle cx="14" cy="48" r="5" fill="#fff"/><circle cx="50" cy="48" r="5" fill="#fff"/></svg>`,
+  },
+];
 
-export const LOGO_CATEGORIES: QrLogo["category"][] = ["Social", "Payments", "Connect", "Fun"];
+const USEFUL: QrLogo[] = [
+  {
+    id: "briefcase",
+    name: "Work",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#334155")}<rect x="24" y="16" width="16" height="8" rx="3" fill="#F8FAFC"/><rect x="12" y="24" width="40" height="26" rx="5" fill="#F8FAFC"/><rect x="12" y="34" width="40" height="6" fill="#94A3B8"/><rect x="29" y="33" width="6" height="8" rx="2" fill="#0F172A"/></svg>`,
+  },
+  {
+    id: "store",
+    name: "Store",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#FEF2F2", 12)}<path d="M14 26l4-12h28l4 12c0 4-3 6-6 6s-6-2-6-6c0 4-3 6-6 6s-6-2-6-6c0 4-3 6-6 6s-6-2-6-6z" fill="#DC2626"/><path d="M18 32v18h28V32" fill="none" stroke="#DC2626" stroke-width="3.5"/><rect x="27" y="38" width="10" height="12" fill="#DC2626"/></svg>`,
+  },
+  {
+    id: "cutlery",
+    name: "Restaurant",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#FDE68A")}<path d="M24 14v10a4 4 0 0 1-4 4v4a4 4 0 0 1 4 4v14M24 14v30M20 14v12M28 14v12" stroke="#78350F" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M40 14c-4 0-6 5-6 10s2 8 6 8v18M40 14v18" stroke="#78350F" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`,
+  },
+  {
+    id: "medical",
+    name: "Health",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#DC2626", 12)}<path d="M27 16h10v11h11v10H37v11H27V37H16V27h11z" fill="#fff"/></svg>`,
+  },
+  {
+    id: "gradcap",
+    name: "Education",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#1E3A8A")}<path d="M32 18L8 30l24 12 24-12z" fill="#fff"/><path d="M18 36v8c0 4 6 8 14 8s14-4 14-8v-8" fill="none" stroke="#fff" stroke-width="3.5"/><path d="M52 30v12" stroke="#FBBF24" stroke-width="3" stroke-linecap="round"/><circle cx="52" cy="44" r="2.5" fill="#FBBF24"/></svg>`,
+  },
+  {
+    id: "gift",
+    name: "Gift",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#FDF2F8", 12)}<rect x="14" y="26" width="36" height="8" rx="2" fill="#DB2777"/><rect x="16" y="34" width="32" height="18" rx="2" fill="#F472B6"/><rect x="29" y="26" width="6" height="26" fill="#FDF2F8"/><path d="M32 26c-6-8-14-6-12 0M32 26c6-8 14-6 12 0" fill="none" stroke="#DB2777" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+  },
+  {
+    id: "bell",
+    name: "Alerts",
+    category: "Useful",
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#F59E0B")}<path d="M32 14c-9 0-14 7-14 15v8l-5 8h38l-5-8v-8c0-8-5-15-14-15z" fill="#fff"/><path d="M27 47a5 5 0 0 0 10 0" fill="#fff"/><circle cx="32" cy="11" r="3" fill="#fff"/></svg>`,
+  },
+];
+
+export const LOGOS: QrLogo[] = [...SOCIAL, ...PAYMENTS, ...CONNECT, ...FUN, ...CUTE, ...USEFUL];
+
+export const LOGO_CATEGORIES: QrLogo["category"][] = ["Social", "Payments", "Connect", "Fun", "Cute", "Useful"];

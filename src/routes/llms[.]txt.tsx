@@ -28,7 +28,7 @@ const body = (base: string) => `# QRWho
 ## Pages
 
 - [Landing](${base}/): Overview with verified live sample QR codes, feature highlights and FAQ.
-- [Studio](${base}/studio): The full generator — content (link, Wi-Fi, contact, phone, SMS, email, WhatsApp, location, event), 300+ styles, photo blending, 50 built-in center logos, live scan meter, Fix-scan autofix, PNG/SVG download.
+- [Studio](${base}/studio): The full generator — content (link, Wi-Fi, contact, phone, SMS, email, WhatsApp, location, event), 300+ styles, photo blending, 66 built-in center logos (social, payments, connect, fun, cute, useful), live scan meter, Fix-scan autofix, PNG/SVG download.
 - [Art Lab](${base}/lab): Experimental rendering playground (halftone, mosaic, paint-fuse) with a scannability meter.
 - [Admin](${base}/admin): Owner-only CMS (brand, templates, landing samples, SEO). Not for public use; requires sign-in.
 
@@ -45,7 +45,7 @@ const body = (base: string) => `# QRWho
 - Error correction: up to ISO/IEC 18004 level H (30% damage tolerance), used for photo/logo codes.
 - Scanning: every generated code is re-decoded with jsQR; the "verified scan" badge means the exact pixels were read back.
 - Payloads supported: URLs, plain text, phone (tel:), SMS, email (compose-to-address only — subject/body are intentionally not embedded), WhatsApp, Wi-Fi (WPA/WEP/open, escaped per the common "WIFI:T:..;S:..;P:..;" convention), vCard 3.0, iCal events, geo locations.
-- Center logos: 50 built-in marks (social, payments, Wi-Fi/utility, fun) plus user uploads; the logo gets a quiet background plate to protect contrast.
+- Center logos: 66 built-in marks (social, payments, Wi-Fi/utility, fun, cute, useful) plus user uploads; the logo gets a quiet background plate to protect contrast.
 `;
 
 export const Route = createFileRoute("/llms.txt")({

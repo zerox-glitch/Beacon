@@ -348,7 +348,7 @@ export function ImagePanel() {
   );
 }
 
-/** 50 built-in brand/emoji center logos + upload fallback. */
+/** 66 built-in brand/emoji center logos + upload fallback. */
 function LogoGallery({
   logoUrl,
   onPick,
