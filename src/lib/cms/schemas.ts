@@ -30,6 +30,13 @@ export const brandSchema = z.object({
   announcementText: short(200).default(""),
   announcementLink: urlish.default(""),
   footerNote: short(300).default(""),
+  /** Tip/support link (Ko-fi, Buy Me a Coffee, GitHub Sponsors…). Empty = the
+   * post-download support popup is disabled entirely. */
+  kofiUrl: urlish.default(""),
+  /** One-liner shown in the post-download support popup (editable in admin). */
+  kofiMessage: short(200).default(
+    "Enjoying QRWho? A coffee keeps it free, fast and watermark-free for everyone.",
+  ),
 });
 export type BrandDoc = z.infer<typeof brandSchema>;
 

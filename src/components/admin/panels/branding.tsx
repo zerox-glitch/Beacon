@@ -56,6 +56,27 @@ export function BrandingPanel() {
         </div>
       </Card>
 
+      <Card
+        title="Support & tips"
+        desc="After someone downloads a QR, a small popup offers to send you a tip. Paste your Ko-fi (or any tip) link and edit the line. Leave the link empty to turn the popup off."
+      >
+        <TextInput
+          label="Tip link (Ko-fi, Buy Me a Coffee, GitHub Sponsors…)"
+          value={d.kofiUrl}
+          onValueChange={(v) => brand.patch({ kofiUrl: v })}
+          placeholder="https://ko-fi.com/qrwho"
+          maxLength={400}
+          hint="http(s) link only. Empty hides the popup."
+        />
+        <TextInput
+          label="Support message"
+          value={d.kofiMessage}
+          onValueChange={(v) => brand.patch({ kofiMessage: v })}
+          maxLength={200}
+          hint='Shown in the post-download popup, e.g. "Enjoying QRWho? A coffee keeps it free for everyone."'
+        />
+      </Card>
+
       <Card title="Announcement bar" desc="A slim full-width banner shown above every page. Leave disabled for none.">
         <ToggleField label="Show announcement" checked={d.announcementEnabled} onCheckedChange={(v) => brand.patch({ announcementEnabled: v })} />
         <TextInput label="Text" value={d.announcementText} onValueChange={(v) => brand.patch({ announcementText: v })} maxLength={200} disabled={!d.announcementEnabled} />

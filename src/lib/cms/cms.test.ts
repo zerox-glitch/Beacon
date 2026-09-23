@@ -312,6 +312,16 @@ describe("schemas", () => {
     assert.equal(b.announcementEnabled, false);
   });
 
+  it("brand schema: support popup is off by default, on with a tip link", () => {
+    const b = brandSchema.parse({});
+    assert.equal(b.kofiUrl, ""); // empty link = no post-download popup
+    assert.ok(b.kofiMessage.length > 10);
+    const withLink = brandSchema.parse({ kofiUrl: "https://ko-fi.com/qrwho" });
+    assert.equal(withLink.kofiUrl, "https://ko-fi.com/qrwho");
+    const bad = brandSchema.safeParse({ kofiUrl: "javascript:alert(1)" });
+    assert.equal(bad.success, false); // no script: URLs in the brand doc
+  });
+
   it("template save rejects unsafe art URLs but accepts media paths", () => {
     const ok = templateSaveSchema.safeParse({ name: "X", artUrl: "/api/media/med_x" });
     assert.equal(ok.success, true);
