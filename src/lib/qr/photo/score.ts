@@ -59,8 +59,10 @@ export function candidateParams(
   const smallMatrix = (input.modules ?? qrSizeOf(input)) <= 33;
   return {
     render: {
+      // dotScale is the user's "Dot size" slider — give it real travel so
+      // smaller dots let more of the picture's surround show through.
       kernelMin: clamp(
-        adapted.kernelMin + (smallMatrix ? 0.05 : 0) + (input.dotScale - 0.68) * 0.12 + boost * 0.15,
+        adapted.kernelMin + (smallMatrix ? 0.05 : 0) + (input.dotScale - 0.68) * 0.5 + boost * 0.15,
         0.3,
         0.88,
       ),

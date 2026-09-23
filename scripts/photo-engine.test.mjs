@@ -23,7 +23,7 @@ const { selectBest, PHOTO_CANDIDATES, adaptToModuleScale, FIDELITY_FLOOR, ROBUST
   "../src/lib/qr/photo/candidates.ts"
 );
 const { encode } = await import("uqr");
-const { roleMaps } = await import("../src/lib/qr/photo/score.ts");
+const { roleMaps, candidateParams } = await import("../src/lib/qr/photo/score.ts");
 
 function flatBitmap(n, v) {
   return { data: new Uint8ClampedArray(n * n * 4).fill(v), w: n, h: n };
@@ -289,5 +289,24 @@ describe("photo engine — fidelity + selection", () => {
     const tiny = adaptToModuleScale(base, 4.5);
     assert.ok(tiny.kernelMin > big.kernelMin);
     assert.ok(tiny.detail < big.detail);
+  });
+
+  it("the Dot size slider actually moves the kernel floor (visible effect)", () => {
+    const input = (dotScale) => ({
+      mode: "photo",
+      strength: 0.5,
+      contrast: 0.84,
+      dotScale,
+      chroma: 0.86,
+      boost: 0,
+      viewPxPerModule: 10,
+      modules: 37,
+      fg: [20, 20, 20],
+      bg: [240, 235, 220],
+    });
+    const small = candidateParams(PHOTO_CANDIDATES[2], input(0.55)).render;
+    const large = candidateParams(PHOTO_CANDIDATES[2], input(0.96)).render;
+    assert.ok(large.kernelMin - small.kernelMin > 0.1, `dotScale must have real travel, got ${(large.kernelMin - small.kernelMin).toFixed(3)}`);
+    assert.ok(small.kernelMin >= 0.3, "never below the camera-survivable floor");
   });
 });
