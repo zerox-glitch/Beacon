@@ -52,10 +52,11 @@ function setLuminance(r: number, g: number, b: number, target: number): [number,
 }
 
 /**
- * Fit the WHOLE photo inside the square atlas — no center crop. The edge
- * pixels are extended outward into the letterbox bands (smoothed 1-px strips),
- * so a landscape/portrait photo shows in full and the bands blend with the
- * photo's own edge colors. Square photos render exactly as before.
+ * Fit the photo inside the square atlas at the requested zoom (1 = whole
+ * photo, no crop; >1 zooms into the centre; <1 shrinks it). When the photo
+ * is smaller than the atlas, the edge pixels are extended outward into the
+ * letterbox bands (smoothed 1-px strips), so a landscape/portrait photo
+ * shows in full and the bands blend with the photo's own edge colors.
  */
 function fitDraw(
   ctx: CanvasRenderingContext2D,
@@ -66,16 +67,22 @@ function fitDraw(
   zoom = 1,
 ) {
   const z = Math.max(0.25, Math.min(3, zoom));
-  // Background: a cover-fit of the photo fills any letterbox bands with the
-  // picture's own colours (smooth, no dead margins).
-  const cs = Math.max(n / iw, n / ih);
-  ctx.drawImage(img, (n - iw * cs) / 2, (n - ih * cs) / 2, iw * cs, ih * cs);
-  // Foreground: the whole photo at the requested zoom, centred and clipped.
+  // The whole photo at the requested zoom, centred and clipped. Letterbox
+  // bands are filled with stretched photo EDGE colour — never a second copy
+  // of the picture (a cover-fit background reads as a double exposure).
   const scale = Math.min(n / iw, n / ih) * z;
   const dw = iw * scale;
   const dh = ih * scale;
   const ox = (n - dw) / 2;
   const oy = (n - dh) / 2;
+  if (ox > 0.5) {
+    ctx.drawImage(img, 0, 0, 1, ih, 0, 0, ox, n);
+    ctx.drawImage(img, iw - 1, 0, 1, ih, n - ox, 0, ox, n);
+  }
+  if (oy > 0.5) {
+    ctx.drawImage(img, 0, 0, iw, 1, 0, 0, n, oy);
+    ctx.drawImage(img, 0, ih - 1, iw, 1, 0, n - oy, n, oy);
+  }
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, n, n);
