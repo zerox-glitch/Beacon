@@ -59,7 +59,10 @@ export function selectionKey(art: HTMLImageElement, qr: EncodedQr, colorMode: st
 
 function toneFieldFor(art: HTMLImageElement, qrSize: number, detail: number, zoom = 1): ToneField {
   const atlas = atlasFor(art, qrSize * 8, zoom);
-  const key = `${art.src}|${qrSize}|${detail.toFixed(2)}`;
+  // Zoom MUST be in the key: the photo size slider rebuilds the field,
+  // otherwise the surround stays frozen at the first zoom (reads as a
+  // second, fixed-size photo behind the zoomable one).
+  const key = `${art.src}|${qrSize}|${detail.toFixed(2)}|${zoom.toFixed(2)}`;
   const hit = toneFieldCache.get(key);
   if (hit) return hit;
   const field = buildToneField({ data: atlas.data, w: atlas.n, h: atlas.n }, qrSize, {
