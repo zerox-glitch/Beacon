@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Eye } from "lucide-react";
 import { saveBrandDoc } from "@/lib/cms/admin-api";
 import type { BrandDoc } from "@/lib/cms/schemas";
-import { Badge, Card, SaveRow, TextInput, ToggleField } from "../ui";
+import { Badge, Card, SaveRow, SelectInput, TextInput, ToggleField } from "../ui";
 import { ImagePicker } from "../image-picker";
 import { SupportPopup } from "@/components/support-popup";
 import { useAdminMutation, useAdminSettings } from "../session";
@@ -56,6 +56,85 @@ export function BrandingPanel() {
         <div className="grid gap-4 sm:grid-cols-2">
           <ImagePicker label="Logo" value={d.logoUrl} onChange={(v) => brand.patch({ logoUrl: v })} media={data.media} kind="logo" hint="Header + landing logo. PNG/WebP with transparency looks best." />
           <ImagePicker label="Favicon" value={d.faviconUrl} onChange={(v) => brand.patch({ faviconUrl: v })} media={data.media} kind="logo" hint="Square PNG/WebP ≥ 64px." />
+        </div>
+      </Card>
+
+      <Card
+        title="Photo defaults"
+        desc="The look every photo QR starts with the moment a visitor uploads a picture. Change it here and all new uploads begin with your house style."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectInput
+            label="Weave style"
+            value={d.photoDefaults.imageMode}
+            onValueChange={(v) => brand.patch({ photoDefaults: { ...d.photoDefaults, imageMode: v as BrandDoc["photoDefaults"]["imageMode"] } })}
+            options={[
+              { value: "clean", label: "Clean overlay — photo at full strength, crisp dots" },
+              { value: "paint", label: "Photo QR — built from the weave lattice" },
+              { value: "mosaic", label: "Color blend — one photo color per dot" },
+              { value: "halftone", label: "Halftone — newspaper dots" },
+              { value: "duotone", label: "Duotone — two inks from the photo" },
+              { value: "mono", label: "Mono ink — density follows the photo" },
+            ]}
+            hint="Applied automatically when a picture is uploaded."
+          />
+          <TextInput
+            label="Dot size (%)"
+            value={String(Math.round(d.photoDefaults.dotScale * 100))}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isFinite(n) && n >= 50 && n <= 100) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, dotScale: n / 100 } });
+              }
+            }}
+            hint="50–100. Smaller dots show more of the picture."
+          />
+          <TextInput
+            label="Photo color (%)"
+            value={String(Math.round(d.photoDefaults.imageOpacity * 100))}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isFinite(n) && n >= 10 && n <= 100) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, imageOpacity: n / 100 } });
+              }
+            }}
+            hint="10–100. Low = grayscale inks."
+          />
+          <TextInput
+            label="Contrast (%)"
+            value={String(Math.round(d.photoDefaults.contrast * 100))}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isFinite(n) && n >= 30 && n <= 100) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, contrast: n / 100 } });
+              }
+            }}
+            hint="30–100."
+          />
+          <SelectInput
+            label="Quiet zone"
+            value={String(d.photoDefaults.quietZone)}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isInteger(n) && n >= 2 && n <= 6) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, quietZone: n } });
+              }
+            }}
+            options={[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+            hint="2–6 quiet modules around the QR. Smaller = tighter frame."
+          />
+          <SelectInput
+            label="Grid detail"
+            value={String(d.photoDefaults.minVersion)}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isInteger(n) && n >= 5 && n <= 12) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, minVersion: n } });
+              }
+            }}
+            options={[5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: String(n), label: `Version ${n}` }))}
+            hint="QR version floor. Lower = fewer, larger dots."
+          />
         </div>
       </Card>
 

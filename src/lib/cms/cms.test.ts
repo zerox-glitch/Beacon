@@ -312,6 +312,24 @@ describe("schemas", () => {
     assert.equal(b.announcementEnabled, false);
   });
 
+  it("brand schema: photo defaults = clean overlay house style", () => {
+    const b = brandSchema.parse({});
+    assert.deepEqual(b.photoDefaults, {
+      imageMode: "clean",
+      dotScale: 0.6,
+      imageOpacity: 0.71,
+      contrast: 1,
+      quietZone: 2,
+      minVersion: 6,
+    });
+    const custom = brandSchema.parse({
+      photoDefaults: { imageMode: "duotone", dotScale: 0.8, imageOpacity: 0.5, contrast: 0.7, quietZone: 4, minVersion: 8 },
+    });
+    assert.equal(custom.photoDefaults.imageMode, "duotone");
+    const bad = brandSchema.safeParse({ photoDefaults: { imageMode: "sparkles" } });
+    assert.equal(bad.success, false);
+  });
+
   it("brand schema: support popup is off by default, on with a tip link", () => {
     const b = brandSchema.parse({});
     assert.equal(b.kofiUrl, ""); // empty link = no post-download popup

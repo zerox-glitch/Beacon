@@ -46,6 +46,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
   const scanOk = useStudio((s) => s.scanOk);
+  const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
   const presetId = useStudio((s) => s.presetId);
   const error = useStudio((s) => s.error);
   const [copied, setCopied] = useState(false);
@@ -469,6 +470,8 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         />
       </div>
 
+      {scanOk === false && pictured ? <PhotoRescue style={style} /> : null}
+
       <div className="action-bar z-10 flex w-full max-w-[280px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <button
           type="button"
@@ -617,3 +620,60 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
 }
 
 
+
+/**
+ * One-tap manual rescues for a photo QR that the in-browser scanner can't
+ * read yet: change the dots' color, shape, thickness — or hand the whole
+ * thing to Fix scan. Shown only while a photo is woven in AND the scan is
+ * failing.
+ */
+function PhotoRescue({ style }: { style: import("@/lib/qr/types").QrStyle }) {
+  const patchStyle = useStudio((s) => s.patchStyle);
+  const shapes: import("@/lib/qr/types").ModuleShape[] = ["dots", "rounded", "square"];
+  const nextShape = shapes[(shapes.indexOf(style.moduleShape as (typeof shapes)[number]) + 1) % shapes.length] ?? "dots";
+  const chip =
+    "inline-flex h-9 items-center gap-1.5 rounded-full border border-warn/50 bg-warn/10 px-3 text-[11px] font-semibold text-fg transition hover:bg-warn/25 active:scale-[0.97]";
+  return (
+    <div className="mx-auto w-full max-w-[280px] shrink-0 space-y-1.5 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
+      <p className="text-center text-[11px] font-semibold text-warn">
+        The photo isn't scanning yet — try one of these, or run Fix scan below:
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <button
+          type="button"
+          className={chip}
+          title="One high-contrast ink — the single most effective fix"
+          onClick={() => patchStyle({ fg: "#050505", bg: "#ffffff", gradientType: "none" })}
+        >
+          Darker dots
+        </button>
+        <button
+          type="button"
+          className={chip}
+          title={`Switch dot shape to ${nextShape}`}
+          onClick={() => patchStyle({ moduleShape: nextShape })}
+        >
+          Shape: {nextShape}
+        </button>
+        <button
+          type="button"
+          className={chip}
+          title="Thickest dots — maximum ink for the camera"
+          onClick={() => patchStyle({ dotScale: 0.96 })}
+        >
+          Thicker dots
+        </button>
+        {style.imageMode !== "clean" ? (
+          <button
+            type="button"
+            className={chip}
+            title="Full-strength photo with crisp high-contrast dots on top"
+            onClick={() => patchStyle({ imageMode: "clean" })}
+          >
+            Clean overlay
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}

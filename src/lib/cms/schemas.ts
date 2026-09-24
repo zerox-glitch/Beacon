@@ -37,6 +37,28 @@ export const brandSchema = z.object({
   kofiMessage: short(200).default(
     "Enjoying QRWho? A coffee keeps it free, fast and watermark-free for everyone.",
   ),
+  /**
+   * The look every photo QR starts with the moment a picture is uploaded.
+   * Editable in Admin → Branding → Photo defaults. Defaults = the owner's
+   * house style: clean overlay, 60% dots, 71% photo color, full contrast.
+   */
+  photoDefaults: z
+    .object({
+      imageMode: z.enum(["paint", "clean", "mosaic", "halftone", "duotone", "mono"]).default("clean"),
+      dotScale: z.number().min(0.5).max(1).default(0.6),
+      imageOpacity: z.number().min(0.1).max(1).default(0.71),
+      contrast: z.number().min(0.3).max(1).default(1),
+      quietZone: z.number().int().min(2).max(6).default(2),
+      minVersion: z.number().int().min(5).max(12).default(6),
+    })
+    .default({
+      imageMode: "clean",
+      dotScale: 0.6,
+      imageOpacity: 0.71,
+      contrast: 1,
+      quietZone: 2,
+      minVersion: 6,
+    }),
 });
 export type BrandDoc = z.infer<typeof brandSchema>;
 

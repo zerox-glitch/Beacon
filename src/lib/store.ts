@@ -8,7 +8,7 @@ import {
   type QrStyle,
 } from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
-import { getPresetMerged } from "@/lib/cms/runtime";
+import { getCmsState, getPresetMerged } from "@/lib/cms/runtime";
 import type { FrameKind } from "@/lib/qr/finish";
 import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
 import { LOGOS, logoDataUrl } from "@/lib/qr/logo-set";
@@ -169,11 +169,29 @@ export const useStudio = create<StudioState>((set, get) => ({
       if (s.imageUrl?.startsWith("blob:") && s.imageUrl !== url) {
         URL.revokeObjectURL(s.imageUrl);
       }
+      if (!url) {
+        return {
+          imageUrl: null,
+          style: { ...s.style, imageMode: "none" },
+          lastFixNotes: [],
+        };
+      }
+      if (url === s.imageUrl) {
+        return { lastFixNotes: [] };
+      }
+      // A NEW photo always starts from the owner's default photo look
+      // (Admin → Branding → Photo defaults) so uploads look good instantly.
+      const d = getCmsState().brand.photoDefaults;
       return {
         imageUrl: url,
         style: {
           ...s.style,
-          imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
+          imageMode: d.imageMode,
+          dotScale: d.dotScale,
+          imageOpacity: d.imageOpacity,
+          contrast: d.contrast,
+          quietZone: d.quietZone,
+          minVersion: d.minVersion,
         },
         lastFixNotes: [],
       };
