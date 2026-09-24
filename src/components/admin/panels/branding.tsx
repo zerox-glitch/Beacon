@@ -3,6 +3,7 @@ import { Eye } from "lucide-react";
 import { saveBrandDoc } from "@/lib/cms/admin-api";
 import type { BrandDoc } from "@/lib/cms/schemas";
 import { Badge, Card, SaveRow, SelectInput, TextInput, ToggleField } from "../ui";
+import { FRAME_DEFS } from "@/lib/qr/frames";
 import { ImagePicker } from "../image-picker";
 import { SupportPopup } from "@/components/support-popup";
 import { useAdminMutation, useAdminSettings } from "../session";
@@ -111,6 +112,17 @@ export function BrandingPanel() {
             }}
             hint="30–100."
           />
+          <TextInput
+            label="Photo size (%)"
+            value={String(Math.round(d.photoDefaults.photoZoom * 100))}
+            onValueChange={(v) => {
+              const n = Number(v);
+              if (Number.isFinite(n) && n >= 50 && n <= 200) {
+                brand.patch({ photoDefaults: { ...d.photoDefaults, photoZoom: n / 100 } });
+              }
+            }}
+            hint="50–200. 100 = whole photo, no crop."
+          />
           <SelectInput
             label="Quiet zone"
             value={String(d.photoDefaults.quietZone)}
@@ -135,6 +147,28 @@ export function BrandingPanel() {
             options={[5, 6, 7, 8, 9, 10, 11, 12].map((n) => ({ value: String(n), label: `Version ${n}` }))}
             hint="QR version floor. Lower = fewer, larger dots."
           />
+        </div>
+      </Card>
+
+      <Card
+        title="Frames"
+        desc="Which frame borders visitors can pick in the studio (Design → Frame & caption). Frames are drawn around the code, inside the quiet zone — they never touch the dots. “None” is always available."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          {FRAME_DEFS.filter((f) => f.id !== "none").map((f) => (
+            <ToggleField
+              key={f.id}
+              label={f.label}
+              hint={f.hint}
+              checked={(d.enabledFrames ?? []).includes(f.id)}
+              onCheckedChange={(v) => {
+                const cur = new Set(d.enabledFrames ?? []);
+                if (v) cur.add(f.id);
+                else cur.delete(f.id);
+                brand.patch({ enabledFrames: FRAME_DEFS.filter((x) => x.id !== "none" && cur.has(x.id)).map((x) => x.id) });
+              }}
+            />
+          ))}
         </div>
       </Card>
 

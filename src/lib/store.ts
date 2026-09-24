@@ -9,7 +9,7 @@ import {
 } from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
 import { getCmsState, getPresetMerged } from "@/lib/cms/runtime";
-import type { FrameKind } from "@/lib/qr/finish";
+import type { FrameId } from "@/lib/qr/frames";
 import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
 import { LOGOS, logoDataUrl } from "@/lib/qr/logo-set";
 import { readSessionCookie, writeSessionCookie } from "@/lib/session-cookie";
@@ -23,7 +23,7 @@ export interface HistoryItem {
   imageUrl: string | null;
   thumb: string;
   caption?: string;
-  frame?: FrameKind;
+  frame?: FrameId;
 }
 
 export type StageBgMood = "vibrant" | "cosmic" | "waves" | "minimal";
@@ -43,7 +43,7 @@ interface StudioState {
   history: HistoryItem[];
   mobileTab: StudioTab;
   caption: string;
-  frame: FrameKind;
+  frame: FrameId;
   useCase: UseCaseId | null;
   lastFixNotes: string[];
   smartArt: boolean;
@@ -60,7 +60,7 @@ interface StudioState {
   setError: (error: string | null) => void;
   setMobileTab: (tab: StudioTab) => void;
   setCaption: (caption: string) => void;
-  setFrame: (frame: FrameKind) => void;
+  setFrame: (frame: FrameId) => void;
   applyUseCase: (id: UseCaseId) => void;
   setFixNotes: (notes: string[]) => void;
   setSmartArt: (smartArt: boolean) => void;
@@ -192,6 +192,7 @@ export const useStudio = create<StudioState>((set, get) => ({
           contrast: d.contrast,
           quietZone: d.quietZone,
           minVersion: d.minVersion,
+          photoZoom: d.photoZoom ?? 1,
         },
         lastFixNotes: [],
       };

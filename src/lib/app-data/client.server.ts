@@ -278,7 +278,9 @@ function tokenIdentityKey(token: string): string {
             .digest("base64url");
         }
       }
-    } catch {}
+    } catch {
+      // Digest enrichment is best-effort; fall back to the plain token hash.
+    }
   }
   return createHash("sha256").update(token).digest("base64url");
 }

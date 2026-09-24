@@ -40,6 +40,7 @@ const preset = (id: string, over: Partial<Preset> = {}): Preset => ({
     artisticStrength: 0.5,
     effect: "none",
     maskPattern: -1,
+    photoZoom: 1,
   },
   ...over,
 });
@@ -321,6 +322,7 @@ describe("schemas", () => {
       contrast: 1,
       quietZone: 2,
       minVersion: 6,
+      photoZoom: 1,
     });
     const custom = brandSchema.parse({
       photoDefaults: { imageMode: "duotone", dotScale: 0.8, imageOpacity: 0.5, contrast: 0.7, quietZone: 4, minVersion: 8 },

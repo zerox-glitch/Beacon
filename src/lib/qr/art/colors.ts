@@ -53,8 +53,8 @@ export function canvasFill(
 ): string | CanvasGradient {
   if (fill.kind === "solid") return fill.stops[0]!;
   const stops = fill.stops;
-  let gx0 = field.x0;
-  let gy0 = field.y0;
+  const gx0 = field.x0;
+  const gy0 = field.y0;
   let gx1 = field.x0 + field.size;
   let gy1 = field.y0;
   if (fill.kind === "radial") {

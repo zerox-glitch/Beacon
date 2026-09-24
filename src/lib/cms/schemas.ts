@@ -8,6 +8,7 @@
  * install renders byte-for-byte what the public site rendered before.
  */
 import { z } from "zod";
+import { FRAME_IDS } from "../qr/frames.ts";
 import { isSafeImageUrl } from "./media-format.ts";
 import { DEFAULT_SAMPLE_URL, EYE_SHAPES, IMAGE_MODES, MODULE_SHAPES, QR_EFFECTS } from "../qr/types.ts";
 
@@ -42,6 +43,8 @@ export const brandSchema = z.object({
    * Editable in Admin → Branding → Photo defaults. Defaults = the owner's
    * house style: clean overlay, 60% dots, 71% photo color, full contrast.
    */
+  /** Frames visitors may pick (Admin → Branding → Frames). "none" is always available. */
+  enabledFrames: z.array(z.enum(FRAME_IDS)).default(FRAME_IDS.filter((f) => f !== "none")),
   photoDefaults: z
     .object({
       imageMode: z.enum(["paint", "clean", "mosaic", "halftone", "duotone", "mono"]).default("clean"),
@@ -50,6 +53,7 @@ export const brandSchema = z.object({
       contrast: z.number().min(0.3).max(1).default(1),
       quietZone: z.number().int().min(2).max(6).default(2),
       minVersion: z.number().int().min(5).max(12).default(6),
+      photoZoom: z.number().min(0.5).max(2).default(1),
     })
     .default({
       imageMode: "clean",
@@ -58,6 +62,7 @@ export const brandSchema = z.object({
       contrast: 1,
       quietZone: 2,
       minVersion: 6,
+      photoZoom: 1,
     }),
 });
 export type BrandDoc = z.infer<typeof brandSchema>;

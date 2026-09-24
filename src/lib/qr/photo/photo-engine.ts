@@ -57,8 +57,8 @@ export function selectionKey(art: HTMLImageElement, qr: EncodedQr, colorMode: st
   return `${art.src}|${qr.size}|${colorMode}|${(style.artisticStrength ?? 0.42).toFixed(2)}|${style.contrast.toFixed(2)}|${style.ecc}`;
 }
 
-function toneFieldFor(art: HTMLImageElement, qrSize: number, detail: number): ToneField {
-  const atlas = atlasFor(art, qrSize * 8);
+function toneFieldFor(art: HTMLImageElement, qrSize: number, detail: number, zoom = 1): ToneField {
+  const atlas = atlasFor(art, qrSize * 8, zoom);
   const key = `${art.src}|${qrSize}|${detail.toFixed(2)}`;
   const hit = toneFieldCache.get(key);
   if (hit) return hit;
@@ -127,7 +127,7 @@ export function renderPhotoQrV2(
   const key = selectionKey(art, qr, colorMode, style);
   const candId = resolveCandidateId(key, style.photoKernel);
   const cand = candidateById(candId);
-  const field = toneFieldFor(art, qr.size, cand.detail * Math.min(1.15, Math.max(0, strength * 1.6)));
+  const field = toneFieldFor(art, qr.size, cand.detail * Math.min(1.15, Math.max(0, strength * 1.6)), style.photoZoom ?? 1);
 
   const total = qr.size + 2 * Math.max(2, Math.min(8, style.quietZone));
   const ss = Math.max(4, Math.min(20, Math.round((px / total) * 1.15)));
@@ -174,7 +174,7 @@ export function renderPhotoQrV2(
   ctx.drawImage(buf, origin, origin, body, body);
   ctx.restore();
 
-  const photoAtlas = atlasFor(art, qr.size * 8);
+  const photoAtlas = atlasFor(art, qr.size * 8, style.photoZoom ?? 1);
   const eyes = () => drawPhotoFinders(ctx, qr, style, { n: photoAtlas.n, data: photoAtlas.data }, origin, cell);
   if (style.effect === "shadow" || style.effect === "glow") {
     ctx.save();
@@ -214,7 +214,7 @@ export async function refinePhotoQr(args: RefineArgs): Promise<SelectionCacheEnt
   if (selectionCache.has(key)) return selectionCache.get(key)!;
 
   const jsQR = (await import("jsqr")).default;
-  const atlas = atlasFor(args.art, args.qr.size * 8);
+  const atlas = atlasFor(args.art, args.qr.size * 8, args.style.photoZoom ?? 1);
   const atlasBm = { data: atlas.data, w: atlas.n, h: atlas.n };
   const maps = roleMaps(args.qr);
   const input = styleInput(args.mode, args.style, args.qr, 0, hexRgb(args.style.fg), hexRgb(args.style.bg));

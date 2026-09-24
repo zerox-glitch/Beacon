@@ -63,27 +63,31 @@ function fitDraw(
   n: number,
   iw: number,
   ih: number,
+  zoom = 1,
 ) {
-  const scale = Math.min(n / iw, n / ih);
+  const z = Math.max(0.25, Math.min(3, zoom));
+  // Background: a cover-fit of the photo fills any letterbox bands with the
+  // picture's own colours (smooth, no dead margins).
+  const cs = Math.max(n / iw, n / ih);
+  ctx.drawImage(img, (n - iw * cs) / 2, (n - ih * cs) / 2, iw * cs, ih * cs);
+  // Foreground: the whole photo at the requested zoom, centred and clipped.
+  const scale = Math.min(n / iw, n / ih) * z;
   const dw = iw * scale;
   const dh = ih * scale;
   const ox = (n - dw) / 2;
   const oy = (n - dh) / 2;
-  if (ox > 0.5) {
-    ctx.drawImage(img, 0, 0, 1, ih, 0, 0, ox, n);
-    ctx.drawImage(img, iw - 1, 0, 1, ih, n - ox, 0, ox, n);
-  }
-  if (oy > 0.5) {
-    ctx.drawImage(img, 0, 0, iw, 1, 0, 0, n, oy);
-    ctx.drawImage(img, 0, ih - 1, iw, 1, 0, n - oy, n, oy);
-  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, n, n);
+  ctx.clip();
   ctx.drawImage(img, ox, oy, dw, dh);
+  ctx.restore();
 }
 
 const atlasCache = new Map<string, { n: number; canvas: HTMLCanvasElement; data: Uint8ClampedArray }>();
 
-export function atlasFor(img: HTMLImageElement, n: number) {
-  const key = `${img.src}|${n}|${img.naturalWidth}x${img.naturalHeight}`;
+export function atlasFor(img: HTMLImageElement, n: number, zoom = 1) {
+  const key = `${img.src}|${n}|${zoom}|${img.naturalWidth}x${img.naturalHeight}`;
   const hit = atlasCache.get(key);
   if (hit) return hit;
   const c = document.createElement("canvas");
@@ -91,7 +95,7 @@ export function atlasFor(img: HTMLImageElement, n: number) {
   c.height = n;
   const cx = c.getContext("2d", { willReadFrequently: true });
   if (!cx) throw new Error("canvas");
-  fitDraw(cx, img, n, img.naturalWidth, img.naturalHeight);
+  fitDraw(cx, img, n, img.naturalWidth, img.naturalHeight, zoom);
   const made = { n, canvas: c, data: cx.getImageData(0, 0, n, n).data };
   atlasCache.set(key, made);
   if (atlasCache.size > 12) {
@@ -436,7 +440,7 @@ function renderMosaicBlend(
   const contrast = clamp(style.contrast, 0.35, 1);
   const paper = paperColor(style);
   const gap = Math.max(0, Math.min(0.2, style.moduleGap));
-  const atlas = atlasFor(art, Math.max(qr.size * 8, 64));
+  const atlas = atlasFor(art, Math.max(qr.size * 8, 64), style.photoZoom ?? 1);
   const version = Math.max(1, Math.round((qr.size - 17) / 4));
   const kFrac = sizedKernel({
     strength,

@@ -7,7 +7,7 @@
  * are dropped gracefully.
  */
 import { emptyPayload, type Payload, type QrStyle, DEFAULT_STYLE } from "./qr/types.ts";
-import type { FrameKind } from "./qr/finish.ts";
+import type { FrameId } from "./qr/frames";
 
 export const SESSION_COOKIE = "qrwho-session-v1";
 const COOKIE_BUDGET = 3800; // stay under the de-facto 4KB per-cookie limit
@@ -20,7 +20,7 @@ export interface SessionSlice {
   /** Media URL only — blob: uploads are never persisted. */
   imageUrl: string | null;
   caption: string;
-  frame: FrameKind;
+  frame: FrameId;
 }
 
 interface Encoded {
@@ -31,7 +31,7 @@ interface Encoded {
   l: string | null;
   i: string | null;
   c: string;
-  f: FrameKind;
+  f: FrameId;
 }
 
 function isObj(x: unknown): x is Record<string, unknown> {
@@ -79,7 +79,7 @@ export function decodeSession(raw: string | null | undefined): SessionSlice | nu
     logoId: typeof doc2.l === "string" ? doc2.l : null,
     imageUrl: typeof doc2.i === "string" && !doc2.i.startsWith("blob:") ? doc2.i : null,
     caption: typeof doc2.c === "string" ? doc2.c : "",
-    frame: (doc2.f as FrameKind) ?? "none",
+    frame: (doc2.f as FrameId) ?? "none",
   };
 }
 

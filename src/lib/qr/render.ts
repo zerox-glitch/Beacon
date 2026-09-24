@@ -1,5 +1,6 @@
 import { QrCodeDataType } from "uqr";
-import { renderArtisticQr } from "./art-engine";
+import { atlasFor, renderArtisticQr } from "./art-engine";
+import { drawFrame, frameBandFor, type FrameId } from "./frames";
 import { getArtDirection } from "./art-directions";
 import { buildArtPlan } from "./art/art-plan";
 import { paintArtPlan } from "./art/paint";
@@ -522,7 +523,10 @@ function renderCleanPhotoQr(
   // gentle scrim so light dots never fight a bright picture.
   ctx.save();
   ctx.globalAlpha = Math.max(0.12, Math.min(1, style.imageOpacity));
-  coverDraw(ctx, art, 0, 0, px, px, art.naturalWidth, art.naturalHeight);
+  const ph = atlasFor(art, Math.min(Math.max(px, 256), 2048), style.photoZoom ?? 1);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(ph.canvas, 0, 0, px, px);
   ctx.restore();
   const fgRgb = parseHex(style.fg);
   const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
@@ -590,6 +594,75 @@ function renderCleanPhotoQr(
   }
 }
 
+/**
+ * Kernel effects for PHOTO modes. The photo bitmap is opaque, so the
+ * classic under-ink silhouette passes are invisible — instead:
+ *   shadow / glow / outline → a soft (or crisp) ring around the code body,
+ *   emboss / 3D → offset copies of the dot grid painted over the photo.
+ * Dots themselves are never touched, so scan safety is unaffected.
+ */
+function drawPhotoEffect(
+  ctx: CanvasRenderingContext2D,
+  effect: QrStyle["effect"],
+  g: { qr: EncodedQr; origin: number; body: number; cell: number; bg: string },
+) {
+  if (effect === "none") return;
+  const { qr, origin, body, cell, bg } = g;
+  const bgRgb = parseHex(bg);
+  const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  const x = origin;
+  const y = origin;
+
+  ctx.save();
+  if (effect === "shadow" || effect === "glow" || effect === "outline") {
+    const inset = body * 0.004;
+    if (effect === "shadow") {
+      ctx.shadowColor = "rgba(8,9,12,0.55)";
+      ctx.shadowBlur = body * 0.045;
+      ctx.strokeStyle = `rgba(8,9,12,${bgLum < 0.42 ? 0.7 : 0.4})`;
+      ctx.lineWidth = body * 0.02;
+    } else if (effect === "glow") {
+      ctx.shadowColor = "rgba(255,243,214,0.9)";
+      ctx.shadowBlur = body * 0.05;
+      ctx.strokeStyle = `rgba(255,246,224,${bgLum < 0.42 ? 0.95 : 0.75})`;
+      ctx.lineWidth = body * 0.012;
+    } else {
+      ctx.strokeStyle = "rgba(240,235,225,0.9)";
+      ctx.lineWidth = Math.max(2, body * 0.006);
+    }
+    ctx.strokeRect(x - inset, y - inset, body + inset * 2, body + inset * 2);
+    ctx.restore();
+    return;
+  }
+
+  // emboss / 3D: offset dot copies over the photo (light from top-left).
+  const off = cell * 0.1;
+  const passes: [number, string][] =
+    effect === "emboss"
+      ? [
+          [-1, "rgba(8,9,12,0.35)"],
+          [1, "rgba(255,255,255,0.5)"],
+        ]
+      : // 3D: stacked depth
+        [
+          [1, "rgba(8,9,12,0.2)"],
+          [2, "rgba(8,9,12,0.2)"],
+          [3, "rgba(8,9,12,0.22)"],
+          [4, "rgba(8,9,12,0.25)"],
+        ];
+  for (const [k, color] of passes) {
+    ctx.fillStyle = color;
+    for (let my = 0; my < qr.size; my++) {
+      for (let mx = 0; mx < qr.size; mx++) {
+        if (isFinderCell(mx, my, qr.size)) continue;
+        if (!isDark(qr, mx, my)) continue;
+        ctx.fillRect(origin + mx * cell + k * off, origin + my * cell + k * off, cell, cell);
+      }
+    }
+  }
+  ctx.restore();
+}
+
 export function renderQr(
   canvas: HTMLCanvasElement,
   qr: EncodedQr,
@@ -600,9 +673,12 @@ export function renderQr(
     logo?: HTMLImageElement | null;
     exportScale?: boolean;
     kernelBoost?: number;
+    frame?: FrameId;
   },
 ) {
   const px = opts.pixelSize;
+  const frame = opts.frame ?? "none";
+  const band = frameBandFor(frame, px);
   const ctx = opts.exportScale
     ? (() => {
         canvas.width = px;
@@ -680,14 +756,15 @@ export function renderQr(
     ? Math.max(2, Math.min(8, style.quietZone))
     : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
-  const cell = px / total;
-  const origin = qz * cell;
+  const cell = (px - band * 2) / total;
+  const origin = band + qz * cell;
   const body = qr.size * cell;
   const mode = pictured ? style.imageMode : "none";
 
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
   const paper = pictured && bgLum < 0.42 ? "#f3eee6" : style.bg;
+  const frameGeo = { px, band, origin, body, fg: style.fg, bg: paper };
 
   ctx.clearRect(0, 0, px, px);
   if (!style.transparentBg) {
@@ -700,6 +777,8 @@ export function renderQr(
 
   if (opts.art && mode === "clean") {
     renderCleanPhotoQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawFrame(ctx, frame, frameGeo);
     return;
   }
 
@@ -713,6 +792,8 @@ export function renderQr(
       mode === "mono")
   ) {
     renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawFrame(ctx, frame, frameGeo);
   } else {
     /* ---- Kernel effects (Tune panel). Silhouette passes run under the ink,
      * the outline keyline under every module; photo/artistic modes carry
@@ -890,6 +971,8 @@ export function renderQr(
     );
     ctx.restore();
   }
+
+  drawFrame(ctx, frame, { ...frameGeo, bg: paper });
 }
 
 export function downloadCanvasPng(canvas: HTMLCanvasElement, filename: string) {

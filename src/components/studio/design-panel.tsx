@@ -8,7 +8,9 @@ import {
   type EccLevel,
   type GradientType,
 } from "@/lib/qr/types";
+import { useCms } from "@/lib/cms/runtime";
 import { cn } from "@/lib/utils";
+import { FRAME_DEFS } from "@/lib/qr/frames";
 import { useStudio } from "@/lib/store";
 
 function ColorField({
@@ -44,25 +46,30 @@ export function DesignPanel() {
   const setCaption = useStudio((s) => s.setCaption);
   const frame = useStudio((s) => s.frame);
   const setFrame = useStudio((s) => s.setFrame);
+  const { brand } = useCms();
+  const frameDefs = FRAME_DEFS.filter(
+    (f) => f.id === "none" || (brand.enabledFrames ?? []).includes(f.id),
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <section>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Frame & caption</p>
         <div className="grid grid-cols-3 gap-1.5">
-          {(["none", "soft", "ticket"] as const).map((f) => (
+          {frameDefs.map((f) => (
             <button
-              key={f}
+              key={f.id}
               type="button"
-              onClick={() => setFrame(f)}
+              onClick={() => setFrame(f.id)}
+              title={f.hint}
               className={cn(
-                "h-10 rounded-md border text-[11px] font-semibold capitalize",
-                frame === f
+                "h-10 rounded-md border text-[11px] font-semibold",
+                frame === f.id
                   ? "border-accent bg-accent text-accent-fg"
                   : "border-border bg-elevated text-muted hover:text-fg",
               )}
             >
-              {f === "none" ? "None" : f}
+              {f.label}
             </button>
           ))}
         </div>

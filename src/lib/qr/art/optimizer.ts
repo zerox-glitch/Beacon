@@ -1,6 +1,7 @@
 import { tryEncodePayload } from "../encode";
 import { buildPayload } from "../payload";
 import { loadImage, renderQr } from "../render";
+import type { FrameId } from "../frames";
 import { decodeScaled, inspectRenderedQr, type ScanReport } from "../scan-engine";
 import type { Payload, QrStyle } from "../types";
 import { relaxLadder } from "./relax";
@@ -218,6 +219,7 @@ export async function autoSafetyBoost(
     art?: HTMLImageElement | null;
     logo?: HTMLImageElement | null;
     expected?: string | null;
+    frame?: FrameId;
   },
 ): Promise<{ boost: number; report: ScanReport }> {
   const enc = tryEncodePayload(payload, style);
@@ -241,6 +243,7 @@ export async function autoSafetyBoost(
       pixelSize: opts.pixelSize,
       art: opts.art,
       logo: opts.logo,
+      frame: opts.frame,
       exportScale: true,
       kernelBoost: boost,
     });

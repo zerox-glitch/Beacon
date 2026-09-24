@@ -1,16 +1,15 @@
-export type FrameKind = "none" | "soft" | "ticket";
-
-/** Wrap a QR canvas with optional paper frame + caption for download. */
+/** Frames now render inside the QR canvas itself (see frames.ts) — what
+ * downloads is what previews. finishExport only appends the optional caption
+ * strip; the frame parameter is kept for call-site compatibility. */
 export function finishExport(
   qr: HTMLCanvasElement,
-  opts: { frame: FrameKind; caption: string; paper: string },
+  opts: { frame: string; caption: string; paper: string },
 ): HTMLCanvasElement {
   const caption = opts.caption.trim();
-  const framed = opts.frame !== "none" || Boolean(caption);
-  if (!framed) return qr;
+  if (!caption) return qr;
 
-  const pad = opts.frame === "ticket" ? Math.round(qr.width * 0.08) : Math.round(qr.width * 0.06);
-  const capH = caption ? Math.round(qr.width * 0.12) : 0;
+  const pad = Math.round(qr.width * 0.06);
+  const capH = Math.round(qr.width * 0.12);
   const out = document.createElement("canvas");
   out.width = qr.width + pad * 2;
   out.height = qr.height + pad * 2 + capH;
@@ -18,12 +17,7 @@ export function finishExport(
   if (!ctx) return qr;
 
   ctx.fillStyle = opts.paper || "#f4efe6";
-  if (opts.frame === "ticket") {
-    roundRect(ctx, 0, 0, out.width, out.height, Math.round(out.width * 0.04));
-    ctx.fill();
-  } else {
-    ctx.fillRect(0, 0, out.width, out.height);
-  }
+  ctx.fillRect(0, 0, out.width, out.height);
 
   ctx.drawImage(qr, pad, pad);
 
@@ -37,23 +31,6 @@ export function finishExport(
   return out;
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
 
 export const EXPORT_PRESETS: { id: string; label: string; px: number; kind: "png" | "svg" }[] = [
   { id: "png-2k", label: "PNG 2048 · print", px: 2048, kind: "png" },

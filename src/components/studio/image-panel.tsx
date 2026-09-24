@@ -291,6 +291,24 @@ export function ImagePanel() {
               </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">
+                  <Label>Photo size</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.photoZoom * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.5}
+                  max={2}
+                  step={0.01}
+                  value={[style.photoZoom]}
+                  onValueChange={([v]) => patchStyle({ photoZoom: v ?? 1 })}
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  100% shows the whole photo; less adds a margin, more zooms into the centre.
+                </p>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
                   <Label>Photo color</Label>
                   <span className="text-xs font-medium tabular-nums text-fg">
                     {Math.round(style.imageOpacity * 100)}%

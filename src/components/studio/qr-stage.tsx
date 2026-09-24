@@ -124,6 +124,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           pixelSize: workPx,
           art,
           logo,
+          frame,
           exportScale: true,
           kernelBoost: 0,
         });
@@ -135,6 +136,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
             pixelSize: workPx,
             art,
             logo,
+            frame,
             exportScale: true,
             kernelBoost: 0.7,
           });
@@ -179,7 +181,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [payload, style, imageUrl, logoUrl, px, selVer]);
+  }, [payload, style, imageUrl, logoUrl, px, selVer, frame]);
 
   async function renderExport(size: number) {
     const encoded = tryEncodePayload(payload, style);
@@ -194,6 +196,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         pixelSize: size,
         art,
         logo,
+        frame,
         exportScale: true,
         kernelBoost: boostRef.current,
       });
@@ -203,11 +206,12 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           pixelSize: size,
           art,
           logo,
+          frame,
           expected,
         });
       }
     } else {
-      renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, exportScale: true });
+      renderQr(canvas, encoded.qr, style, { pixelSize: size, art, logo, frame, exportScale: true });
     }
     return finishExport(canvas, { frame, caption, paper: style.bg });
   }

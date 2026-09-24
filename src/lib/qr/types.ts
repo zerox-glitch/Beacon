@@ -81,6 +81,8 @@ export interface QrStyle {
   moduleGap: number;
   imageMode: ImageMode;
   imageOpacity: number;
+  /** Photo zoom: 1 = fit whole photo (no crop), >1 zooms into the centre, <1 shrinks. */
+  photoZoom: number;
   dotScale: number;
   contrast: number;
   logoScale: number;
@@ -273,6 +275,7 @@ export const DEFAULT_STYLE: QrStyle = {
   moduleGap: 0.02,
   imageMode: "paint",
   imageOpacity: 0.86,
+  photoZoom: 1,
   dotScale: 0.68,
   contrast: 0.84,
   logoScale: 0.22,
