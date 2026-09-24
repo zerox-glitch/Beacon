@@ -35,8 +35,11 @@ export function colorModeFor(mode: WeaveMode): "photo" | "mono" | "duotone" {
 export function resolveCandidateId(key: string, styleKernel: CandidateId | undefined): CandidateId {
   if (styleKernel) return styleKernel;
   const entry = selectionCache.get(key);
-  if (entry && !entry.defaultEligible) return entry.chosen;
-  return "balanced";
+  // Auto = the most photographic candidate that passed the camera battery.
+  // Before the first scoring pass finishes we render "detail" (max photo) —
+  // if the battery disagrees, the pass demotes within a second or two.
+  if (entry) return entry.chosen;
+  return "detail";
 }
 
 export interface SelectionCacheEntry {

@@ -161,7 +161,9 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
                 fidelity: entry.fidelity,
                 cameraRobust: entry.defaultEligible || entry.robustness >= 0.62,
               });
-              if (!entry.defaultEligible) setSelVer((v) => v + 1);
+              // Auto now paints "detail" first; if the camera battery's
+              // winner is a safer candidate, repaint with it.
+              if (!style.photoKernel && entry.chosen !== "detail") setSelVer((v) => v + 1);
             })
             .catch(() => undefined);
         } else {

@@ -27,8 +27,8 @@ const WEAVE_MODES = IMAGE_MODES.filter((m) => m.id !== "logo");
  * candidate fails the camera gate).
  */
 const PHOTO_VISIBILITY: { id: "detail" | "balanced" | "camera-safe" | ""; label: string; hint: string }[] = [
-  { id: "", label: "Auto", hint: "The engine picks a candidate that scans and looks photographic" },
-  { id: "detail", label: "Photo first", hint: "The picture leads — kernels stay thin, the photo's own tones fill the frame" },
+  { id: "", label: "Auto", hint: "The engine picks the most photographic style that still passes the camera check" },
+  { id: "detail", label: "Photo first", hint: "The picture leads — the photo's own tones fill the frame, thin dots carry the code" },
   { id: "balanced", label: "Balanced", hint: "Half picture, half dot-grid — the default feel" },
   { id: "camera-safe", label: "Scan first", hint: "Thickest locked centers — maximum distance + angle tolerance" },
 ];
