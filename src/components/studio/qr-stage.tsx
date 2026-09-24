@@ -8,6 +8,7 @@ import {
   Minus,
   Plus,
   Printer,
+  ImageOff,
   Shuffle,
   Smartphone,
   Wand2,
@@ -30,6 +31,27 @@ import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-ex
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { SupportPopup } from "@/components/support-popup";
+
+/** Map a Surprise-me entry onto the studio's payload fields. */
+function surpriseFields(
+  kind: import("@/lib/qr/types").PayloadKind,
+  value: string,
+): Partial<import("@/lib/qr/types").Payload> {
+  switch (kind) {
+    case "phone":
+    case "sms":
+      return { phone: value };
+    case "whatsapp":
+      return { whatsapp: value };
+    case "email":
+      return { email: value };
+    case "text":
+      return { text: value };
+    default:
+      return { url: value };
+  }
+}
+
 
 function makeCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
@@ -316,10 +338,21 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
     }
   }
 
+  /** Surprise me: draw a random code from the admin list (Admin → Branding
+   *  → Surprise me). No list yet → keep the old behaviour (random look). */
   function surprise() {
+    const codes = (cms.brand.surpriseCodes ?? []).filter((c) => c.value.trim());
+    if (codes.length) {
+      const pick = codes[Math.floor(Math.random() * codes.length)];
+      const st = useStudio.getState();
+      st.setKind(pick.kind);
+      st.patchPayload(surpriseFields(pick.kind, pick.value.trim()));
+      toast.success(pick.label.trim() ? `Surprise: ${pick.label.trim()}` : "New code loaded — check the destination");
+      return;
+    }
     const pool = cms.catalog.presets;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    if (pick) useStudio.getState().applyPreset(pick.id);
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    if (p) useStudio.getState().applyPreset(p.id);
   }
 
   async function onAutoFix() {
@@ -343,6 +376,20 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       setFixing(false);
     }
   }
+
+  useEffect(() => {
+    if (!testOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTestOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [testOpen]);
 
   const paper = style.bg;
 
@@ -539,16 +586,26 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         >
           <Printer className="size-4" />
         </button>
+        {pictured ? (
+          <button
+            type="button"
+            onClick={() => setImageUrl(null)}
+            className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
+            aria-label="Remove photo"
+            title="Remove the photo from this QR"
+          >
+            <ImageOff className="size-4" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={surprise}
-          className={cn(
-            "inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]",
-            compact && "max-lg:hidden",
-          )}
-          aria-label="Surprise preset"
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-semibold text-fg transition hover:bg-white/20 active:scale-[0.97]"
+          aria-label="Surprise me"
+          title="Draw a random code from your Surprise me list (set in Admin → Branding)"
         >
           <Shuffle className="size-4" />
+          Surprise me
         </button>
       </div>
 
@@ -581,39 +638,29 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
 
       {testOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg/45 p-6 backdrop-blur-xl"
           role="dialog"
           aria-modal="true"
           aria-label="Test on phone"
           onClick={() => setTestOpen(false)}
         >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-white/15 bg-bg p-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="font-display text-xl italic">Point your camera here</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">
-              This preview is the same bitmap Fix scan reads with jsQR in the browser. Phone cameras
-              can be stricter or more lenient — we do not guarantee every device.
+          <div className="flex flex-col items-center text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-2xl italic text-fg">Point your camera here</p>
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-fg/70">
+              Tap anywhere else to close. This is the same bitmap Fix scan reads in your browser —
+              phone cameras can still be stricter, so test before print.
             </p>
             {preview && (
               <img
                 src={preview}
                 alt="QR preview for phone test"
-                className="mx-auto mt-4 w-full max-w-[280px] rounded-xl"
+                className="mx-auto mt-5 w-[min(78vw,420px)] rounded-2xl shadow-2xl"
                 style={{ background: paper }}
               />
             )}
             {caption.trim() ? (
-              <p className="mt-2 text-center text-xs font-bold tracking-[0.18em]">{caption.trim()}</p>
+              <p className="mt-3 text-sm font-bold tracking-[0.18em] text-fg">{caption.trim()}</p>
             ) : null}
-            <button
-              type="button"
-              className="mt-4 h-11 w-full rounded-xl bg-accent text-sm font-bold text-accent-fg"
-              onClick={() => setTestOpen(false)}
-            >
-              Done
-            </button>
           </div>
         </div>
       )}

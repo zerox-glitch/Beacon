@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { saveBrandDoc } from "@/lib/cms/admin-api";
-import type { BrandDoc } from "@/lib/cms/schemas";
+import type { BrandDoc, SurpriseCode } from "@/lib/cms/schemas";
 import { Badge, Card, SaveRow, SelectInput, TextInput, ToggleField } from "../ui";
 import { FRAME_DEFS } from "@/lib/qr/frames";
 import { ImagePicker } from "../image-picker";
@@ -21,6 +21,8 @@ export function BrandingPanel() {
   );
   if (!data || !brand.draft) return null;
   const d = brand.draft;
+  const patchSurprise = (i: number, p: Partial<SurpriseCode>) =>
+    brand.patch({ surpriseCodes: (d.surpriseCodes ?? []).map((c, j) => (j === i ? { ...c, ...p } : c)) });
   const theme = themeDraft ?? d.themeColor;
 
   return (
@@ -169,6 +171,73 @@ export function BrandingPanel() {
               }}
             />
           ))}
+        </div>
+      </Card>
+
+      <Card
+        title="Surprise me"
+        desc="The codes the studio’s “Surprise me” button draws from — it picks one at random and loads it as the current QR. Add as many as you like; leave the list empty to keep the old random-look behaviour."
+      >
+        <div className="space-y-3">
+          {(d.surpriseCodes ?? []).length ? null : (
+            <p className="text-xs text-muted">No codes yet — the button keeps its old behaviour (random look).</p>
+          )}
+          {(d.surpriseCodes ?? []).map((c, i) => (
+            <div
+              key={i}
+              className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-elevated/60 p-2.5"
+            >
+              <div className="w-32 shrink-0">
+                <SelectInput
+                  label="Type"
+                  value={c.kind}
+                  options={[
+                    { value: "url", label: "Link" },
+                    { value: "phone", label: "Phone" },
+                    { value: "sms", label: "SMS" },
+                    { value: "whatsapp", label: "WhatsApp" },
+                    { value: "email", label: "Email" },
+                    { value: "text", label: "Plain text" },
+                  ]}
+                  onValueChange={(v) => patchSurprise(i, { kind: v as SurpriseCode["kind"] })}
+                />
+              </div>
+              <div className="min-w-44 flex-1">
+                <TextInput
+                  label="Value"
+                  value={c.value}
+                  onValueChange={(v) => patchSurprise(i, { value: v })}
+                  placeholder={c.kind === "url" ? "https://…" : c.kind === "email" ? "hello@you.com" : "+92 300 1234567"}
+                />
+              </div>
+              <div className="w-36 shrink-0">
+                <TextInput
+                  label="Label (optional)"
+                  value={c.label}
+                  onValueChange={(v) => patchSurprise(i, { label: v })}
+                  maxLength={40}
+                />
+              </div>
+              <button
+                type="button"
+                aria-label="Remove code"
+                onClick={() => brand.patch({ surpriseCodes: (d.surpriseCodes ?? []).filter((_, j) => j !== i) })}
+                className="mb-1 inline-flex size-9 items-center justify-center rounded-md border border-border text-muted transition hover:border-danger/40 hover:text-danger"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              brand.patch({ surpriseCodes: [...(d.surpriseCodes ?? []), { kind: "url", value: "", label: "" }] })
+            }
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-3 text-xs font-semibold text-muted transition hover:border-accent hover:text-fg"
+          >
+            <Plus className="size-3.5" />
+            Add code
+          </button>
         </div>
       </Card>
 

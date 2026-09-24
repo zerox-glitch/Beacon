@@ -64,8 +64,21 @@ export const brandSchema = z.object({
       minVersion: 6,
       photoZoom: 1,
     }),
+  /** "Surprise me" destinations (Admin → Branding). The studio's Surprise
+   *  button picks one at random and loads it as the code. Empty list = the
+   *  button falls back to drawing a random style preset. */
+  surpriseCodes: z
+    .array(
+      z.object({
+        kind: z.enum(["url", "phone", "sms", "whatsapp", "email", "text"]).default("url"),
+        value: z.string().max(500).default(""),
+        label: z.string().max(40).default(""),
+      }),
+    )
+    .default([]),
 });
 export type BrandDoc = z.infer<typeof brandSchema>;
+export type SurpriseCode = NonNullable<BrandDoc["surpriseCodes"]>[number];
 
 /* ---------------------------------- content --------------------------------- */
 
