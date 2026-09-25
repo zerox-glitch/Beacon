@@ -20,14 +20,13 @@ import appCss from "../styles.css?url";
  * constants below are only the fallback used before the loader resolves or if
  * the database is unreachable — they match the pre-CMS hardcoded head.
  */
-const FALLBACK_TITLE =
-  "QRWho — Free Artistic QR Code Generator | Custom AI QR Art, Logo, Menu, WiFi & vCard Maker (Vector SVG & PNG)";
-const FALLBACK_DESC = `Create beautiful, custom artistic QR codes online for free. Transform any URL, WiFi, vCard, photo, restaurant menu or social link into a scannable work of art. ${PRESETS.length}+ designer presets, photo blending, vector SVG & 2048px PNG print export, 100% private & on-device with zero watermarks.`;
+const FALLBACK_TITLE = "Free QR Code Generator — Photo, Logo & Artistic QR Codes | QRWho";
+const FALLBACK_DESC = `Free artistic QR code generator: blend a photo into the code, add a center logo, pick ${PRESETS.length}+ designer styles, verify it scans on a phone camera, and download 2048px PNG or vector SVG. Runs in your browser — no account, no watermark.`;
 
 const FALLBACK_META: PageMeta = {
   title: FALLBACK_TITLE,
   description: FALLBACK_DESC,
-  keywords: "free qr code generator, custom qr code art, artistic qr code maker, qr code with logo, restaurant menu qr code, business card vcard qr code, wifi qr code generator, vector svg qr code, scannable photo qr code",
+  keywords: "qr code generator, free qr code generator, artistic qr code generator, photo qr code, qr code with logo, custom qr code maker, free qr code maker, wifi qr code generator, restaurant menu qr code, vcard qr code, vector svg qr code, qr code no watermark",
   robots: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
   ogTitle: FALLBACK_TITLE,
   ogDescription: FALLBACK_DESC,

@@ -110,11 +110,11 @@ export const pageSeoSchema = z.object({
 export type PageSeo = z.infer<typeof pageSeoSchema>;
 
 export const SEO_FALLBACK_TITLE =
-  "QRWho — Free Artistic QR Code Generator | Custom AI QR Art, Logo, Menu, WiFi & vCard Maker (Vector SVG & PNG)";
+  "Free QR Code Generator — Photo, Logo & Artistic QR Codes | QRWho";
 export const SEO_FALLBACK_DESCRIPTION =
-  "Create beautiful, custom artistic QR codes online for free. Photo blending, designer presets, vector SVG & 2048px PNG print export, 100% private and on-device with zero watermarks.";
+  "Free artistic QR code generator: blend a photo into the code, add a center logo, pick 300+ designer styles, verify it scans on a phone camera, and download 2048px PNG or vector SVG. Runs in your browser — no account, no watermark.";
 export const SEO_FALLBACK_KEYWORDS =
-  "free qr code generator, custom qr code art, artistic qr code maker, qr code with logo, restaurant menu qr code, wifi qr code generator, vcard qr code, photo qr code";
+  "qr code generator, free qr code generator, artistic qr code generator, photo qr code, qr code with logo, custom qr code maker, free qr code maker, wifi qr code generator, restaurant menu qr code, vcard qr code, vector svg qr code, qr code no watermark";
 
 export const seoSchema = z.object({
   canonicalBaseUrl: z
@@ -132,7 +132,7 @@ export const seoSchema = z.object({
     title: SEO_FALLBACK_TITLE,
     description: SEO_FALLBACK_DESCRIPTION,
     keywords: SEO_FALLBACK_KEYWORDS,
-    ogTitle: "QRWho — Turn Anything Into a Beautiful, Scannable QR",
+    ogTitle: "QRWho — Free Artistic QR Code Generator (Photo, Logo, Wi-Fi, Menu, vCard)",
     ogDescription:
       "Free artistic QR code generator. Blend photos, drop 66 built-in center logos, pick from 300+ designer styles, verify scannability live, and export 2048px PNG + vector SVG — 100% in your browser.",
     ogImageUrl: "/og.jpg",
@@ -148,14 +148,14 @@ export const seoSchema = z.object({
           "Every sample is a real, decoded QR. Photo blending, 66 center logos, 300+ styles, verified scan — free forever, zero watermarks, zero uploads.",
       }),
       studio: pageSeoSchema.default({
-        title: "QR Studio — Design, Tune & Download Artistic QR Codes | QRWho",
+        title: "Free QR Code Studio — Artistic, Photo & Logo QR Maker | QRWho",
         description:
-          "Design custom QR codes online: 300+ artistic styles, photo QR blending, 66 built-in center logos (WhatsApp, Instagram, Wi-Fi, PayPal and more), real-time camera-grade scan verification, and 2048px PNG / vector SVG export. Free, private, 100% on-device.",
+          "Design custom QR codes in your browser: 300+ artistic styles, photo blending, 66 center logos, live camera-grade scan check, one-tap fix, and 2048px PNG or vector SVG download. Free and 100% private.",
         keywords:
-          "qr code studio, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
+          "qr code studio, free qr code generator, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
         ogTitle: "QR Studio — Design & Download Artistic QR Codes",
         ogDescription:
-          "300+ designer styles, photo blending, 50 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
+          "300+ designer styles, photo blending, 66 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
       }),
       lab: pageSeoSchema.default({
         title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",
@@ -177,14 +177,14 @@ export const seoSchema = z.object({
           "Every sample is a real, decoded QR. Photo blending, 66 center logos, 300+ styles, verified scan — free forever, zero watermarks, zero uploads.",
       },
       studio: {
-        title: "QR Studio — Design, Tune & Download Artistic QR Codes | QRWho",
+        title: "Free QR Code Studio — Artistic, Photo & Logo QR Maker | QRWho",
         description:
-          "Design custom QR codes online: 300+ artistic styles, photo QR blending, 66 built-in center logos (WhatsApp, Instagram, Wi-Fi, PayPal and more), real-time camera-grade scan verification, and 2048px PNG / vector SVG export. Free, private, 100% on-device.",
+          "Design custom QR codes in your browser: 300+ artistic styles, photo blending, 66 center logos, live camera-grade scan check, one-tap fix, and 2048px PNG or vector SVG download. Free and 100% private.",
         keywords:
-          "qr code studio, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
+          "qr code studio, free qr code generator, custom qr code maker, artistic qr code generator, qr code with logo, photo qr code, wifi qr code generator, restaurant menu qr, vcard qr code, free qr maker no watermark",
         ogTitle: "QR Studio — Design & Download Artistic QR Codes",
         ogDescription:
-          "300+ designer styles, photo blending, 50 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
+          "300+ designer styles, photo blending, 66 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
       },
       lab: {
         title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",

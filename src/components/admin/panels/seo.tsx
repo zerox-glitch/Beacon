@@ -3,7 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveSeoDoc } from "@/lib/cms/admin-api";
-import type { PageSeo, SeoDoc } from "@/lib/cms/schemas";
+import { seoSchema, type PageSeo, type SeoDoc } from "@/lib/cms/schemas";
 import { Badge, Card, Note, SaveRow, TextAreaField, TextInput, ToggleField } from "@/components/admin/ui";
 import { ImagePicker } from "@/components/admin/image-picker";
 import { useAdminMutation, useAdminSettings } from "@/components/admin/session";
@@ -18,7 +18,14 @@ const PAGE_LABELS: Record<keyof SeoDoc["pages"], string> = {
 
 export function SeoPanel() {
   const { data } = useAdminSettings<AdminSettings>();
-  const seo = useDoc<SeoDoc>(data?.seo);
+  // Show the EFFECTIVE document: schema defaults fill anything the saved doc
+  // doesn't set, so the panel always reflects what the live pages actually
+  // render (an empty saved doc is NOT an empty page).
+  const effective = useMemo<SeoDoc>(
+    () => (data?.seo ? seoSchema.parse(data.seo) : seoSchema.parse({})),
+    [data?.seo],
+  );
+  const seo = useDoc<SeoDoc>(effective);
   const save = useAdminMutation((doc: SeoDoc) => saveSeoDoc({ data: doc }), {
     success: "SEO saved — all pages pick it up on next load",
   });
@@ -43,7 +50,7 @@ export function SeoPanel() {
     >
       <Card
         title="Indexing & canonical"
-        desc="Where search engines should point, and whether they may index this site at all."
+        desc="Where search engines should point, and whether they may index this site at all. AI discovery is already wired: /llms.txt + /robots.txt explicitly allow GPTBot, OAI-SearchBot, ClaudeBot, Claude-SearchBot, PerplexityBot, Google-Extended and CCBot — keep indexSite on so ChatGPT, Claude and Perplexity can cite you."
         actions={seo.dirty ? <Badge tone="warn">unsaved</Badge> : <Badge tone="ok">saved</Badge>}
       >
         <div className="grid gap-4 sm:grid-cols-2">
