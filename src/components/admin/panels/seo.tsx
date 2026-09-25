@@ -13,7 +13,7 @@ import type { AdminSettings } from "@/components/admin/types";
 const PAGE_LABELS: Record<keyof SeoDoc["pages"], string> = {
   home: "Home (/)",
   studio: "Studio (/studio)",
-  lab: "Art lab (/lab)",
+  lab: "Our story (/lab)",
 };
 
 export function SeoPanel() {

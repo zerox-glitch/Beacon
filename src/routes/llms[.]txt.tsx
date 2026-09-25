@@ -29,7 +29,7 @@ const body = (base: string) => `# QRWho
 
 - [Landing](${base}/): Overview with verified live sample QR codes, feature highlights and FAQ.
 - [Studio](${base}/studio): The full generator — content (link, Wi-Fi, contact, phone, SMS, email, WhatsApp, location, event), 300+ styles, photo blending, 66 built-in center logos (social, payments, connect, fun, cute, useful), live scan meter, Fix-scan autofix, PNG/SVG download.
-- [Art Lab](${base}/lab): Experimental rendering playground (halftone, mosaic, paint-fuse) with a scannability meter.
+- [Our story](${base}/lab): Brand story + "remake your old QR code" entry point — scan or upload any existing QR and rebuild it in the studio as a scannable artistic QR in color.
 - [Admin](${base}/admin): Owner-only CMS (brand, templates, landing samples, SEO). Not for public use; requires sign-in.
 
 ## Useful machine-readable endpoints

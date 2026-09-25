@@ -585,11 +585,11 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           <button
             type="button"
             onClick={() => setImageUrl(null)}
-            className="inline-flex size-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-fg transition hover:bg-white/20 active:scale-[0.97]"
-            aria-label="Remove photo"
+            className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-semibold text-fg transition hover:bg-white/20 active:scale-[0.97]"
             title="Remove the photo from this QR"
           >
             <ImageOff className="size-4" />
+            Remove photo
           </button>
         ) : null}
         <button

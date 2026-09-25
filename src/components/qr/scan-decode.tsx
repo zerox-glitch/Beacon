@@ -6,7 +6,7 @@
  * surfaces look and behave identically.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ClipboardPaste, Copy, ScanLine, Square, Upload } from "lucide-react";
+import { CheckCircle2, ClipboardPaste, Copy, ScanLine, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { decodeClipboardImage, decodeFile, decodeImageSource } from "@/lib/qr/decode";
 import { payloadLabel } from "@/lib/qr/payload";
@@ -32,6 +32,8 @@ export function ScanDecode({
   const [busy, setBusy] = useState(false);
   const [camOn, setCamOn] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const lastFoundRef = useRef<string | null>(null);
+  const decodingRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -49,6 +51,40 @@ export function ScanDecode({
       if (played) played.catch(() => undefined);
     }
   }, [stream, camOn]);
+
+  // Live scanning: while the camera is open, decode the current frame every
+  // ~300ms. A found code does NOT close the camera — the success state stays
+  // on screen and the user stops the camera when they're done (or simply
+  // holds up a different code, which replaces the result).
+  useEffect(() => {
+    if (!camOn || !stream) return;
+    let cancelled = false;
+    let timer: number;
+    const tick = async () => {
+      if (cancelled) return;
+      const v = videoRef.current;
+      if (v && v.readyState >= 2 && v.videoWidth > 0 && !decodingRef.current) {
+        decodingRef.current = true;
+        try {
+          const text = await decodeImageSource(v, v.videoWidth, v.videoHeight);
+          if (text && text !== lastFoundRef.current) {
+            lastFoundRef.current = text;
+            setResult(text);
+          }
+        } catch {
+          /* frame was mid-motion — next tick retries */
+        } finally {
+          decodingRef.current = false;
+        }
+      }
+      timer = window.setTimeout(tick, 300);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [camOn, stream]);
 
   async function run(fn: () => Promise<string | null>) {
     setBusy(true);
@@ -95,6 +131,7 @@ export function ScanDecode({
         if (!overconstrained) throw err;
         got = await navigator.mediaDevices.getUserMedia({ video: true });
       }
+      lastFoundRef.current = null;
       setStream(got);
       setCamOn(true);
     } catch (err) {
@@ -115,12 +152,6 @@ export function ScanDecode({
     stream?.getTracks().forEach((t) => t.stop());
     setStream(null);
     setCamOn(false);
-  }
-
-  async function snapCamera() {
-    const video = videoRef.current;
-    if (!video) return;
-    await run(() => decodeImageSource(video, video.videoWidth || 640, video.videoHeight || 480));
   }
 
   const btn =
@@ -151,7 +182,7 @@ export function ScanDecode({
           )}
         >
           <ScanLine className="size-3.5" />
-          {camOn ? "Stop camera" : "Use camera"}
+          {camOn ? "Close camera" : "Open camera"}
         </button>
       </div>
       <input
@@ -166,16 +197,60 @@ export function ScanDecode({
         }}
       />
       {camOn && (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full bg-black object-cover" />
-          <button
-            type="button"
-            onClick={() => void snapCamera()}
-            className="inline-flex h-10 w-full items-center justify-center gap-1.5 bg-accent text-xs font-bold text-accent-fg"
-          >
-            <Square className="size-3.5" />
-            Capture &amp; decode
-          </button>
+        <div
+          className="fixed inset-0 z-[70] flex flex-col bg-black"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Scan a QR code with the camera"
+        >
+          {/* top bar */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <p className="text-sm font-semibold text-fg">Scan a QR code</p>
+            <button
+              type="button"
+              onClick={stopCamera}
+              className="inline-flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-fg transition hover:bg-white/20"
+              aria-label="Close camera"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          {/* full-screen view — nothing on the page can sit above it */}
+          <div className="relative min-h-0 flex-1">
+            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 size-full bg-black object-cover" />
+            {result ? (
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-4 pb-6 pt-16">
+                <div className="mx-auto max-w-md space-y-3 text-center">
+                  <CheckCircle2 className="mx-auto size-12 text-ok" />
+                  <p className="text-lg font-bold text-fg">QR found — you're all set</p>
+                  <p className="line-clamp-2 break-all text-xs text-fg/70">{result}</p>
+                  <p className="text-[11px] leading-relaxed text-fg/60">
+                    The camera stays open — hold up a different code to scan it
+                    live, or stop when you're done.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={stopCamera}
+                      className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-accent px-5 text-sm font-bold text-accent-fg transition hover:brightness-110 active:scale-[0.97]"
+                    >
+                      <ScanLine className="size-4" />
+                      Done — stop camera
+                    </button>
+                    {primary ? primary(result) : null}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-2 px-4">
+                <span className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-semibold text-fg backdrop-blur">
+                  <span className="size-2 animate-pulse rounded-full bg-ok" />
+                  Scanning — point the camera at the code
+                </span>
+                <p className="text-[11px] text-fg/60">Good light and a straight angle read best.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
       {busy && <p className="text-xs text-muted">Reading…</p>}

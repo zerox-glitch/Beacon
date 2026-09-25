@@ -158,13 +158,14 @@ export const seoSchema = z.object({
           "300+ designer styles, photo blending, 66 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
       }),
       lab: pageSeoSchema.default({
-        title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",
+        title: "Artistic QR Code — Remake Your Old QR in Color | QRWho",
         description:
-          "Push the pixels: the QR Art Lab explores halftone, mosaic and paint-fuse QR rendering with a live scannability meter, so even experimental art still reads on a phone camera.",
-        keywords: "qr art, experimental qr code, halftone qr code, artistic barcode, qr art generator",
-        ogTitle: "QR Art Lab — Experimental QR Art That Still Scans",
+          "We want color in this grey world. QRWho makes free artistic QR codes: blend a photo, pick from 300+ beautiful styles, remake the QR code you already printed, and download verified scannable PNG + SVG — private, in your browser, no watermark.",
+        keywords:
+          "artistic qr code, beautiful qr code, remake qr code, artistic qr code generator, free artistic qr, qr code in color, photo qr code, custom qr art, qr code design",
+        ogTitle: "Artistic QR Codes in Color — Remake Your Old QR | QRWho",
         ogDescription:
-          "Halftone, mosaic and paint-fuse QR rendering with a live scannability meter — art first, camera-verified.",
+          "Our story: color for the grey world. Free artistic QR codes with photo blending, 300+ styles and live scan verification — remake any QR you already have.",
       }),
     })
     .default({
@@ -187,13 +188,14 @@ export const seoSchema = z.object({
           "300+ designer styles, photo blending, 66 brand logos, live scan verification and print-ready PNG + SVG export — free and private.",
       },
       lab: {
-        title: "QR Art Lab — Experimental QR Art with a Scannability Meter | QRWho",
+        title: "Artistic QR Code — Remake Your Old QR in Color | QRWho",
         description:
-          "Push the pixels: the QR Art Lab explores halftone, mosaic and paint-fuse QR rendering with a live scannability meter, so even experimental art still reads on a phone camera.",
-        keywords: "qr art, experimental qr code, halftone qr code, artistic barcode, qr art generator",
-        ogTitle: "QR Art Lab — Experimental QR Art That Still Scans",
+          "We want color in this grey world. QRWho makes free artistic QR codes: blend a photo, pick from 300+ beautiful styles, remake the QR code you already printed, and download verified scannable PNG + SVG — private, in your browser, no watermark.",
+        keywords:
+          "artistic qr code, beautiful qr code, remake qr code, artistic qr code generator, free artistic qr, qr code in color, photo qr code, custom qr art, qr code design",
+        ogTitle: "Artistic QR Codes in Color — Remake Your Old QR | QRWho",
         ogDescription:
-          "Halftone, mosaic and paint-fuse QR rendering with a live scannability meter — art first, camera-verified.",
+          "Our story: color for the grey world. Free artistic QR codes with photo blending, 300+ styles and live scan verification — remake any QR you already have.",
       },
     }),
   robotsTxt: z.string().trim().max(4000).optional(),

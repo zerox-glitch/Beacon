@@ -366,7 +366,7 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
             <span>Error Correction ISO/IEC 18004</span>
             <span>·</span>
             <a href="/lab" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
-              Weaver lab
+              Our story
             </a>
           </div>
         </footer>
