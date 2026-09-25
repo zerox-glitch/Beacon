@@ -6,6 +6,7 @@
  * surfaces look and behave identically.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, ClipboardPaste, Copy, ScanLine, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { decodeClipboardImage, decodeFile, decodeImageSource } from "@/lib/qr/decode";
@@ -196,9 +197,13 @@ export function ScanDecode({
           e.target.value = "";
         }}
       />
-      {camOn && (
-        <div
-          className="fixed inset-0 z-[70] flex flex-col bg-black"
+      {/* Portal to <body>: the studio sheet animates with transforms, and a
+          transformed ancestor makes `fixed` behave like `absolute` — the
+          overlay would then lose its close button off-screen. */}
+      {camOn &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[70] flex flex-col bg-black"
           role="dialog"
           aria-modal="true"
           aria-label="Scan a QR code with the camera"
@@ -250,9 +255,10 @@ export function ScanDecode({
                 <p className="text-[11px] text-fg/60">Good light and a straight angle read best.</p>
               </div>
             )}
-          </div>
-        </div>
-      )}
+              </div>
+            </div>,
+          document.body,
+        )}
       {busy && <p className="text-xs text-muted">Reading…</p>}
       {result && intent ? (
         <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">
