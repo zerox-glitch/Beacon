@@ -219,10 +219,12 @@ export function drawModuleShape(
       ctx.fill();
       return;
     case "hbar":
-      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, 0);
+      // Bar shapes carry their own ink — keep them heavy enough for phone
+      // cameras (thin strokes dither away at 320px downscales).
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.56, 0);
       return;
     case "vbar":
-      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, Math.PI / 2);
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.56, Math.PI / 2);
       return;
     case "diamond":
       ctx.beginPath();
@@ -277,21 +279,21 @@ export function drawModuleShape(
     case "confetti": {
       const angle = ((h % 360) * Math.PI) / 180;
       const len = s * (0.66 + ((h >>> 9) % 28) / 100);
-      strokeBar(ctx, cx, cy, len, s * 0.38, angle);
+      strokeBar(ctx, cx, cy, len, s * 0.5, angle);
       return;
     }
     case "dash": {
       const horizontal = h % 2 === 0;
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.44, horizontal ? 0 : Math.PI / 2);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.52, horizontal ? 0 : Math.PI / 2);
       return;
     }
     case "cross": {
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.38, Math.PI / 4);
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.38, -Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.5, Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.5, -Math.PI / 4);
       return;
     }
     case "diag": {
-      strokeBar(ctx, cx, cy, s * 1.02, s * 0.36, Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 1.02, s * 0.5, Math.PI / 4);
       return;
     }
     case "radial": {

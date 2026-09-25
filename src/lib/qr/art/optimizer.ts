@@ -37,7 +37,7 @@ function describe(base: QrStyle, patch: Partial<QrStyle>): string[] {
   if (typeof p.dotScale === "number") {
     bits.push(p.dotScale > (s.dotScale as number) ? "heavier dots" : "lighter dots");
   }
-  if (p.moduleShape && p.moduleShape !== s.moduleShape) bits.push("square modules");
+  if (p.moduleShape && p.moduleShape !== s.moduleShape) bits.push("switched to square modules (last resort)");
   if (typeof p.moduleGap === "number" && p.moduleGap < (s.moduleGap as number)) bits.push("removed gaps");
   if (typeof p.quietZone === "number" && p.quietZone > (s.quietZone as number)) bits.push("wider quiet zone");
   if (typeof p.artisticStrength === "number" && p.artisticStrength < (s.artisticStrength as number)) {
@@ -127,17 +127,22 @@ export async function optimizeScan(
           .slice(1)
           .map((rung) => ({ ...s0, ...rung.patch }))
       : [];
-    // Style-only ladder: dot weight → colors → structure.
-    const a = {
+    // Style-only ladder. Keep the user's chosen module shape as long as
+    // possible: the old ladder's first rung flattened every shape to squares,
+    // so "Fix scan" silently replaced Streak/Cross/Confetti with squares.
+    // The shape is only swapped once it has failed every scan-safe rung.
+    const keep1 = {
       ...s0,
       dotScale: Math.min(1, Math.max(s0.dotScale, 0.92)),
-      moduleShape: "square" as const,
       moduleGap: 0,
       quietZone: Math.max(s0.quietZone, 3),
+      contrast: Math.max(s0.contrast, 0.9),
     };
-    const b = { ...a, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
-    const c = { ...b, ecc: "H" as const, maskPattern: -1, eyeShape: "square" as const };
-    steps = [...artSteps, a, b, c];
+    const keep2 = { ...keep1, dotScale: 1, contrast: 1, maskPattern: -1 };
+    const keep3 = { ...keep2, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
+    const sq1 = { ...keep3, moduleShape: "square" as const };
+    const sq2 = { ...sq1, ecc: "H" as const, eyeShape: "square" as const };
+    steps = [...artSteps, keep1, keep2, keep3, sq1, sq2];
   } else {
     // Photo ladder (PhotoQrV2): safer kernel candidates first — they keep the
     // photo recognizable while growing the guaranteed QR signal — then

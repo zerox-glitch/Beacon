@@ -201,6 +201,14 @@ export function DesignPanel() {
         </div>
       </section>
 
+      {/* Honesty note: an active art template restyles some silhouettes */}
+      {Boolean(style.artDirection) && !pictured && (
+        <p className="-mt-3 text-[11px] leading-snug text-muted">
+          Art templates restyle a few silhouettes (Streak → bar, Cross → plus, Confetti → bar,
+          Burst → petal). Use a plain style for the exact shapes above.
+        </p>
+      )}
+
       {/* Colors — target picker, HSB sliders, swatches, themes */}
       <ColorStudio style={style} patch={patch} />
 
