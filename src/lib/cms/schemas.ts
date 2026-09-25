@@ -329,8 +329,8 @@ export const sampleEntrySchema = z.object({
 export type SampleEntry = z.infer<typeof sampleEntrySchema>;
 
 export const samplesDocSchema = z.object({
-  /** Landing grid order; the page shows the first 8. */
-  grid: z.array(sampleEntrySchema).max(12).default([]),
+  /** Landing grid order — the page shows up to 30 (resolveSamples cap). */
+  grid: z.array(sampleEntrySchema).max(30).default([]),
   /** Hero fan order; the page shows the first 3. */
   hero: z.array(sampleEntrySchema).max(6).default([]),
 });

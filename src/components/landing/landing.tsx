@@ -352,10 +352,14 @@ export function Landing() {
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link to="/" className="flex min-w-0 items-center gap-2.5">
-            <img src={brand.logoUrl || "/logo.png"} alt={brand.siteName || "QRWho"} className="size-9 rounded-lg border border-border" />
+          <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <img
+              src={brand.logoUrl || "/logo.png"}
+              alt={brand.siteName || "QRWho"}
+              className="size-10 shrink-0 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
+            />
             <div className="min-w-0">
-              <p className="font-display text-lg italic leading-none tracking-tight">
+              <p className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
                 <span className="wordmark-shimmer">{brand.siteName || "QRWho"}</span>
               </p>
               <p className="mt-0.5 truncate text-[11px] text-fg/80">

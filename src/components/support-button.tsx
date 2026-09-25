@@ -9,7 +9,17 @@ import { useCms } from "@/lib/cms/runtime";
  */
 export function SupportButton() {
   const { brand, status } = useCms();
-  if (status !== "ready" || !brand.kofiUrl) return null;
+  // While the CMS is still loading, reserve the slot (same size) so the
+  // button never pops in a second later and reflows/overlaps the header.
+  if (status !== "ready") {
+    return (
+      <span
+        aria-hidden
+        className="inline-block h-10 w-10 shrink-0 rounded-full border border-white/10 bg-elevated/60 sm:w-28"
+      />
+    );
+  }
+  if (!brand.kofiUrl) return null;
   let host = "";
   try {
     host = new URL(brand.kofiUrl).host;
@@ -22,16 +32,17 @@ export function SupportButton() {
       target="_blank"
       rel="noreferrer"
       title={`Support QRWho · ${host}`}
-      className="group relative inline-flex h-10 shrink-0 items-center gap-2.5 rounded-full border border-accent/50 bg-elevated pl-2.5 pr-4 text-sm font-bold tracking-wide text-fg shadow-[0_0_18px_-6px_var(--color-accent),inset_0_0_14px_-8px_var(--color-accent)] transition duration-300 hover:border-accent hover:shadow-[0_0_28px_-4px_var(--color-accent),inset_0_0_18px_-6px_var(--color-accent)]"
+      className="group relative inline-flex h-10 shrink-0 items-center gap-2.5 rounded-full border border-accent/50 bg-elevated p-1.5 text-sm font-bold tracking-wide text-fg shadow-[0_0_18px_-6px_var(--color-accent),inset_0_0_14px_-8px_var(--color-accent)] transition duration-300 hover:border-accent hover:shadow-[0_0_28px_-4px_var(--color-accent),inset_0_0_18px_-6px_var(--color-accent)] sm:pl-2.5 sm:pr-4"
     >
-      <span className="relative flex size-7 items-center justify-center rounded-full bg-accent/15">
+      <span className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-accent/15">
         <span
           aria-hidden
           className="absolute inset-0 rounded-full bg-accent/45 opacity-60 blur-md transition duration-300 group-hover:opacity-100"
         />
         <Coffee className="relative size-4 text-accent" />
       </span>
-      <span>Support</span>
+      {/* Icon-only on phones so it never overlaps the logo/wordmark */}
+      <span className="hidden sm:inline">Support</span>
     </a>
   );
 }
