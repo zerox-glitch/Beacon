@@ -12,6 +12,8 @@ import { useCms } from "@/lib/cms/runtime";
 import { cn } from "@/lib/utils";
 import { FRAME_DEFS } from "@/lib/qr/frames";
 import { useStudio } from "@/lib/store";
+import { ColorStudio } from "@/components/studio/color-studio";
+import { EyeIcon, ModuleShapeIcon } from "@/components/studio/shape-icon";
 
 function ColorField({
   label,
@@ -81,67 +83,87 @@ export function DesignPanel() {
         />
       </section>
 
-      {/* Module Shapes */}
+      {/* Module Shapes — the actual shapes, drawn by the real renderer */}
       <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Module shape</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {MODULE_SHAPES.map((s) => (
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Module dot shapes</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {MODULE_SHAPES.map((sh) => (
             <button
-              key={s.id}
+              key={sh.id}
               type="button"
-              onClick={() => patch({ moduleShape: s.id })}
+              onClick={() => patch({ moduleShape: sh.id })}
+              title={sh.label}
+              aria-label={`Module shape: ${sh.label}`}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
-                style.moduleShape === s.id
-                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
-                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+                "flex size-11 shrink-0 items-center justify-center rounded-lg border transition active:scale-95",
+                style.moduleShape === sh.id
+                  ? "border-accent bg-accent/15 shadow-sm"
+                  : "border-border bg-elevated hover:border-border-strong",
               )}
             >
-              {s.label}
+              <ModuleShapeIcon shape={sh.id} color={style.fg} />
             </button>
           ))}
         </div>
       </section>
 
-      {/* Finder Eyes Outer */}
+      {/* Finder Eyes Outer — real 7×7 eye previews */}
       <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Finder eyes (outer)</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {EYE_SHAPES.map((s) => (
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Eye frame shapes</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {EYE_SHAPES.map((sh) => (
             <button
-              key={s.id}
+              key={sh.id}
               type="button"
-              onClick={() => patch({ eyeShape: s.id })}
+              onClick={() => patch({ eyeShape: sh.id })}
+              title={sh.label}
+              aria-label={`Eye frame: ${sh.label}`}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
-                style.eyeShape === s.id
-                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
-                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+                "flex size-11 shrink-0 items-center justify-center rounded-lg border p-1.5 transition active:scale-95",
+                style.eyeShape === sh.id
+                  ? "border-accent bg-accent/15 shadow-sm"
+                  : "border-border bg-elevated hover:border-border-strong",
               )}
             >
-              {s.label}
+              <EyeIcon
+                frame={sh.id}
+                ball={style.ballShape as never}
+                ink={style.eyeColor || style.fg}
+                pupil={style.ballColor || style.fg}
+                paper={style.bg}
+                size={30}
+              />
             </button>
           ))}
         </div>
       </section>
 
-      {/* Finder Eye Balls Center */}
+      {/* Finder Eye Balls Center — shown inside your chosen frame */}
       <section>
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Eye balls (center)</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {EYE_SHAPES.map((s) => (
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted">Eye pupil shapes</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {EYE_SHAPES.map((sh) => (
             <button
-              key={s.id}
+              key={sh.id}
               type="button"
-              onClick={() => patch({ ballShape: s.id })}
+              onClick={() => patch({ ballShape: sh.id })}
+              title={sh.label}
+              aria-label={`Eye pupil: ${sh.label}`}
               className={cn(
-                "h-11 rounded-md border text-[11px] font-medium transition active:scale-95",
-                style.ballShape === s.id
-                  ? "border-accent bg-accent text-accent-fg shadow-sm font-semibold"
-                  : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+                "flex size-11 shrink-0 items-center justify-center rounded-lg border p-1.5 transition active:scale-95",
+                style.ballShape === sh.id
+                  ? "border-accent bg-accent/15 shadow-sm"
+                  : "border-border bg-elevated hover:border-border-strong",
               )}
             >
-              {s.label}
+              <EyeIcon
+                frame={style.eyeShape as never}
+                ball={sh.id}
+                ink={style.eyeColor || style.fg}
+                pupil={style.ballColor || style.fg}
+                paper={style.bg}
+                size={30}
+              />
             </button>
           ))}
         </div>
@@ -269,13 +291,9 @@ export function DesignPanel() {
 
       {/* Colors & Gradient */}
       <section className="grid gap-2.5">
-        <p className="text-xs font-medium tracking-wide text-muted">Color Palette</p>
-        <ColorField label="Modules" value={style.fg} onChange={(fg) => patch({ fg })} />
-        <ColorField label="Background" value={style.bg} onChange={(bg) => patch({ bg })} />
-        <ColorField label="Eyes" value={style.eyeColor} onChange={(eyeColor) => patch({ eyeColor })} />
-        <ColorField label="Balls" value={style.ballColor} onChange={(ballColor) => patch({ ballColor })} />
-        
-        <div className="mt-2">
+        <ColorStudio style={style} patch={patch} />
+
+        <div className="mt-1">
           <p className="mb-2 text-xs font-medium tracking-wide text-muted">Gradient</p>
           <div className="grid grid-cols-4 gap-1.5">
             {(["none", "linear", "diagonal", "radial", "image"] as GradientType[]).map((g) => (

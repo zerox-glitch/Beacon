@@ -332,3 +332,34 @@ input[type="color"]::-webkit-color-swatch {
     padding: 0.45rem;
   }
 }
+
+/* Color Studio range sliders (hue / saturation / brightness) */
+.cs-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  outline: none;
+  cursor: pointer;
+}
+.cs-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid #141412;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+}
+.cs-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid #141412;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+}

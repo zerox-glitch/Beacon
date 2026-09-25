@@ -189,7 +189,7 @@ function strokeBar(
   ctx.restore();
 }
 
-function drawModuleShape(
+export function drawModuleShape(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -382,7 +382,7 @@ function drawLayer(
   ctx.fill();
 }
 
-function drawEye(
+export function drawEye(
   ctx: CanvasRenderingContext2D,
   ox: number,
   oy: number,
@@ -429,10 +429,6 @@ function drawEye(
     roundedRect(ctx, ox + s - t, oy + s / 2 - t / 2, t, t, r, r, r, r);
     ctx.fill();
   }
-}
-
-function clamp(n: number, a: number, b: number): number {
-  return Math.min(b, Math.max(a, n));
 }
 
 function luma(r: number, g: number, b: number): number {
