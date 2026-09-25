@@ -49,9 +49,9 @@ function RotatingHook() {
 
 const STUDIO_TABS = [
   { id: "content" as const, label: "Create", icon: Type },
-  { id: "image" as const, label: "Picture", icon: ImageIcon },
-  { id: "presets" as const, label: "Looks", icon: LayoutGrid },
-  { id: "design" as const, label: "Tune", icon: Palette },
+  { id: "image" as const, label: "Photo Art", icon: ImageIcon },
+  { id: "presets" as const, label: "Presets", icon: LayoutGrid },
+  { id: "design" as const, label: "Design", icon: Palette },
   { id: "library" as const, label: "Library", icon: FolderOpen },
 ] as const;
 
@@ -177,14 +177,14 @@ export function Studio() {
                       setMobileTab(tab.id);
                     }}
                     className={cn(
-                      "flex h-11 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
+                      "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
                       active
-                        ? "border border-border-strong bg-elevated font-semibold text-fg shadow-sm"
-                        : "text-fg/75 hover:bg-surface-hover hover:text-fg",
+                        ? "border border-[#22d3ee] bg-[#22d3ee] font-bold text-[#04181d] shadow-[0_0_18px_-4px_rgba(34,211,238,0.55)]"
+                        : "font-medium text-fg/75 hover:bg-surface-hover hover:text-fg",
                     )}
                   >
-                    <Icon className="size-3.5 sm:size-4" />
-                    <span className="text-[10px] leading-none sm:text-[11px]">{tab.label}</span>
+                    <Icon className="size-4 sm:size-4.5" />
+                    <span className="text-[11px] leading-none">{tab.label}</span>
                   </button>
                 );
               })}
