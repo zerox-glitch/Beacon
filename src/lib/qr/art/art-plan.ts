@@ -713,21 +713,27 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
     MAX_DARK_MASS,
   );
   /**
-   * A module shape the user explicitly picked for this template (differs from
-   * the direction's own authored shape; the "square" seed placeholder counts
-   * as a pick only when the Design tab recorded an actual click). Such a pick
+   * A module shape the user explicitly picked for this template. Such a pick
    * is rendered the way the classic QR renderer draws it — un-plated, at full
    * cell size, classic corner radii — instead of the template's mass system,
    * which would bury low-coverage silhouettes (diamond, star, plus…) under a
    * solid same-colour plate and make the pick look like the template's own
-   * shape. Only a pick that *differs from the template's own shape* counts:
-   * presets seed the picker with the direction's shape, so an untouched
-   * picker leaves templates alone.
+   * shape.
+   *
+   * An actual Design-tab click (the `modulePicked` marker) ALWAYS counts —
+   * even when the click re-selects the shape the template was seeded with.
+   * Presets pre-highlight their own shape in the picker, so without the
+   * marker rule that click is a silent no-op: the QR keeps the template's
+   * mass-scaled rendering of the same silhouette (tiny traces/specks on some
+   * templates) and Fix scan agrees it scans, so nothing ever visibly happens.
+   * Without a click, only a value that differs from the direction's own
+   * authored shape counts (the "square" seed is a no-preference placeholder),
+   * so untouched pickers and raw harness styles leave templates alone.
    */
   const userShape =
     style.moduleShape !== undefined &&
-    (style.modulePicked === true || style.moduleShape !== "square") &&
-    input.direction.shape !== style.moduleShape;
+    (style.modulePicked === true ||
+      (style.moduleShape !== "square" && input.direction.shape !== style.moduleShape));
   // The pick survives EVERY rung — including the camera-safe last resort,
   // whose shape fallback would otherwise swap it back to the template's own
   // silhouette and leave the dot picker looking dead after Fix scan. The
@@ -793,13 +799,14 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
       if (!grid[y]![x]) continue;
           const run: Run = { cells: [[x, y]], x0: x, y0: y, x1: x, y1: y };
       const inset = (cell - side) / 2;
-      const box = distort(
-        { x: origin + x * cell + inset, y: origin + y * cell + inset, w: side, h: side },
-        run,
-        dir,
-        cell,
-        level,
-      );
+      // A user pick is drawn the way the classic renderer draws it — clean,
+      // uniform geometry. The template's distortion (jitter/taper/wobble/
+      // bands/steps) is part of the template's own art and would shrink,
+      // nudge or band the picked silhouette cell by cell, which is exactly
+      // the "weird shapes on some presets" failure: the same pick looks fine
+      // on a `none`-distortion template and ragged on a banded one.
+      const baseBox = { x: origin + x * cell + inset, y: origin + y * cell + inset, w: side, h: side };
+      const box = userShape ? baseBox : distort(baseBox, run, dir, cell, level);
       const clipped = clampToBody(box, origin, origin, origin + size * cell, origin + size * cell);
 
       if (needsPlate) {
