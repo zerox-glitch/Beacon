@@ -96,12 +96,6 @@ export function DesignPanel() {
   const eyeInk = style.eyeColor || style.fg;
   const pupilInk = style.ballColor || style.fg;
 
-  // Shape icons follow the mobile-app model: fixed neutral grey until a
-  // shape is selected — they never tint with the dot color. The selected
-  // icon shows the element's real color, matching what it will render as.
-  const iconNeutral = "#8c8880";
-  const iconNeutralDeep = "#57534c";
-
   return (
     <div className="flex flex-col gap-5">
       {/* Module Shapes — the actual shapes, drawn by the real renderer */}
@@ -125,11 +119,7 @@ export function DesignPanel() {
                   : "border-border bg-elevated hover:border-border-strong",
               )}
             >
-              <ModuleShapeIcon
-                shape={sh.id}
-                color={style.moduleShape === sh.id ? style.fg : iconNeutral}
-                size={32}
-              />
+              <ModuleShapeIcon shape={sh.id} color={style.fg} size={32} />
             </button>
           ))}
         </div>
@@ -163,9 +153,9 @@ export function DesignPanel() {
               <EyeIcon
                 frame={sh.id}
                 ball={style.ballShape as never}
-                ink={style.eyeShape === sh.id ? eyeInk : iconNeutral}
-                pupil={style.eyeShape === sh.id ? pupilInk : iconNeutralDeep}
-                paper={style.eyeShape === sh.id ? style.bg : "transparent"}
+                ink={eyeInk}
+                pupil={pupilInk}
+                paper={style.bg}
                 size={34}
               />
             </button>
@@ -201,9 +191,9 @@ export function DesignPanel() {
               <EyeIcon
                 frame={style.eyeShape as never}
                 ball={sh.id}
-                ink={style.ballShape === sh.id ? eyeInk : iconNeutral}
-                pupil={style.ballShape === sh.id ? pupilInk : iconNeutralDeep}
-                paper={style.ballShape === sh.id ? style.bg : "transparent"}
+                ink={eyeInk}
+                pupil={pupilInk}
+                paper={style.bg}
                 size={34}
               />
             </button>
