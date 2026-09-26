@@ -6,9 +6,9 @@ import {
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { getPageSeo } from "@/lib/cms/public-api";
-import { ensureCms, useCms } from "@/lib/cms/runtime";
-import type { PageMeta } from "@/lib/cms/types";
+import { getPageSeo, getPublicCms } from "@/lib/cms/public-api";
+import { hydrateCms, useCms } from "@/lib/cms/runtime";
+import type { PageMeta, PublicBundle } from "@/lib/cms/types";
 import { buildJsonLd } from "@/lib/cms/jsonld";
 import { PRESETS } from "@/lib/qr/presets";
 import appCss from "../styles.css?url";
@@ -57,17 +57,21 @@ function AnnouncementBar() {
 
 export const Route = createRootRoute({
   // Runs on the server for every document request (and is dehydrated to the
-  // client), so SSR HTML carries the CMS-configured head. Also hydrates the
-  // client-side catalog store for the public pages.
+  // client), so SSR HTML carries the CMS-configured head. The public bundle
+  // rides along with the same payload: `RootDocument` seeds the client store
+  // from it during the first render, so the support button / announcement bar
+  // / galleries are correct on the first paint with no extra fetch.
   loader: async ({ location }) => {
     const path = location.pathname;
-    const [seo] = await Promise.all([
+    const isServer = typeof window === "undefined";
+    const [seo, cms] = await Promise.all([
       getPageSeo({ data: path }).catch(() => null),
-      // Server-side: prime the merged catalog so SSR galleries never render a
-      // hidden template. Client: the store's own hook refetches when mounted.
-      typeof window === "undefined" ? ensureCms() : Promise.resolve(),
+      // Server-side: one fetch serves both the dehydrated payload and the
+      // merged catalog SSR renders with (no hidden templates leak into HTML).
+      // Client-side loader runs skip it — the store was already hydrated.
+      isServer ? getPublicCms().catch(() => null) : Promise.resolve(null),
     ]);
-    return { seo: seo as PageMeta | null };
+    return { seo: seo as PageMeta | null, cms: cms as PublicBundle | null };
   },
   head: ({ loaderData }) => {
     const m = loaderData?.seo ?? FALLBACK_META;
@@ -120,6 +124,10 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const loaderData = Route.useLoaderData();
+  // Seed the CMS store BEFORE children render so the first client paint
+  // matches the SSR HTML exactly (no support-button placeholder flash).
+  if (loaderData?.cms) hydrateCms(loaderData.cms);
   return (
     <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>
