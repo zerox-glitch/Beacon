@@ -119,7 +119,10 @@ export function DesignPanel() {
                   : "border-border bg-elevated hover:border-border-strong",
               )}
             >
-              <ModuleShapeIcon shape={sh.id} color={style.fg} size={32} />
+              {/* Icons stay a fixed light colour (like the mobile app): they
+                  are controls, not a preview of the ink — a black QR on a dark
+                  panel used to make the whole row unreadable. */}
+              <ModuleShapeIcon shape={sh.id} color="#ffffff" size={32} />
             </button>
           ))}
         </div>
@@ -153,9 +156,9 @@ export function DesignPanel() {
               <EyeIcon
                 frame={sh.id}
                 ball={style.ballShape as never}
-                ink={eyeInk}
-                pupil={pupilInk}
-                paper={style.bg}
+                ink="#ffffff"
+                pupil="#ffffff"
+                paper="transparent"
                 size={34}
               />
             </button>
@@ -191,9 +194,9 @@ export function DesignPanel() {
               <EyeIcon
                 frame={style.eyeShape as never}
                 ball={sh.id}
-                ink={eyeInk}
-                pupil={pupilInk}
-                paper={style.bg}
+                ink="#ffffff"
+                pupil="#ffffff"
+                paper="transparent"
                 size={34}
               />
             </button>

@@ -40,7 +40,7 @@ import { applyRung, relaxLadder } from "./relax";
 import type { EncodedQr } from "../encode";
 import { cellRole, isDark } from "../structure";
 import { tuneDirection } from "./tune";
-import type { ArtDetailLevel, ArtDirection, ArtFinder, ArtShape, QrStyle } from "../types";
+import type { ArtDetailLevel, ArtDirection, ArtFinder, ArtShape, EyeShape, QrStyle } from "../types";
 
 /* ------------------------------------------------------------------ *
  * Primitives
@@ -164,6 +164,9 @@ const USER_SHAPE_RADIUS: Partial<Record<ArtShape, number>> = {
   fluid: 0.52,
   leaf: 0.62,
   petal: 0.62,
+  // "Burst" is a petal too — without this entry its radius fell back to 0
+  // and every burst petal collapsed into a plain rectangle.
+  radial: 0.62,
 };
 const USER_SHAPE_CORNERS: Partial<Record<ArtShape, [number, number, number, number]>> = {
   // Classic "classy": two large diagonal corners.
@@ -495,6 +498,142 @@ const FINDER_STYLES: Record<ArtFinder, FinderStyle> = {
   cut: { outerR: 0, gapR: 0, ball: "square", chamfer: 0.4 },
 };
 
+/**
+ * One silhouette layer of the classic eye — the exact geometry
+ * `drawEye`/`drawLayer` in render.ts paint for plain QRs (and the picker
+ * icons preview): square, rounded (0.18), extra-rounded (0.32), circle,
+ * diamond, hex (0.52 radius), classy (two diagonal corners, 0.38), leaf
+ * (other diagonal pair, 0.42), ticks (0.18 rounded). Radii scale with the
+ * LAYER's own size, so the 7×7 / 5×5 / 3×3 layers keep the classic ratios.
+ */
+function pushEyeLayer(
+  out: Paint[],
+  x: number,
+  y: number,
+  sz: number,
+  shape: EyeShape,
+  fill: FillSpec,
+  role: PaintRole,
+): void {
+  if (shape === "circle") {
+    out.push({ shape: "circle", x, y, w: sz, h: sz, fill, role, gx: 0, gy: 0 });
+    return;
+  }
+  if (shape === "diamond") {
+    const cx = x + sz / 2;
+    const cy = y + sz / 2;
+    out.push({
+      shape: "poly",
+      x,
+      y,
+      w: sz,
+      h: sz,
+      pts: [cx, y, x + sz, cy, cx, y + sz, x, cy],
+      fill,
+      role,
+      gx: 0,
+      gy: 0,
+    });
+    return;
+  }
+  if (shape === "hex") {
+    const cx = x + sz / 2;
+    const cy = y + sz / 2;
+    const r = sz * 0.52;
+    const pts: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      pts.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    out.push({ shape: "poly", x, y, w: sz, h: sz, pts, fill, role, gx: 0, gy: 0 });
+    return;
+  }
+  let c: [number, number, number, number];
+  switch (shape) {
+    case "square":
+      c = [0, 0, 0, 0];
+      break;
+    case "extra-rounded":
+      c = [sz * 0.32, sz * 0.32, sz * 0.32, sz * 0.32];
+      break;
+    case "classy":
+      c = [0, sz * 0.38, 0, sz * 0.38];
+      break;
+    case "leaf":
+      c = [sz * 0.42, 0, sz * 0.42, 0];
+      break;
+    case "target":
+      c = [sz * 0.5, sz * 0.5, sz * 0.5, sz * 0.5];
+      break;
+    default:
+      c = [sz * 0.18, sz * 0.18, sz * 0.18, sz * 0.18];
+  }
+  out.push({ shape: "rrect", x, y, w: sz, h: sz, corners: c, fill, role, gx: 0, gy: 0 });
+}
+
+/**
+ * A user-picked eye + pupil, drawn with the classic three-layer system:
+ * 7×7 frame silhouette, 5×5 gap silhouette, 3×3 ball silhouette — identical
+ * to `drawEye` in render.ts, so the QR matches the picker icons and the
+ * mobile app. The (frame, ball) pair arrives already resolved through the
+ * per-template camera battery (tuneDirection → safeFinder), which is why
+ * "weird" frames (diamond/hex corners) only ever appear where they decode.
+ * `target` is the true circular ring (the classic's Target special case,
+ * which carries a round ball); `ticks` adds the four cross-hair marks.
+ */
+function silhouetteFinder(
+  frame: EyeShape,
+  ball: EyeShape | undefined,
+  inks: ResolvedInks,
+  ox: number,
+  oy: number,
+  cell: number,
+  corner: "tl" | "tr" | "bl",
+): Paint[] {
+  const s = cell * 7;
+  const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
+  const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
+  const gapFill: FillSpec = { kind: "solid", stops: [inks.bg] };
+  const out: Paint[] = [];
+
+  // Paper the whole 8×8 island (finder + separator) first, so no body ink can
+  // bleed into the one-module light gap and the quiet zone stays clean.
+  out.push({
+    shape: "rrect",
+    x: ox - (corner === "tr" ? cell : 0),
+    y: oy - (corner === "bl" ? cell : 0),
+    w: cell * 8,
+    h: cell * 8,
+    r: 0,
+    fill: gapFill,
+    role: "finder-gap",
+    gx: 0,
+    gy: 0,
+  });
+
+  if (frame === "target") {
+    out.push({ shape: "circle", x: ox, y: oy, w: s, h: s, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "circle", x: ox + cell, y: oy + cell, w: cell * 5, h: cell * 5, fill: gapFill, role: "finder-gap", gx: 0, gy: 0 });
+    out.push({ shape: "circle", x: ox + cell * 2, y: oy + cell * 2, w: cell * 3, h: cell * 3, fill: ballFill, role: "finder", gx: 0, gy: 0 });
+    return out;
+  }
+
+  const ballShape = ball ?? "square";
+  pushEyeLayer(out, ox, oy, s, frame, eyeFill, "finder");
+  pushEyeLayer(out, ox + cell, oy + cell, cell * 5, frame, gapFill, "finder-gap");
+  pushEyeLayer(out, ox + cell * 2, oy + cell * 2, cell * 3, ballShape, ballFill, "finder");
+
+  if (frame === "ticks") {
+    const t = cell * 1.35;
+    const r = t * 0.3;
+    out.push({ shape: "rrect", x: ox + s / 2 - t / 2, y: oy, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox + s / 2 - t / 2, y: oy + s - t, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox, y: oy + s / 2 - t / 2, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox + s - t, y: oy + s / 2 - t / 2, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+  }
+  return out;
+}
+
 function finderPaints(
   dir: ArtDirection,
   inks: ResolvedInks,
@@ -505,36 +644,15 @@ function finderPaints(
   level: ArtDetailLevel,
 ): Paint[] {
   const s = cell * 7;
-  // Design-tab eye/pupil picks (explicit, non-default only). The eye pick
-  // swaps in another whole camera-validated finder design; the pupil pick
-  // overrides the centre ball with a validated silhouette. Neither applies at
-  // "lean" level, where the camera-safe solid finder wins.
-  const baseFinder: ArtFinder =
-    level !== "lean" && dir.finderTune ? dir.finderTune : level === "lean" ? "solid" : dir.finder;
-  let fs: FinderStyle = FINDER_STYLES[baseFinder] ?? FINDER_STYLES.solid;
-  // A pupil the user explicitly picked (Design tab) overrides the design's
-  // ball — where the camera battery (81 templates) proves it safe: halo
-  // carries every ball (80–81/81); the square-based carriers (solid/soft/cut/
-  // bracket) read a square pupil on their own ball. An explicit EYE pick owns
-  // the finder design: if its ball can't carry the pupil safely, the pupil
-  // keeps the design's own ball instead of yanking the whole finder to halo —
-  // that used to silently erase the eye pick (Ticks eye + Circle pupil
-  // rendered as a plain halo ring, so the eye picker looked dead). Without an
-  // eye pick, an explicit pupil still rides halo — the only proven
-  // multi-ball carrier.
-  if (level !== "lean" && dir.ballTune) {
-    if (fs.ball !== dir.ballTune) {
-      if (baseFinder === "halo") {
-        fs = { ...fs, ball: dir.ballTune };
-      } else if (!dir.finderTune) {
-        fs = { ...(FINDER_STYLES.halo ?? fs), ball: dir.ballTune };
-      } else if (dir.ballTune === "square") {
-        fs = { ...fs, ball: "square" };
-      }
-      // else: explicit eye (soft/cut/bracket) + circle/octagon pupil — no
-      // camera-safe way to show that pupil silhouette on it; the eye stays.
-    }
+  // Design-tab eye/pupil picks (explicit): the classic 10-silhouette system,
+  // battery-resolved per template by tuneDirection. At "lean" level the
+  // camera-safe solid finder wins, as before.
+  if (level !== "lean" && dir.finderFrame) {
+    return silhouetteFinder(dir.finderFrame, dir.finderBall, inks, ox, oy, cell, corner);
   }
+  // The template's own finder, as authored (or solid at lean).
+  const baseFinder: ArtFinder = level === "lean" ? "solid" : dir.finder;
+  const fs: FinderStyle = FINDER_STYLES[baseFinder] ?? FINDER_STYLES.solid;
   const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
   const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
   const gapFill: FillSpec = { kind: "solid", stops: [inks.bg] };

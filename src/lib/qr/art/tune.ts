@@ -17,55 +17,15 @@
  */
 
 import { MODULE_SHAPES } from "../types.ts";
-import type { ArtDirection, ArtFinder, ArtShape, EyeShape, QrStyle } from "../types.ts";
+import type { ArtDirection, ArtShape, EyeShape, QrStyle } from "../types.ts";
+import { safeFinder } from "./finder-battery.ts";
 
-/**
- * Eye-frame picker → finder design. Templates own their finders (camera-
- * validated), but an explicit pick maps onto a WHOLE validated
- * FINDER_STYLES design — the camera battery proves complete designs, not
- * individual parameters, so we never hand-mix corner values. Only designs
- * that pass the battery on (nearly) every one of the 81 templates are used:
- * solid / soft / cut / bracket (81/81) and halo (80/81). Every picker value
- * has a mapping, so any explicit pick restyles the finder.
- */
-const FINDER_TUNE: Record<EyeShape, ArtFinder> = {
-  square: "solid",
-  rounded: "soft",
-  "extra-rounded": "halo",
-  circle: "halo",
-  classy: "soft",
-  diamond: "cut",
-  leaf: "soft",
-  hex: "cut",
-  target: "halo",
-  ticks: "bracket",
-};
-
-/**
- * Pupil picker → centre-ball silhouette. Only the three silhouettes the
- * validated finder styles actually use (a diamond ball reads as eroded
- * modules at the light gap and is deliberately unused — the angular picks
- * therefore read as the close validated octagon).
- */
 // Picker values that mean "no preference" for the art pipeline UNLESS the
 // user explicitly picked them (style.eyePicked / style.ballPicked): "square"
 // is the preset seed placeholder, and "extra-rounded" is DEFAULT_STYLE's
 // classic default — styles built the classic way (and legacy saves) must
 // keep rendering the template's own finder.
 const NO_PREFERENCE_EYES: readonly EyeShape[] = ["square", "extra-rounded"];
-
-const BALL_TUNE: Record<EyeShape, "square" | "circle" | "octagon"> = {
-  square: "square",
-  rounded: "circle",
-  "extra-rounded": "circle",
-  circle: "circle",
-  classy: "octagon",
-  diamond: "octagon",
-  leaf: "circle",
-  hex: "octagon",
-  target: "circle",
-  ticks: "square",
-};
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -124,25 +84,43 @@ export function tuneDirection(dir: ArtDirection, style: QrStyle): ArtDirection {
   ) {
     patch.shape = style.moduleShape as ArtShape;
   }
-  // Eye / pupil picks: "square" (preset seed) and "extra-rounded" (the
-  // classic DEFAULT_STYLE default) mean "no preference" — unless the user
-  // explicitly clicked them (eyePicked / ballPicked) — so a legacy or seeded
-  // value never flattens the template's camera-validated finder.
+  // Eye / pupil picks (Design tab): "square" (preset seed) and
+  // "extra-rounded" (the classic DEFAULT_STYLE default) mean "no preference"
+  // — unless the user explicitly clicked them (eyePicked / ballPicked) — so a
+  // legacy or seeded value never flattens the template's finder.
+  //
+  // An explicit pick goes through the per-template camera battery
+  // (safeFinder): the rendered (frame, ball) is the closest pair the battery
+  // proved on THIS template. The old 5-design mapping (10 icons → 5 subtle
+  // FINDER_STYLES) made most clicks visually no-ops — Circle on a
+  // ringed-look template was a literal no-op — which read as "the eye and
+  // pupil pickers don't work". Now every pick is a whole classic silhouette
+  // (7×7 frame + 5×5 gap + 3×3 ball, exactly what the picker icons preview),
+  // and the battery keeps it camera-safe per template.
   const eyeShape = style.eyeShape;
-  if (
-    eyeShape &&
-    (style.eyePicked === true || !NO_PREFERENCE_EYES.includes(eyeShape)) &&
-    FINDER_TUNE[eyeShape]
-  ) {
-    patch.finderTune = FINDER_TUNE[eyeShape];
-  }
   const ballShape = style.ballShape;
-  if (
-    ballShape &&
-    (style.ballPicked === true || !NO_PREFERENCE_EYES.includes(ballShape)) &&
-    BALL_TUNE[ballShape]
-  ) {
-    patch.ballTune = BALL_TUNE[ballShape];
+  const eyeExplicit =
+    eyeShape !== undefined &&
+    (style.eyePicked === true || !NO_PREFERENCE_EYES.includes(eyeShape));
+  const ballExplicit =
+    ballShape !== undefined &&
+    (style.ballPicked === true || !NO_PREFERENCE_EYES.includes(ballShape));
+  const applySafe = (frame: EyeShape, ball: EyeShape | undefined) => {
+    const safe = safeFinder(dir.id, frame, ball);
+    // null = no silhouette decodes on this template: keep the template's
+    // own camera-validated finder instead of shipping a rejected one.
+    if (safe.frame) {
+      patch.finderFrame = safe.frame;
+      patch.finderBall = safe.ball;
+    }
+  };
+  if (eyeShape && eyeExplicit) {
+    applySafe(eyeShape, ballExplicit ? ballShape : undefined);
+  } else if (ballShape && ballExplicit) {
+    // Pupil-only pick: the pupil silhouette rides the circular ring — the
+    // carrier the battery proves on the most templates — the same
+    // "finder moves to carry the ball" behaviour the old mapping had.
+    applySafe("circle", ballShape);
   }
   if (typeof style.moduleGap === "number" && Number.isFinite(style.moduleGap)) {
     patch.gap = clamp(style.moduleGap, 0, 0.18);

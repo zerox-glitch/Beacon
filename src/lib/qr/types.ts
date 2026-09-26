@@ -438,6 +438,16 @@ export interface ArtDirection {
   finderTune?: ArtFinder;
   /** Design-tab tuning: ball silhouette for an explicitly-picked pupil shape. */
   ballTune?: "square" | "circle" | "octagon";
+  /**
+   * Design-tab eye/pupil picks, resolved through the per-template camera
+   * battery (finder-battery.ts): the classic 7×7 / 5×5 / 3×3 layered
+   * silhouette system — the same vocabulary the picker icons preview and the
+   * plain-QR renderer draws — replacing the 5-design FINDER_STYLES mapping
+   * that made most eye/pupil clicks visually no-ops. `finderFrame` is the
+   * outer+gap silhouette, `finderBall` the centre-ball silhouette.
+   */
+  finderFrame?: EyeShape;
+  finderBall?: EyeShape;
 }
 
 export interface QrStyleArtRef {
