@@ -3,6 +3,10 @@ import { renderPhotoQrV2 } from "./photo/photo-engine";
 import type { EncodedQr } from "./encode";
 import { cellRole, isDark, isProtectedRole } from "./structure";
 import type { ImageMode, QrStyle } from "./types";
+// The classic eye renderer — every eye/pupil silhouette the Design tab offers.
+// render.ts ↔ art-engine.ts form an ESM cycle, but both sides only use each
+// other at call time (function declarations are hoisted), so it is safe.
+import { drawEye } from "./render.ts";
 
 export type WeaveMode = "photo" | "blend" | "halftone" | "duotone" | "mono";
 
@@ -153,15 +157,97 @@ function roundedRect(
   ctx.closePath();
 }
 
-function clipModule(
+/** Deterministic per-cell variation (same hash the classic renderer uses). */
+function cellHash(gx: number, gy: number): number {
+  let h = (gx * 374761393 + gy * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Star silhouette (classic drawModuleShape geometry). */
+function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  const inner = r * 0.42;
+  for (let i = 0; i < 10; i++) {
+    const ang = (Math.PI / 5) * i - Math.PI / 2;
+    const rad = i % 2 === 0 ? r : inner;
+    const x = cx + Math.cos(ang) * rad;
+    const y = cy + Math.sin(ang) * rad;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+/** Hexagon silhouette (classic drawModuleShape geometry). */
+function hexPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+/** Plus silhouette (classic drawModuleShape geometry). */
+function plusPath(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const t = s * 0.34;
+  const o = (s - t) / 2;
+  ctx.moveTo(x + o, y);
+  ctx.lineTo(x + o + t, y);
+  ctx.lineTo(x + o + t, y + o);
+  ctx.lineTo(x + s, y + o);
+  ctx.lineTo(x + s, y + o + t);
+  ctx.lineTo(x + o + t, y + o + t);
+  ctx.lineTo(x + o + t, y + s);
+  ctx.lineTo(x + o, y + s);
+  ctx.lineTo(x + o, y + o + t);
+  ctx.lineTo(x, y + o + t);
+  ctx.lineTo(x, y + o);
+  ctx.lineTo(x + o, y + o);
+  ctx.closePath();
+}
+
+/**
+ * Rounded bar as a path subpath (no beginPath — the caller owns the path, so
+ * Cross can union two of these). The classic strokeBar geometry, clipped.
+ */
+function barPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  len: number,
+  thick: number,
+  angle: number,
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  const r = Math.max(0, Math.min(thick / 2, len / 2));
+  const x = -len / 2;
+  const y = -thick / 2;
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + len, y, x + len, y + thick, r);
+  ctx.arcTo(x + len, y + thick, x, y + thick, r);
+  ctx.arcTo(x, y + thick, x, y, r);
+  ctx.arcTo(x, y, x + len, y, r);
+  ctx.closePath();
+  ctx.restore();
+}
+
+export function clipModule(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   s: number,
   shape: QrStyle["moduleShape"],
+  grid?: { gx: number; gy: number; size: number },
 ) {
   const cx = x + s / 2;
   const cy = y + s / 2;
+  // Every classic module silhouette, so the Design-tab dot-shape picks work
+  // in photo weaves too — before, nine shapes fell through to plain squares.
   switch (shape) {
     case "dots":
     case "bubbles":
@@ -195,6 +281,67 @@ function clipModule(
       roundedRect(ctx, x + s * 0.22, y, s * 0.56, s, s * 0.2);
       ctx.clip();
       return;
+    case "star":
+      ctx.beginPath();
+      starPath(ctx, cx, cy, s * 0.5);
+      ctx.clip();
+      return;
+    case "plus":
+      ctx.beginPath();
+      plusPath(ctx, x, y, s);
+      ctx.clip();
+      return;
+    case "hex":
+      ctx.beginPath();
+      hexPath(ctx, cx, cy, s * 0.52);
+      ctx.clip();
+      return;
+    case "cross":
+      ctx.beginPath();
+      barPath(ctx, cx, cy, s * 0.95, s * 0.5, Math.PI / 4);
+      barPath(ctx, cx, cy, s * 0.95, s * 0.5, -Math.PI / 4);
+      ctx.clip();
+      return;
+    case "diag":
+      ctx.beginPath();
+      barPath(ctx, cx, cy, s * 1.02, s * 0.5, Math.PI / 4);
+      ctx.clip();
+      return;
+    case "dash": {
+      const horizontal = cellHash(Math.round(x), Math.round(y)) % 2 === 0;
+      ctx.beginPath();
+      barPath(ctx, cx, cy, s * 0.95, s * 0.52, horizontal ? 0 : Math.PI / 2);
+      ctx.clip();
+      return;
+    }
+    case "confetti": {
+      const h = cellHash(Math.round(x), Math.round(y));
+      const len = s * (0.66 + ((h >>> 9) % 28) / 100);
+      ctx.beginPath();
+      barPath(ctx, cx, cy, len, s * 0.5, ((h % 360) * Math.PI) / 180);
+      ctx.clip();
+      return;
+    }
+    case "radial": {
+      // Classic "Burst": an arrow pointing away from the code centre.
+      const h = cellHash(Math.round(x), Math.round(y));
+      const ang = grid
+        ? Math.atan2(grid.gy - (grid.size - 1) / 2, grid.gx - (grid.size - 1) / 2)
+        : ((h % 360) * Math.PI) / 180;
+      const wob = 0.8 + ((h >>> 5) % 20) / 100;
+      ctx.beginPath();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.moveTo(s * 0.55 * wob, 0);
+      ctx.lineTo(-s * 0.45 * wob, -s * 0.28);
+      ctx.lineTo(-s * 0.3 * wob, 0);
+      ctx.lineTo(-s * 0.45 * wob, s * 0.28);
+      ctx.closePath();
+      ctx.restore();
+      ctx.clip();
+      return;
+    }
     default:
       ctx.beginPath();
       ctx.rect(x, y, s, s);
@@ -320,23 +467,6 @@ function drawKernel(
   }
 }
 
-function finderCorner(shape: QrStyle["eyeShape"], s: number): number {
-  switch (shape) {
-    case "circle":
-      return s * 0.5;
-    case "extra-rounded":
-      return s * 0.32;
-    case "rounded":
-    case "classy":
-    case "leaf":
-      return s * 0.18;
-    case "square":
-      return 0;
-    default:
-      return s * 0.16;
-  }
-}
-
 function fillRound(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -395,13 +525,13 @@ export function drawPhotoFinders(
     const oy = origin + ey * cell;
     const sepX = ex === 0 ? ox : ox - cell;
     const sepY = ey === 0 ? oy : oy - cell;
-    const s7 = cell * 7;
-    const r7 = finderCorner(style.eyeShape, s7);
-    const rBall = finderCorner(style.ballShape, cell * 3);
-    fillRound(ctx, sepX, sepY, cell * 8, cell * 8, r7 * 1.05, lightCss);
-    fillRound(ctx, ox, oy, s7, s7, r7, darkCss);
-    fillRound(ctx, ox + cell, oy + cell, cell * 5, cell * 5, r7 * 0.72, lightCss);
-    fillRound(ctx, ox + cell * 2, oy + cell * 2, cell * 3, cell * 3, rBall, ballCss);
+    // Photo-protected separator plate (the photo must not bleed into the
+    // one-module light gap), then the classic eye on top. Using the same
+    // drawEye the plain QR uses means every eye/pupil silhouette the Design
+    // tab offers renders identically in photo weaves — before, only four
+    // corner radii were honoured and the rest fell back to a default round.
+    fillRound(ctx, sepX, sepY, cell * 8, cell * 8, cell * 0.8, lightCss);
+    drawEye(ctx, ox, oy, cell, style.eyeShape, style.ballShape, darkCss, ballCss, lightCss);
   }
 }
 
@@ -490,7 +620,7 @@ function renderMosaicBlend(
         : clamp(0.94 - (1 - contrast) * 0.05 - strength * 0.06, 0.72, 0.98);
       const [nr, ng, nb] = setLuminance(photo[0], photo[1], photo[2], target);
       ctx.save();
-      clipModule(ctx, ox, oy, s, style.moduleShape);
+      clipModule(ctx, ox, oy, s, style.moduleShape, { gx: x, gy: y, size: qr.size });
       ctx.fillStyle = rgbStr(nr, ng, nb);
       ctx.fillRect(ox, oy, s, s);
       ctx.restore();
