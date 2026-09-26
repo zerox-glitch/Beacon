@@ -71,6 +71,7 @@ export type PaintShape =
   | "pebble"
   | "gem"
   | "facet"
+  | "cross"
   | "bar";
 
 export type PaintRole =
@@ -102,6 +103,8 @@ export interface Paint {
   pts?: number[];
   /** `bar` orientation. */
   vertical?: boolean;
+  /** `bar` thickness as a fraction of the cell (user-picked line shapes ride the standard renderer's weight). */
+  barThick?: number;
   fill: FillSpec;
   role: PaintRole;
   /** Module coordinates this paint came from — deterministic variation only. */
@@ -141,11 +144,16 @@ export interface ArtPlanInput {
   cameraSafe?: boolean;
 }
 
+/** Line shapes the classic renderer draws un-plated — the user's explicit pick of one of these keeps that treatment in templates too. */
+const LINE_SHAPES = new Set<ArtShape>(["hbar", "vbar", "dash", "diag", "cross", "confetti"]);
+
 /** Map a direction's module shape onto the painter vocabulary. */
 export function paintShapeFor(shape: ArtShape): PaintShape {
   switch (shape) {
     case "dots":
       return "circle";
+    case "cross":
+      return "cross";
     case "diamond":
       return "diamond";
     case "hex":
@@ -176,8 +184,6 @@ export function paintShapeFor(shape: ArtShape): PaintShape {
       return "petal";
     case "confetti":
       return "bar";
-    case "cross":
-      return "plus";
     case "radial":
       return "petal";
     case "bubbles":
@@ -398,7 +404,10 @@ function needsPlateFor(shape: ArtShape, inner: number): boolean {
 function perCellScale(shape: ArtShape, targetMass: number, gap: number, plated: boolean): number {
   const maxScale = 1 - gap;
   if (plated) return maxScale;
-  return clamp(Math.sqrt(targetMass / coverageOf(shape)), 0.85, maxScale);
+  // 0.7 (not 0.85): an untouched template's targetMass floor (0.78) keeps
+  // its scale above 0.88, so the looser bound only ever shows when the user
+  // explicitly shrinks their dots — then it is the slider doing its job.
+  return clamp(Math.sqrt(targetMass / coverageOf(shape)), 0.7, maxScale);
 }
 
 /* ------------------------------------------------------------------ *
@@ -473,7 +482,21 @@ function finderPaints(
   level: ArtDetailLevel,
 ): Paint[] {
   const s = cell * 7;
-  const fs: FinderStyle = FINDER_STYLES[level === "lean" ? "solid" : dir.finder] ?? FINDER_STYLES.solid;
+  // Design-tab eye/pupil picks (explicit, non-default only). The eye pick
+  // swaps in another whole camera-validated finder design; the pupil pick
+  // overrides the centre ball with a validated silhouette. Neither applies at
+  // "lean" level, where the camera-safe solid finder wins.
+  const baseFinder: ArtFinder =
+    level !== "lean" && dir.finderTune ? dir.finderTune : level === "lean" ? "solid" : dir.finder;
+  let fs: FinderStyle = FINDER_STYLES[baseFinder] ?? FINDER_STYLES.solid;
+  if (level !== "lean" && dir.ballTune) {
+    // A pupil pick that changes the ball silhouette moves the whole finder to
+    // the halo design — the only finder the camera battery passes on (nearly)
+    // every template with every ball. Picking the ball a design already uses
+    // keeps the design as-is (its own validated pairing).
+    if (fs.ball !== dir.ballTune) fs = FINDER_STYLES.halo ?? fs;
+    fs = { ...fs, ball: dir.ballTune };
+  }
   const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
   const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
   const gapFill: FillSpec = { kind: "solid", stops: [inks.bg] };
@@ -627,9 +650,28 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const size = qr.size;
   const grid = darkDataCells(qr);
   const gapInk = clamp(dir.gap * (level === "lean" ? 0.4 : 1), 0, 0.1);
+  /**
+   * The Design-tab "Dot size" slider drives module mass in templates too.
+   * `dotScaleRef` records the value the template was applied with (the studio
+   * writes it when applying a preset; presets seed 0.9). Without it — raw
+   * harness or legacy styles — the template renders exactly as before this
+   * feature and the slider stays classic-only. Once the user moves the slider
+   * away from the reference they own the mass: the MIN_DARK_MASS floor (a
+   * guard for untouched templates) steps aside, exactly like the classic
+   * renderer has no floor — the scanability meter and Fix scan take over.
+   */
+  const dotScaleRef =
+    typeof style.dotScaleRef === "number" &&
+    Number.isFinite(style.dotScaleRef) &&
+    style.dotScaleRef >= 0.3
+      ? style.dotScaleRef
+      : null;
+  const dotScaleValue = Number(style.dotScale ?? 0.9);
+  const dotTouched = dotScaleRef !== null && Math.abs(dotScaleValue - dotScaleRef) >= 0.005;
+  const dotWeight = dotTouched ? clamp(dotScaleValue / dotScaleRef, 0.35, 1.12) : 1;
   const targetMass = clamp(
-    level === "lean" ? Math.max(dir.mass, MIN_DARK_MASS + 0.08) : dir.mass,
-    MIN_DARK_MASS,
+    (level === "lean" ? Math.max(dir.mass, MIN_DARK_MASS + 0.08) : dir.mass) * dotWeight,
+    dotTouched ? 0.35 : MIN_DARK_MASS,
     MAX_DARK_MASS,
   );
   const shape = dir.shape;
@@ -637,18 +679,36 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const radius = (level === "lean" ? Math.min(dir.radius, 0.3) : dir.radius) * cell;
   const perCell = dir.geometry === "single";
   const inner = 1 - gapInk;
+
+  /**
+   * A line shape the user explicitly picked (Bars/Streak/Dash/Cross/Confetti)
+   * is rendered the way the classic QR renderer draws it — un-plated, at full
+   * cell size, standard stroke weight — instead of the template's mass
+   * system, which would bury it under a solid plate. Only a pick that
+   * *differs from the template's own shape* counts: presets seed the picker
+   * with the direction's shape, so an untouched picker leaves templates alone.
+   */
+  const userLine =
+    style.moduleShape !== undefined &&
+    style.moduleShape !== "square" &&
+    input.direction.shape !== style.moduleShape &&
+    LINE_SHAPES.has(style.moduleShape);
+  // The dot-size slider travels along line shapes too (down to 0.75×, never
+  // past the cell); an untouched slider renders them exactly full cell.
+  const lineScale =
+    (1 - gapInk) * (dotTouched ? clamp(dotScaleValue / dotScaleRef!, 0.75, 1) : 1);
   /**
    * Decorative silhouettes that cannot reach MIN_DARK_MASS even at full cell
    * size get a solid plate underneath: art on top, QR signal beneath. Anything
    * that can carry its own mass does, un-plated.
    */
-  const needsPlate = perCell && needsPlateFor(shape, inner);
+  const needsPlate = perCell && needsPlateFor(shape, inner) && !userLine && !dotTouched;
   /* The SHAPE RULE: a dark module must never become a tiny decorative dot.
    * Grouped geometry fills its cells and bridges the gaps, so the floor is
    * already met there; per-cell silhouettes either scale up to the floor or
    * ride on a plate that carries the mass for them. Either way the shape never
    * leaves its own cell — that is what keeps light modules light. */
-  const scale = perCellScale(shape, targetMass, gapInk, needsPlate);
+  const scale = userLine ? lineScale : perCellScale(shape, targetMass, gapInk, needsPlate);
 
   /* ---- data modules ----
    *
@@ -663,7 +723,9 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const geometry = level === "lean" && dir.geometry === "traces" ? "runs-both" : dir.geometry;
   const grouped = geometry !== "single";
   const links = grouped ? bridgeMask(grid, size, { ...dir, geometry }, level) : null;
-  const bridge = grouped && gapInk > 0.005;
+  // User-picked line shapes stay discrete modules (like the classic renderer)
+  // — a solid bridge between two streaks would smear them into a blob.
+  const bridge = grouped && gapInk > 0.005 && !userLine;
   const side = cell * scale * inner;
 
   for (let y = 0; y < size; y++) {
@@ -712,6 +774,19 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
           ]
         : [radius, radius, radius, radius];
 
+      // Streaks angle 45°, confetti takes a per-cell hash angle (same
+      // distribution the classic renderer uses), dashes alternate — matching
+      // what the picker icon promises.
+      const barRot =
+        paintShape === "bar"
+          ? shape === "diag"
+            ? -Math.PI / 4
+            : shape === "confetti"
+              ? ((hash2(x, y) % 360) * Math.PI) / 180
+              : shape === "dash"
+                ? (hash2(x, y) % 2 === 1 ? Math.PI / 2 : undefined)
+                : undefined
+          : undefined;
       paints.push({
         shape: paintShape,
         x: clipped.x,
@@ -723,8 +798,9 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
         rot:
           paintShape === "facet" || paintShape === "gem"
             ? ((hash2(x, y) % 4) * Math.PI) / 8
-            : undefined,
+            : (barRot ?? undefined),
         vertical: shape === "vbar",
+        barThick: userLine && paintShape === "bar" ? 0.56 : undefined,
         fill: fillFor(dir, inks, x, y, size),
         role: "data",
         gx: x,

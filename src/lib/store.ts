@@ -132,6 +132,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         imageUrl: preset.artUrl,
         style: {
           ...preset.style,
+          dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
           imageMode: preset.style.imageMode || "paint",
         },
         lastFixNotes: [],
@@ -159,6 +160,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       presetId: id,
       style: {
         ...preset.style,
+        dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
         imageMode: nextMode,
       },
       lastFixNotes: [],

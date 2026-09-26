@@ -17,7 +17,51 @@
  */
 
 import { MODULE_SHAPES } from "../types.ts";
-import type { ArtDirection, ArtShape, QrStyle } from "../types.ts";
+import type { ArtDirection, ArtFinder, ArtShape, EyeShape, QrStyle } from "../types.ts";
+
+/**
+ * Eye-frame picker → finder design. Templates own their finders (camera-
+ * validated), but an explicit non-default pick maps onto a WHOLE validated
+ * FINDER_STYLES design — the camera battery proves complete designs, not
+ * individual parameters, so we never hand-mix corner values. Only designs
+ * that pass the battery on (nearly) every one of the 81 templates are used:
+ * soft / cut / bracket (81/81) and halo (80/81). "square" is the preset seed
+ * placeholder ("no preference") and is never applied.
+ */
+const FINDER_TUNE: Partial<Record<EyeShape, ArtFinder>> = {
+  rounded: "soft",
+  "extra-rounded": "halo",
+  circle: "halo",
+  classy: "soft",
+  diamond: "cut",
+  leaf: "soft",
+  hex: "cut",
+  target: "halo",
+  ticks: "bracket",
+};
+
+/**
+ * Pupil picker → centre-ball silhouette. Only the three silhouettes the
+ * validated finder styles actually use (a diamond ball reads as eroded
+ * modules at the light gap and is deliberately unused).
+ */
+// Picker values that mean "no preference" for the art pipeline: "square" is
+// the preset seed placeholder, and "extra-rounded" is DEFAULT_STYLE's classic
+// default — styles built the classic way (and legacy saves) must keep
+// rendering the template's own finder.
+const NO_PREFERENCE_EYES: readonly EyeShape[] = ["square", "extra-rounded"];
+
+const BALL_TUNE: Partial<Record<EyeShape, "square" | "circle" | "octagon">> = {
+  rounded: "circle",
+  "extra-rounded": "circle",
+  circle: "circle",
+  classy: "octagon",
+  diamond: "octagon",
+  leaf: "circle",
+  hex: "octagon",
+  target: "circle",
+  ticks: "square",
+};
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -69,6 +113,17 @@ export function tuneDirection(dir: ArtDirection, style: QrStyle): ArtDirection {
   const dirShapeKnown = (MODULE_SHAPES as readonly { id: string }[]).some((m) => m.id === dir.shape);
   if (style.moduleShape && (dirShapeKnown || style.moduleShape !== "square")) {
     patch.shape = style.moduleShape as ArtShape;
+  }
+  // Eye / pupil picks: "square" (preset seed) and "extra-rounded" (the
+  // classic DEFAULT_STYLE default) both mean "no preference", so only a
+  // genuinely chosen shape overrides the template's camera-validated finder.
+  const eyeShape = style.eyeShape;
+  if (eyeShape && !NO_PREFERENCE_EYES.includes(eyeShape) && FINDER_TUNE[eyeShape]) {
+    patch.finderTune = FINDER_TUNE[eyeShape];
+  }
+  const ballShape = style.ballShape;
+  if (ballShape && !NO_PREFERENCE_EYES.includes(ballShape) && BALL_TUNE[ballShape]) {
+    patch.ballTune = BALL_TUNE[ballShape];
   }
   if (typeof style.moduleGap === "number" && Number.isFinite(style.moduleGap)) {
     patch.gap = clamp(style.moduleGap, 0, 0.18);

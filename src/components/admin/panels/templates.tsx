@@ -432,7 +432,13 @@ function TemplateEditorModal({
   );
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
-  const patchStyle = (p: Partial<QrStyle>) => setDraft((d) => ({ ...d, style: { ...d.style, ...p } }));
+  const patchStyle = (p: Partial<QrStyle>) =>
+    setDraft((d) => {
+      // Once the draft carries an art template, any edit arms the dot-size
+      // slider (dotScaleRef anchors "untouched" to the preset seed).
+      const hasArt = d.style.artDirection || p.artDirection;
+      return { ...d, style: { ...d.style, ...p, ...(hasArt ? { dotScaleRef: 0.9 } : {}) } };
+    });
 
   const previewPreset = {
     id: row.id,

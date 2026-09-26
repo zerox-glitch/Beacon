@@ -84,6 +84,13 @@ export interface QrStyle {
   /** Photo zoom: 1 = fit whole photo (no crop), >1 zooms into the centre, <1 shrinks. */
   photoZoom: number;
   dotScale: number;
+  /**
+   * The dotScale the active art template was applied with (written by the
+   * studio's applyPreset). The art pipeline uses it to tell "the user moved
+   * the dot-size slider" from "a style built without it" — without a ref,
+   * templates ignore dotScale entirely and render exactly as authored.
+   */
+  dotScaleRef?: number;
   contrast: number;
   logoScale: number;
   minVersion: number;
@@ -412,6 +419,14 @@ export interface ArtDirection {
   lod?: Partial<Record<ArtDetailLevel, ArtLodTweaks>>;
   /** Deterministic fallback used when validation cannot pass otherwise. */
   cameraSafe?: ArtLodTweaks;
+  /**
+   * Design-tab tuning: set when the user explicitly picks a non-default eye
+   * frame shape. Swaps the template's finder for another camera-validated
+   * FINDER_STYLES design (the picker's vocabulary maps onto the validated set).
+   */
+  finderTune?: ArtFinder;
+  /** Design-tab tuning: ball silhouette for an explicitly-picked pupil shape. */
+  ballTune?: "square" | "circle" | "octagon";
 }
 
 export interface QrStyleArtRef {
