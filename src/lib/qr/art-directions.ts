@@ -23,7 +23,7 @@ import type {
   Preset,
   QrStyle,
 } from "./types";
-import { DEFAULT_STYLE } from "./types";
+import { DEFAULT_STYLE, MODULE_SHAPES } from "./types.ts";
 
 /* ------------------------------------------------------------------ *
  * Colour math — the COLOR RULE
@@ -2323,16 +2323,28 @@ export function inkRepairReport(): { id: string; name: string; repairs: string[]
 export function artDirectionPresets(): Preset[] {
   return ART_DIRECTIONS.map((dir) => {
     const inks = inksFor(dir);
+    // The style mirrors the direction's resolved look so the Tune panel opens
+    // on the right values, and so `tuneDirection` (art-plan) can flow edits
+    // back into the painter as a no-op until the user touches a control.
+    const shapeInPicker = (MODULE_SHAPES as readonly { id: string }[]).some((m) => m.id === dir.shape);
+    const gradientSeed =
+      dir.gradient === "linear-x" || dir.gradient === "linear-y"
+        ? "linear"
+        : dir.gradient === "diagonal"
+          ? "diagonal"
+          : dir.gradient === "radial"
+            ? "radial"
+            : "none";
     const style: QrStyle = {
       ...DEFAULT_STYLE,
-      moduleShape: "square",
+      moduleShape: shapeInPicker ? (dir.shape as QrStyle["moduleShape"]) : "square",
       eyeShape: "square",
       ballShape: "square",
       fg: inks.stops[0]!,
       bg: inks.bg,
       eyeColor: inks.eye,
       ballColor: inks.ball,
-      gradientType: "none",
+      gradientType: gradientSeed,
       gradientTo: inks.stops[inks.stops.length - 1]!,
       quietZone: Math.max(3, dir.quietZone),
       moduleGap: dir.gap,

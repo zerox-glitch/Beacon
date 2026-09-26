@@ -207,6 +207,47 @@ function plusPolygon(x: number, y: number, w: number, h: number): number[] {
 }
 
 /**
+ * A plus rotated 45° — the "cross" module, as one simple 12-gon: four axis
+ * dips (the concave points between bars) plus the eight bar-end corners,
+ * ordered by angle so the outline stays star-shaped from the centre. Bar
+ * length/thickness mirror the standard renderer's cross (0.92 cell long,
+ * 0.48 thick) and the whole figure stays inside its own cell.
+ */
+function crossPolygon(x: number, y: number, w: number, h: number): number[] {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const m = Math.min(w, h);
+  const a = m * 0.24; // half bar thickness
+  const L = m * 0.46; // half bar length
+  const q = a * Math.SQRT2; // concave dip depth (distance from each bar axis)
+  const pts: [number, number][] = [
+    [cx, cy - q],
+    [cx + q, cy],
+    [cx, cy + q],
+    [cx - q, cy],
+  ];
+  // Two crossing bars: axis direction + perpendicular, each contributing its
+  // four end corners (both ends, both sides).
+  const bars: [readonly [number, number], readonly [number, number]][] = [
+    [[1, 1], [1, -1]],
+    [[1, -1], [1, 1]],
+  ];
+  for (const [u, n] of bars) {
+    const ux = u[0]! * Math.SQRT1_2;
+    const uy = u[1]! * Math.SQRT1_2;
+    const nx = n[0]! * Math.SQRT1_2;
+    const ny = n[1]! * Math.SQRT1_2;
+    for (const e of [1, -1] as const) {
+      for (const s of [1, -1] as const) {
+        pts.push([cx + e * L * ux + s * a * nx, cy + e * L * uy + s * a * ny]);
+      }
+    }
+  }
+  pts.sort((p1, p2) => Math.atan2(p1[1]! - cy, p1[0]! - cx) - Math.atan2(p2[1]! - cy, p2[0]! - cx));
+  return pts.flat();
+}
+
+/**
  * Reduce one paint to geometry. `gx`/`gy` (module coordinates) drive only
  * deterministic per-cell variation — never colour, never structure.
  */
@@ -253,11 +294,35 @@ export function shapePrim(paint: Paint): Prim {
     case "facet":
       return poly(facetPolygon(cx, cy, w, h, paint.rot ?? 0), 0);
     case "bar": {
-      const thickness = Math.min(w, h) * 0.52;
-      return paint.vertical
-        ? rr(cx - thickness / 2, y, thickness, h, thickness / 2)
-        : rr(x, cy - thickness / 2, w, thickness, thickness / 2);
+      const thickness = Math.min(w, h) * (paint.barThick ?? 0.52);
+      if (paint.rot === undefined) {
+        return paint.vertical
+          ? rr(cx - thickness / 2, y, thickness, h, thickness / 2)
+          : rr(x, cy - thickness / 2, w, thickness, thickness / 2);
+      }
+      // Rotated bar (Streak / Confetti): the slab's four corners swung about
+      // the cell centre; a little corner rounding keeps the soft end caps.
+      const len = paint.vertical ? h : w;
+      const ux = paint.vertical ? 0 : 1;
+      const uy = paint.vertical ? 1 : 0;
+      const nx = -uy;
+      const ny = ux;
+      const cos = Math.cos(paint.rot);
+      const sin = Math.sin(paint.rot);
+      const a = thickness / 2;
+      const half = len / 2;
+      const corners: [number, number][] = [
+        [ux * half + nx * a, uy * half + ny * a],
+        [ux * half - nx * a, uy * half - ny * a],
+        [-ux * half - nx * a, -uy * half - ny * a],
+        [-ux * half + nx * a, -uy * half + ny * a],
+      ];
+      const pts: number[] = [];
+      for (const [sx, sy] of corners) pts.push(cx + sx * cos - sy * sin, cy + sx * sin + sy * cos);
+      return poly(pts, thickness * 0.3);
     }
+    case "cross":
+      return poly(crossPolygon(x, y, w, h), Math.min(w, h) * 0.06);
     case "rrect":
     default:
       return rr(x, y, w, h, paint.corners ?? r);

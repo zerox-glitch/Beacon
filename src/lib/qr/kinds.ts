@@ -29,6 +29,55 @@ export interface KindMeta {
   field: keyof Payload;
 }
 
+/** Extra fields the destination dock renders under the primary one, so every
+ *  field of a multi-field type is visible above the QR (not hidden behind the
+ *  side panel). Mirrors the same store fields the panel edits — one state. */
+export interface DockField {
+  field: keyof Payload;
+  label: string;
+  placeholder: string;
+  type?: "text" | "password" | "tel" | "email" | "datetime-local";
+  /** "select" swaps the input for a compact dropdown (string values). */
+  options?: { value: string; label: string }[];
+  /** "check" renders a small checkbox (boolean values). */
+  check?: boolean;
+}
+
+export const DOCK_FIELDS: Partial<Record<PayloadKind, DockField[]>> = {
+  wifi: [
+    { field: "wifiPassword", label: "Password", placeholder: "Password", type: "password" },
+    {
+      field: "wifiType",
+      label: "Security",
+      placeholder: "Security",
+      options: [
+        { value: "WPA", label: "WPA/WPA2" },
+        { value: "WEP", label: "WEP" },
+        { value: "nopass", label: "Open" },
+      ],
+    },
+    { field: "wifiHidden", label: "Hidden network", placeholder: "", check: true },
+  ],
+  vcard: [
+    { field: "lastName", label: "Last name", placeholder: "Last name" },
+    { field: "org", label: "Company", placeholder: "Company" },
+    { field: "vphone", label: "Phone", placeholder: "Phone", type: "tel" },
+    { field: "vemail", label: "Email", placeholder: "you@example.com", type: "email" },
+    { field: "vurl", label: "Website", placeholder: "example.com" },
+  ],
+  event: [
+    { field: "eventLocation", label: "Location", placeholder: "Location" },
+    { field: "eventStart", label: "Starts", placeholder: "Starts", type: "datetime-local" },
+    { field: "eventEnd", label: "Ends", placeholder: "Ends", type: "datetime-local" },
+  ],
+  geo: [
+    { field: "lng", label: "Longitude", placeholder: "-122.48" },
+    { field: "geoLabel", label: "Pin label", placeholder: "Label (optional)" },
+  ],
+  sms: [{ field: "smsBody", label: "Message", placeholder: "Message (optional)" }],
+  whatsapp: [{ field: "whatsappText", label: "Message", placeholder: "Message (optional)" }],
+};
+
 export const KIND_META: KindMeta[] = [
   { id: "url", label: "Website", group: "primary", icon: Link2, hint: "Any https link", placeholder: "https://", field: "url" },
   { id: "wifi", label: "Wi-Fi", group: "primary", icon: Wifi, hint: "Join a network", placeholder: "Network name", field: "wifiSsid" },

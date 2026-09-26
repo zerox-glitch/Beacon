@@ -1,15 +1,14 @@
-import { Copy, Download, FolderOpen, ScanLine, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { FolderOpen, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { decodeClipboardImage, decodeFile, decodeImageSource } from "@/lib/qr/decode";
+import { ScanDecode } from "@/components/qr/scan-decode";
+import { classifyScan } from "@/lib/qr/scan-intent";
 import { useStudio } from "@/lib/store";
-import { cn } from "@/lib/utils";
 
 export function LibraryPanel() {
   return (
     <div className="flex flex-col gap-8">
       <HistorySection />
-      <DecoderSection />
+      <DecodeSection />
     </div>
   );
 }
@@ -90,179 +89,31 @@ function HistorySection() {
   );
 }
 
-function DecoderSection() {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [result, setResult] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [camOn, setCamOn] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
-  const patchPayload = useStudio((s) => s.patchPayload);
-  const setKind = useStudio((s) => s.setKind);
-
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  async function run(fn: () => Promise<string | null>) {
-    setBusy(true);
-    try {
-      const text = await fn();
-      setResult(text);
-      if (!text) toast.message("No QR found in that image");
-    } catch {
-      toast.error("Could not decode");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      streamRef.current = stream;
-      setCamOn(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      });
-    } catch {
-      toast.error("Camera is blocked in this browser");
-    }
-  }
-
-  function stopCamera() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCamOn(false);
-  }
-
-  async function snapCamera() {
-    const video = videoRef.current;
-    if (!video) return;
-    await run(() => decodeImageSource(video, video.videoWidth || 640, video.videoHeight || 480));
-  }
-
-  function useAsDestination() {
-    if (!result) return;
-    if (/^WIFI:/i.test(result)) {
-      setKind("wifi");
-    } else if (/^BEGIN:VCARD/i.test(result)) {
-      setKind("vcard");
-    } else if (/^mailto:/i.test(result)) {
-      setKind("email");
-    } else if (/^tel:/i.test(result)) {
-      setKind("phone");
-    } else if (/^https?:/i.test(result) || result.includes(".")) {
-      setKind("url");
-      patchPayload({ url: result });
-    } else {
-      setKind("text");
-      patchPayload({ text: result });
-      return;
-    }
-    if (/^https?:/i.test(result) || result.includes(".")) patchPayload({ url: result });
-    toast.success("Loaded as a new QR");
-  }
-
+function DecodeSection() {
   return (
-    <section>
-      <p className="mb-1 text-xs font-semibold tracking-wide text-fg">Decode a QR</p>
-      <p className="mb-3 text-[11px] leading-snug text-muted">
-        Runs locally with jsQR — same engine as Fix scan. Not a phone-camera test.
-      </p>
-      <div className="flex flex-wrap gap-1.5">
+    <ScanDecode
+      heading="Decode a QR"
+      hint="Runs locally with jsQR — same engine as Fix scan. Not a phone-camera test."
+      primary={(result) => (
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 text-xs font-semibold hover:bg-surface-hover"
+          onClick={() => loadScanned(result)}
+          className="inline-flex h-9 items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-bold text-accent-fg"
         >
-          <Upload className="size-3.5" />
-          Upload
+          Make a new QR
         </button>
-        <button
-          type="button"
-          onClick={() => run(decodeClipboardImage)}
-          className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 text-xs font-semibold hover:bg-surface-hover"
-        >
-          Paste
-        </button>
-        <button
-          type="button"
-          onClick={camOn ? stopCamera : startCamera}
-          className={cn(
-            "inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold",
-            camOn ? "border-accent bg-accent text-accent-fg" : "border-border-strong bg-surface hover:bg-surface-hover",
-          )}
-        >
-          <ScanLine className="size-3.5" />
-          {camOn ? "Stop camera" : "Camera"}
-        </button>
-      </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void run(() => decodeFile(f));
-          e.target.value = "";
-        }}
-      />
-      {camOn && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-border">
-          <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full bg-black object-cover" />
-          <button
-            type="button"
-            onClick={() => void snapCamera()}
-            className="h-10 w-full bg-accent text-xs font-bold text-accent-fg"
-          >
-            Capture & decode
-          </button>
-        </div>
       )}
-      {busy && <p className="mt-2 text-xs text-muted">Reading…</p>}
-      {result && (
-        <div className="mt-3 rounded-xl border border-border bg-elevated p-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Extracted</p>
-          <p className="break-all text-sm text-fg">{result}</p>
-          <div className="mt-2 flex gap-1.5">
-            <button
-              type="button"
-              className="inline-flex h-9 items-center gap-1 rounded-md border border-border px-2.5 text-[11px] font-semibold"
-              onClick={() => {
-                void navigator.clipboard.writeText(result);
-                toast.success("Copied");
-              }}
-            >
-              <Copy className="size-3.5" />
-              Copy
-            </button>
-            {/^https?:/i.test(result) && (
-              <a
-                href={result}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-9 items-center gap-1 rounded-md border border-border px-2.5 text-[11px] font-semibold"
-              >
-                <Download className="size-3.5" />
-                Open
-              </a>
-            )}
-            <button
-              type="button"
-              className="inline-flex h-9 items-center rounded-md bg-accent px-2.5 text-[11px] font-bold text-accent-fg"
-              onClick={useAsDestination}
-            >
-              Make a new QR
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
+    />
   );
 }
+
+/** Scan → typed fields: the studio fills the matching use-case form, not just a blob. */
+function loadScanned(result: string) {
+  const intent = classifyScan(result);
+  const setKind = useStudio.getState().setKind;
+  const patchPayload = useStudio.getState().patchPayload;
+  setKind(intent.kind);
+  patchPayload(intent);
+  toast.success("Loaded as a new QR");
+}
+

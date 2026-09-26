@@ -1,6 +1,7 @@
 import { tryEncodePayload } from "../encode";
 import { buildPayload } from "../payload";
 import { loadImage, renderQr } from "../render";
+import type { FrameId } from "../frames";
 import { decodeScaled, inspectRenderedQr, type ScanReport } from "../scan-engine";
 import type { Payload, QrStyle } from "../types";
 import { relaxLadder } from "./relax";
@@ -36,7 +37,7 @@ function describe(base: QrStyle, patch: Partial<QrStyle>): string[] {
   if (typeof p.dotScale === "number") {
     bits.push(p.dotScale > (s.dotScale as number) ? "heavier dots" : "lighter dots");
   }
-  if (p.moduleShape && p.moduleShape !== s.moduleShape) bits.push("square modules");
+  if (p.moduleShape && p.moduleShape !== s.moduleShape) bits.push("switched to square modules (last resort)");
   if (typeof p.moduleGap === "number" && p.moduleGap < (s.moduleGap as number)) bits.push("removed gaps");
   if (typeof p.quietZone === "number" && p.quietZone > (s.quietZone as number)) bits.push("wider quiet zone");
   if (typeof p.artisticStrength === "number" && p.artisticStrength < (s.artisticStrength as number)) {
@@ -126,17 +127,38 @@ export async function optimizeScan(
           .slice(1)
           .map((rung) => ({ ...s0, ...rung.patch }))
       : [];
-    // Style-only ladder: dot weight → colors → structure.
-    const a = {
+    // Style-only ladder. Keep the user's chosen module shape as long as
+    // possible: the old ladder's first rung flattened every shape to squares,
+    // so "Fix scan" silently replaced Streak/Cross/Confetti with squares.
+    // The shape is only swapped once it has failed every scan-safe rung —
+    // and the swap keeps the user's palette (a full-mass square decodes with
+    // almost any colours), so a last-resort fix changes the silhouette
+    // instead of repainting the whole code. Flattened ink is the absolute
+    // final rung, after shape + palette are both off the table.
+    const keep1 = {
       ...s0,
       dotScale: Math.min(1, Math.max(s0.dotScale, 0.92)),
-      moduleShape: "square" as const,
       moduleGap: 0,
       quietZone: Math.max(s0.quietZone, 3),
+      contrast: Math.max(s0.contrast, 0.9),
     };
-    const b = { ...a, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
-    const c = { ...b, ecc: "H" as const, maskPattern: -1, eyeShape: "square" as const };
-    steps = [...artSteps, a, b, c];
+    const keep2 = { ...keep1, dotScale: 1, contrast: 1, maskPattern: -1 };
+    // Shape kept: maximum redundancy first, then flattened ink — colour-true
+    // rungs always get their chance before the palette is touched.
+    const keep3 = { ...keep2, ecc: "H" as const };
+    const keep4 = { ...keep3, fg: "#101014", eyeColor: "#101014", ballColor: "#101014", bg: "#f6f1e7" };
+    // Shape dropped, palette kept — then palette dropped, square eyes.
+    const sq1 = { ...keep2, moduleShape: "square" as const };
+    const sq2 = { ...sq1, ecc: "H" as const };
+    const sq3 = {
+      ...sq2,
+      fg: "#101014",
+      eyeColor: "#101014",
+      ballColor: "#101014",
+      bg: "#f6f1e7",
+      eyeShape: "square" as const,
+    };
+    steps = [...artSteps, keep1, keep2, keep3, keep4, sq1, sq2, sq3];
   } else {
     // Photo ladder (PhotoQrV2): safer kernel candidates first — they keep the
     // photo recognizable while growing the guaranteed QR signal — then
@@ -218,6 +240,7 @@ export async function autoSafetyBoost(
     art?: HTMLImageElement | null;
     logo?: HTMLImageElement | null;
     expected?: string | null;
+    frame?: FrameId;
   },
 ): Promise<{ boost: number; report: ScanReport }> {
   const enc = tryEncodePayload(payload, style);
@@ -241,6 +264,7 @@ export async function autoSafetyBoost(
       pixelSize: opts.pixelSize,
       art: opts.art,
       logo: opts.logo,
+      frame: opts.frame,
       exportScale: true,
       kernelBoost: boost,
     });

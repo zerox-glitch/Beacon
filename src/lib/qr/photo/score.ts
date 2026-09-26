@@ -57,16 +57,26 @@ export function candidateParams(
   // §14 adaptive hardening at small matrices: ≤33 modules carry little ECC
   // slack, so the surround keeps more safe polarity and kernels grow.
   const smallMatrix = (input.modules ?? qrSizeOf(input)) <= 33;
+  // "Photo QR" (paint) is sold on the picture reading from a distance:
+  // push the surround toward photo-true so dots never swamp the image.
+  // The camera battery still vetoes it per photo when it can't scan.
+  const photoModeBoost = input.mode === "photo" ? 1.25 : 1;
   return {
     render: {
+      // dotScale is the user's "Dot size" slider — give it real travel so
+      // smaller dots let more of the picture's surround show through.
       kernelMin: clamp(
-        adapted.kernelMin + (smallMatrix ? 0.05 : 0) + (input.dotScale - 0.68) * 0.12 + boost * 0.15,
+        adapted.kernelMin + (smallMatrix ? 0.05 : 0) + (input.dotScale - 0.68) * 0.5 + boost * 0.15,
         0.3,
         0.88,
       ),
       kernelMax: Math.max(0.4, adapted.kernelMax - (smallMatrix ? 0.06 : 0) - boost * 0.12),
       toneGain: adapted.toneGain,
-      surroundPhoto: clamp(adapted.surroundPhoto * (smallMatrix ? 0.7 : 1) * (1 - boost * 0.35), 0, 1),
+      surroundPhoto: clamp(
+        adapted.surroundPhoto * photoModeBoost * (smallMatrix ? 0.7 : 1) * (1 - boost * 0.35),
+        0,
+        1,
+      ),
       darkT,
       lightT,
       chroma: clamp(input.chroma, 0.1, 1),

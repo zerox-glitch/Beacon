@@ -39,7 +39,8 @@ import { clamp, hash2, pick, wobble } from "./noise";
 import { applyRung, relaxLadder } from "./relax";
 import type { EncodedQr } from "../encode";
 import { cellRole, isDark } from "../structure";
-import type { ArtDetailLevel, ArtDirection, ArtFinder, ArtShape, QrStyle } from "../types";
+import { tuneDirection } from "./tune";
+import type { ArtDetailLevel, ArtDirection, ArtFinder, ArtShape, EyeShape, QrStyle } from "../types";
 
 /* ------------------------------------------------------------------ *
  * Primitives
@@ -70,6 +71,7 @@ export type PaintShape =
   | "pebble"
   | "gem"
   | "facet"
+  | "cross"
   | "bar";
 
 export type PaintRole =
@@ -101,6 +103,8 @@ export interface Paint {
   pts?: number[];
   /** `bar` orientation. */
   vertical?: boolean;
+  /** `bar` thickness as a fraction of the cell (user-picked line shapes ride the standard renderer's weight). */
+  barThick?: number;
   fill: FillSpec;
   role: PaintRole;
   /** Module coordinates this paint came from — deterministic variation only. */
@@ -121,6 +125,13 @@ export interface ArtPlan {
   directionName: string;
   /** The direction as actually resolved for this size (post-LOD). */
   resolved: ArtDirection;
+  /**
+   * True when the data modules carry a shape the user explicitly picked for
+   * this template. The mass floor then no longer guards the plan — the user
+   * owns the module mass (exactly like the classic renderer, which has no
+   * floor); the scanability meter and Fix scan report what a camera sees.
+   */
+  userShape: boolean;
   paints: Paint[];
   /** Ink coverage of a dark data module (0–1). */
   darkMass: number;
@@ -140,11 +151,35 @@ export interface ArtPlanInput {
   cameraSafe?: boolean;
 }
 
+/**
+ * Classic-parity geometry for a user-picked module shape in a template. The
+ * values mirror `drawModuleShape` in render.ts (the classic path) so a pick
+ * looks the same in templates as in the plain QR: the template's own corner
+ * radius would otherwise flatten "Round"/"Soft" into its native square.
+ */
+const USER_SHAPE_RADIUS: Partial<Record<ArtShape, number>> = {
+  square: 0,
+  rounded: 0.28,
+  squircle: 0.42,
+  fluid: 0.52,
+  leaf: 0.62,
+  petal: 0.62,
+  // "Burst" is a petal too — without this entry its radius fell back to 0
+  // and every burst petal collapsed into a plain rectangle.
+  radial: 0.62,
+};
+const USER_SHAPE_CORNERS: Partial<Record<ArtShape, [number, number, number, number]>> = {
+  // Classic "classy": two large diagonal corners.
+  classy: [0, 0.55, 0, 0.55],
+};
+
 /** Map a direction's module shape onto the painter vocabulary. */
 export function paintShapeFor(shape: ArtShape): PaintShape {
   switch (shape) {
     case "dots":
       return "circle";
+    case "cross":
+      return "cross";
     case "diamond":
       return "diamond";
     case "hex":
@@ -175,8 +210,6 @@ export function paintShapeFor(shape: ArtShape): PaintShape {
       return "petal";
     case "confetti":
       return "bar";
-    case "cross":
-      return "plus";
     case "radial":
       return "petal";
     case "bubbles":
@@ -397,7 +430,10 @@ function needsPlateFor(shape: ArtShape, inner: number): boolean {
 function perCellScale(shape: ArtShape, targetMass: number, gap: number, plated: boolean): number {
   const maxScale = 1 - gap;
   if (plated) return maxScale;
-  return clamp(Math.sqrt(targetMass / coverageOf(shape)), 0.85, maxScale);
+  // 0.7 (not 0.85): an untouched template's targetMass floor (0.78) keeps
+  // its scale above 0.88, so the looser bound only ever shows when the user
+  // explicitly shrinks their dots — then it is the slider doing its job.
+  return clamp(Math.sqrt(targetMass / coverageOf(shape)), 0.7, maxScale);
 }
 
 /* ------------------------------------------------------------------ *
@@ -462,6 +498,142 @@ const FINDER_STYLES: Record<ArtFinder, FinderStyle> = {
   cut: { outerR: 0, gapR: 0, ball: "square", chamfer: 0.4 },
 };
 
+/**
+ * One silhouette layer of the classic eye — the exact geometry
+ * `drawEye`/`drawLayer` in render.ts paint for plain QRs (and the picker
+ * icons preview): square, rounded (0.18), extra-rounded (0.32), circle,
+ * diamond, hex (0.52 radius), classy (two diagonal corners, 0.38), leaf
+ * (other diagonal pair, 0.42), ticks (0.18 rounded). Radii scale with the
+ * LAYER's own size, so the 7×7 / 5×5 / 3×3 layers keep the classic ratios.
+ */
+function pushEyeLayer(
+  out: Paint[],
+  x: number,
+  y: number,
+  sz: number,
+  shape: EyeShape,
+  fill: FillSpec,
+  role: PaintRole,
+): void {
+  if (shape === "circle") {
+    out.push({ shape: "circle", x, y, w: sz, h: sz, fill, role, gx: 0, gy: 0 });
+    return;
+  }
+  if (shape === "diamond") {
+    const cx = x + sz / 2;
+    const cy = y + sz / 2;
+    out.push({
+      shape: "poly",
+      x,
+      y,
+      w: sz,
+      h: sz,
+      pts: [cx, y, x + sz, cy, cx, y + sz, x, cy],
+      fill,
+      role,
+      gx: 0,
+      gy: 0,
+    });
+    return;
+  }
+  if (shape === "hex") {
+    const cx = x + sz / 2;
+    const cy = y + sz / 2;
+    const r = sz * 0.52;
+    const pts: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      pts.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    out.push({ shape: "poly", x, y, w: sz, h: sz, pts, fill, role, gx: 0, gy: 0 });
+    return;
+  }
+  let c: [number, number, number, number];
+  switch (shape) {
+    case "square":
+      c = [0, 0, 0, 0];
+      break;
+    case "extra-rounded":
+      c = [sz * 0.32, sz * 0.32, sz * 0.32, sz * 0.32];
+      break;
+    case "classy":
+      c = [0, sz * 0.38, 0, sz * 0.38];
+      break;
+    case "leaf":
+      c = [sz * 0.42, 0, sz * 0.42, 0];
+      break;
+    case "target":
+      c = [sz * 0.5, sz * 0.5, sz * 0.5, sz * 0.5];
+      break;
+    default:
+      c = [sz * 0.18, sz * 0.18, sz * 0.18, sz * 0.18];
+  }
+  out.push({ shape: "rrect", x, y, w: sz, h: sz, corners: c, fill, role, gx: 0, gy: 0 });
+}
+
+/**
+ * A user-picked eye + pupil, drawn with the classic three-layer system:
+ * 7×7 frame silhouette, 5×5 gap silhouette, 3×3 ball silhouette — identical
+ * to `drawEye` in render.ts, so the QR matches the picker icons and the
+ * mobile app. The (frame, ball) pair arrives already resolved through the
+ * per-template camera battery (tuneDirection → safeFinder), which is why
+ * "weird" frames (diamond/hex corners) only ever appear where they decode.
+ * `target` is the true circular ring (the classic's Target special case,
+ * which carries a round ball); `ticks` adds the four cross-hair marks.
+ */
+function silhouetteFinder(
+  frame: EyeShape,
+  ball: EyeShape | undefined,
+  inks: ResolvedInks,
+  ox: number,
+  oy: number,
+  cell: number,
+  corner: "tl" | "tr" | "bl",
+): Paint[] {
+  const s = cell * 7;
+  const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
+  const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
+  const gapFill: FillSpec = { kind: "solid", stops: [inks.bg] };
+  const out: Paint[] = [];
+
+  // Paper the whole 8×8 island (finder + separator) first, so no body ink can
+  // bleed into the one-module light gap and the quiet zone stays clean.
+  out.push({
+    shape: "rrect",
+    x: ox - (corner === "tr" ? cell : 0),
+    y: oy - (corner === "bl" ? cell : 0),
+    w: cell * 8,
+    h: cell * 8,
+    r: 0,
+    fill: gapFill,
+    role: "finder-gap",
+    gx: 0,
+    gy: 0,
+  });
+
+  if (frame === "target") {
+    out.push({ shape: "circle", x: ox, y: oy, w: s, h: s, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "circle", x: ox + cell, y: oy + cell, w: cell * 5, h: cell * 5, fill: gapFill, role: "finder-gap", gx: 0, gy: 0 });
+    out.push({ shape: "circle", x: ox + cell * 2, y: oy + cell * 2, w: cell * 3, h: cell * 3, fill: ballFill, role: "finder", gx: 0, gy: 0 });
+    return out;
+  }
+
+  const ballShape = ball ?? "square";
+  pushEyeLayer(out, ox, oy, s, frame, eyeFill, "finder");
+  pushEyeLayer(out, ox + cell, oy + cell, cell * 5, frame, gapFill, "finder-gap");
+  pushEyeLayer(out, ox + cell * 2, oy + cell * 2, cell * 3, ballShape, ballFill, "finder");
+
+  if (frame === "ticks") {
+    const t = cell * 1.35;
+    const r = t * 0.3;
+    out.push({ shape: "rrect", x: ox + s / 2 - t / 2, y: oy, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox + s / 2 - t / 2, y: oy + s - t, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox, y: oy + s / 2 - t / 2, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+    out.push({ shape: "rrect", x: ox + s - t, y: oy + s / 2 - t / 2, w: t, h: t, r, fill: eyeFill, role: "finder", gx: 0, gy: 0 });
+  }
+  return out;
+}
+
 function finderPaints(
   dir: ArtDirection,
   inks: ResolvedInks,
@@ -472,7 +644,15 @@ function finderPaints(
   level: ArtDetailLevel,
 ): Paint[] {
   const s = cell * 7;
-  const fs: FinderStyle = FINDER_STYLES[level === "lean" ? "solid" : dir.finder] ?? FINDER_STYLES.solid;
+  // Design-tab eye/pupil picks (explicit): the classic 10-silhouette system,
+  // battery-resolved per template by tuneDirection. At "lean" level the
+  // camera-safe solid finder wins, as before.
+  if (level !== "lean" && dir.finderFrame) {
+    return silhouetteFinder(dir.finderFrame, dir.finderBall, inks, ox, oy, cell, corner);
+  }
+  // The template's own finder, as authored (or solid at lean).
+  const baseFinder: ArtFinder = level === "lean" ? "solid" : dir.finder;
+  const fs: FinderStyle = FINDER_STYLES[baseFinder] ?? FINDER_STYLES.solid;
   const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
   const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
   const gapFill: FillSpec = { kind: "solid", stops: [inks.bg] };
@@ -594,7 +774,10 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const rungs = relaxLadder({ ...style, artDirection: input.direction.id });
   const rung = rungs[Math.min(rungs.length - 1, Math.max(0, input.relax ?? 0))];
   const relaxed = rung ? applyRung(input.direction, rung) : { dir: input.direction, cameraSafe: false };
-  const dir = resolveDirection(relaxed.dir, detailLevelFor(ppmOf(px, qr.size, qz0)), {
+  // Tune edits enter BEFORE LOD resolution: the relax ladder exists to
+  // simplify (and thereby protect) a code under stress, so at low detail
+  // levels its tweaks still win over a user-picked shape.
+  const dir = resolveDirection(tuneDirection(relaxed.dir, style), detailLevelFor(ppmOf(px, qr.size, qz0)), {
     cameraSafe: Boolean(input.cameraSafe) || relaxed.cameraSafe,
   });
   const inks = inksFor(dir);
@@ -623,28 +806,93 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const size = qr.size;
   const grid = darkDataCells(qr);
   const gapInk = clamp(dir.gap * (level === "lean" ? 0.4 : 1), 0, 0.1);
+  /**
+   * The Design-tab "Dot size" slider drives module mass in templates too.
+   * `dotScaleRef` records the value the template was applied with (the studio
+   * writes it when applying a preset; presets seed 0.9). Without it — raw
+   * harness or legacy styles — the template renders exactly as before this
+   * feature and the slider stays classic-only. Once the user moves the slider
+   * away from the reference they own the mass: the MIN_DARK_MASS floor (a
+   * guard for untouched templates) steps aside, exactly like the classic
+   * renderer has no floor — the scanability meter and Fix scan take over.
+   */
+  const dotScaleRef =
+    typeof style.dotScaleRef === "number" &&
+    Number.isFinite(style.dotScaleRef) &&
+    style.dotScaleRef >= 0.3
+      ? style.dotScaleRef
+      : null;
+  const dotScaleValue = Number(style.dotScale ?? 0.9);
+  const dotTouched = dotScaleRef !== null && Math.abs(dotScaleValue - dotScaleRef) >= 0.005;
+  const dotWeight = dotTouched ? clamp(dotScaleValue / dotScaleRef, 0.35, 1.12) : 1;
   const targetMass = clamp(
-    level === "lean" ? Math.max(dir.mass, MIN_DARK_MASS + 0.08) : dir.mass,
-    MIN_DARK_MASS,
+    (level === "lean" ? Math.max(dir.mass, MIN_DARK_MASS + 0.08) : dir.mass) * dotWeight,
+    dotTouched ? 0.35 : MIN_DARK_MASS,
     MAX_DARK_MASS,
   );
-  const shape = dir.shape;
+  /**
+   * A module shape the user explicitly picked for this template. Such a pick
+   * is rendered the way the classic QR renderer draws it — un-plated, at full
+   * cell size, classic corner radii — instead of the template's mass system,
+   * which would bury low-coverage silhouettes (diamond, star, plus…) under a
+   * solid same-colour plate and make the pick look like the template's own
+   * shape.
+   *
+   * An actual Design-tab click (the `modulePicked` marker) ALWAYS counts —
+   * even when the click re-selects the shape the template was seeded with.
+   * Presets pre-highlight their own shape in the picker, so without the
+   * marker rule that click is a silent no-op: the QR keeps the template's
+   * mass-scaled rendering of the same silhouette (tiny traces/specks on some
+   * templates) and Fix scan agrees it scans, so nothing ever visibly happens.
+   * Without a click, only a value that differs from the direction's own
+   * authored shape counts (the "square" seed is a no-preference placeholder),
+   * so untouched pickers and raw harness styles leave templates alone.
+   */
+  const userShape =
+    style.moduleShape !== undefined &&
+    (style.modulePicked === true ||
+      (style.moduleShape !== "square" && input.direction.shape !== style.moduleShape));
+  // The pick survives EVERY rung — including the camera-safe last resort,
+  // whose shape fallback would otherwise swap it back to the template's own
+  // silhouette and leave the dot picker looking dead after Fix scan. The
+  // pick is drawn un-plated at full cell (its mass is the user's choice),
+  // and Fix scan's real levers (gaps, quiet zone, ECC, contrast) still apply.
+  const shape: ArtShape = userShape ? (style.moduleShape as ArtShape) : dir.shape;
   const paintShape = paintShapeFor(shape);
   const radius = (level === "lean" ? Math.min(dir.radius, 0.3) : dir.radius) * cell;
   const perCell = dir.geometry === "single";
   const inner = 1 - gapInk;
+
+  /**
+   * A module shape the user explicitly picked for this template (differs from
+   * the direction's own authored shape; the "square" seed placeholder counts
+   * as a pick only when the Design tab recorded an actual click). Such a pick
+   * is rendered the way the classic QR renderer draws it — un-plated, at full
+   * cell size, classic corner radii — instead of the template's mass system,
+   * which would bury low-coverage silhouettes (diamond, star, plus…) under a
+   * solid same-colour plate and make the pick look like the template's own
+   * shape. Only a pick that *differs from the template's own shape* counts:
+   * presets seed the picker with the direction's shape, so an untouched
+   * picker leaves templates alone.
+   */
+  // The dot-size slider travels along user picks too (down to 0.75×, never
+  // past the cell); an untouched slider renders them exactly full cell.
+  const userScale =
+    (1 - gapInk) * (dotTouched ? clamp(dotScaleValue / dotScaleRef!, 0.75, 1) : 1);
   /**
    * Decorative silhouettes that cannot reach MIN_DARK_MASS even at full cell
    * size get a solid plate underneath: art on top, QR signal beneath. Anything
-   * that can carry its own mass does, un-plated.
+   * that can carry its own mass does, un-plated. A user pick owns its own
+   * mass (like the classic renderer, which has no floor) — the scanability
+   * meter and Fix scan take over.
    */
-  const needsPlate = perCell && needsPlateFor(shape, inner);
+  const needsPlate = perCell && needsPlateFor(shape, inner) && !userShape && !dotTouched;
   /* The SHAPE RULE: a dark module must never become a tiny decorative dot.
    * Grouped geometry fills its cells and bridges the gaps, so the floor is
    * already met there; per-cell silhouettes either scale up to the floor or
    * ride on a plate that carries the mass for them. Either way the shape never
    * leaves its own cell — that is what keeps light modules light. */
-  const scale = perCellScale(shape, targetMass, gapInk, needsPlate);
+  const scale = userShape ? userScale : perCellScale(shape, targetMass, gapInk, needsPlate);
 
   /* ---- data modules ----
    *
@@ -659,7 +907,9 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const geometry = level === "lean" && dir.geometry === "traces" ? "runs-both" : dir.geometry;
   const grouped = geometry !== "single";
   const links = grouped ? bridgeMask(grid, size, { ...dir, geometry }, level) : null;
-  const bridge = grouped && gapInk > 0.005;
+  // User-picked shapes stay discrete modules (like the classic renderer) —
+  // a solid bridge between two diamonds would smear them into a blob.
+  const bridge = grouped && gapInk > 0.005 && !userShape;
   const side = cell * scale * inner;
 
   for (let y = 0; y < size; y++) {
@@ -667,13 +917,14 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
       if (!grid[y]![x]) continue;
           const run: Run = { cells: [[x, y]], x0: x, y0: y, x1: x, y1: y };
       const inset = (cell - side) / 2;
-      const box = distort(
-        { x: origin + x * cell + inset, y: origin + y * cell + inset, w: side, h: side },
-        run,
-        dir,
-        cell,
-        level,
-      );
+      // A user pick is drawn the way the classic renderer draws it — clean,
+      // uniform geometry. The template's distortion (jitter/taper/wobble/
+      // bands/steps) is part of the template's own art and would shrink,
+      // nudge or band the picked silhouette cell by cell, which is exactly
+      // the "weird shapes on some presets" failure: the same pick looks fine
+      // on a `none`-distortion template and ragged on a banded one.
+      const baseBox = { x: origin + x * cell + inset, y: origin + y * cell + inset, w: side, h: side };
+      const box = userShape ? baseBox : distort(baseBox, run, dir, cell, level);
       const clipped = clampToBody(box, origin, origin, origin + size * cell, origin + size * cell);
 
       if (needsPlate) {
@@ -708,19 +959,62 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
           ]
         : [radius, radius, radius, radius];
 
+      // Streaks angle 45°, confetti takes a per-cell hash angle (same
+      // distribution the classic renderer uses), dashes alternate — matching
+      // what the picker icon promises.
+      const barRot =
+        paintShape === "bar"
+          ? shape === "diag"
+            ? -Math.PI / 4
+            : shape === "confetti"
+              ? ((hash2(x, y) % 360) * Math.PI) / 180
+              : shape === "dash"
+                ? (hash2(x, y) % 2 === 1 ? Math.PI / 2 : undefined)
+                : undefined
+          : undefined;
+      // Classic "Bubbles": a per-cell hash radius (0.26–0.48 of the cell,
+      // exactly the classic renderer's range) — the plan carries the box.
+      let bx0 = clipped.x;
+      let by0 = clipped.y;
+      let bw0 = clipped.w;
+      let bh0 = clipped.h;
+      if (userShape && shape === "bubbles") {
+        const b = Math.min(side, clipped.w, clipped.h) * (0.52 + ((hash2(x, y) % 64) / 64) * 0.44);
+        bx0 = clipped.x + (clipped.w - b) / 2;
+        by0 = clipped.y + (clipped.h - b) / 2;
+        bw0 = bh0 = b;
+      }
+      // A user pick takes the classic renderer's own geometry (corner radius
+      // / per-corner radii) — the template's radius would flatten Round/Soft
+      // into its native square, and the pick would look like nothing changed.
+      const uc = userShape ? USER_SHAPE_CORNERS[shape] : undefined;
+      const userCorners: [number, number, number, number] | undefined = uc
+        ? [uc[0]! * cell, uc[1]! * cell, uc[2]! * cell, uc[3]! * cell]
+        : undefined;
+      const userR = userShape ? (USER_SHAPE_RADIUS[shape] ?? 0) * cell : radius;
       paints.push({
         shape: paintShape,
-        x: clipped.x,
-        y: clipped.y,
-        w: clipped.w,
-        h: clipped.h,
-        r: radius,
-        corners: grouped ? corners : undefined,
+        x: bx0,
+        y: by0,
+        w: bw0,
+        h: bh0,
+        r: userR,
+        // A user pick keeps ONE uniform corner profile across the whole code
+        // (the classic look). The neighbour-aware corners below would square
+        // off every cell that touches a run — jagged half-rounded blobs.
+        corners:
+          userCorners ??
+          (userShape
+            ? [userR, userR, userR, userR]
+            : grouped
+              ? corners
+              : undefined),
         rot:
           paintShape === "facet" || paintShape === "gem"
             ? ((hash2(x, y) % 4) * Math.PI) / 8
-            : undefined,
+            : (barRot ?? undefined),
         vertical: shape === "vbar",
+        barThick: userShape && paintShape === "bar" ? 0.56 : undefined,
         fill: fillFor(dir, inks, x, y, size),
         role: "data",
         gx: x,
@@ -890,6 +1184,7 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
     directionId: dir.id,
     directionName: dir.name,
     resolved: dir,
+    userShape,
     paints,
     darkMass,
     lightMark,
@@ -936,7 +1231,11 @@ export function auditPlan(plan: ArtPlan): PlanAudit {
     }
   }
   if (!quietZoneClean) problems.push("artwork crosses into the quiet zone");
-  if (plan.darkMass < MIN_DARK_MASS - 0.02) {
+  // The mass floor guards untouched templates; a user-picked shape owns its
+  // own mass (like the classic renderer) and is judged by the camera battery
+  // instead — otherwise every low-coverage pick (Star, Cross, Bubbles…) would
+  // trip the audit and push Fix scan to walk the whole ladder for no reason.
+  if (!plan.userShape && plan.darkMass < MIN_DARK_MASS - 0.02) {
     problems.push(`dark modules carry only ${(plan.darkMass * 100).toFixed(0)}% mass`);
   }
   if (plan.lightMark > MAX_LIGHT_MARK + 0.001) {

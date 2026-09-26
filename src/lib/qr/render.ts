@@ -1,5 +1,6 @@
 import { QrCodeDataType } from "uqr";
-import { renderArtisticQr } from "./art-engine";
+import { atlasFor, renderArtisticQr } from "./art-engine";
+import { drawFrame, frameBandFor, type FrameId } from "./frames";
 import { getArtDirection } from "./art-directions";
 import { buildArtPlan } from "./art/art-plan";
 import { paintArtPlan } from "./art/paint";
@@ -188,7 +189,7 @@ function strokeBar(
   ctx.restore();
 }
 
-function drawModuleShape(
+export function drawModuleShape(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -218,10 +219,12 @@ function drawModuleShape(
       ctx.fill();
       return;
     case "hbar":
-      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, 0);
+      // Bar shapes carry their own ink — keep them heavy enough for phone
+      // cameras (thin strokes dither away at 320px downscales).
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.56, 0);
       return;
     case "vbar":
-      strokeBar(ctx, cx, cy, s * 0.96, s * 0.48, Math.PI / 2);
+      strokeBar(ctx, cx, cy, s * 0.96, s * 0.56, Math.PI / 2);
       return;
     case "diamond":
       ctx.beginPath();
@@ -276,21 +279,21 @@ function drawModuleShape(
     case "confetti": {
       const angle = ((h % 360) * Math.PI) / 180;
       const len = s * (0.66 + ((h >>> 9) % 28) / 100);
-      strokeBar(ctx, cx, cy, len, s * 0.38, angle);
+      strokeBar(ctx, cx, cy, len, s * 0.5, angle);
       return;
     }
     case "dash": {
       const horizontal = h % 2 === 0;
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.44, horizontal ? 0 : Math.PI / 2);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.52, horizontal ? 0 : Math.PI / 2);
       return;
     }
     case "cross": {
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.38, Math.PI / 4);
-      strokeBar(ctx, cx, cy, s * 0.95, s * 0.38, -Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.5, Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 0.95, s * 0.5, -Math.PI / 4);
       return;
     }
     case "diag": {
-      strokeBar(ctx, cx, cy, s * 1.02, s * 0.36, Math.PI / 4);
+      strokeBar(ctx, cx, cy, s * 1.02, s * 0.5, Math.PI / 4);
       return;
     }
     case "radial": {
@@ -381,7 +384,7 @@ function drawLayer(
   ctx.fill();
 }
 
-function drawEye(
+export function drawEye(
   ctx: CanvasRenderingContext2D,
   ox: number,
   oy: number,
@@ -428,10 +431,6 @@ function drawEye(
     roundedRect(ctx, ox + s - t, oy + s / 2 - t / 2, t, t, r, r, r, r);
     ctx.fill();
   }
-}
-
-function clamp(n: number, a: number, b: number): number {
-  return Math.min(b, Math.max(a, n));
 }
 
 function luma(r: number, g: number, b: number): number {
@@ -492,6 +491,176 @@ export function prepareCanvas(canvas: HTMLCanvasElement, px: number): CanvasRend
   return ctx;
 }
 
+/**
+ * CLEAN photo mode — the "poster" treatment: the photograph carries the
+ * frame, a crisp module layer plus white finder plates float on top. Unlike
+ * the weave engines nothing is sampled from the photo into the modules, so
+ * contrast (and scan rate) is dominated by the template, not the picture.
+ * `imageOpacity` fades the photo; a soft auto-scrim keeps the dots readable
+ * on bright images.
+ */
+function renderCleanPhotoQr(
+  ctx: CanvasRenderingContext2D,
+  qr: EncodedQr,
+  style: QrStyle,
+  art: HTMLImageElement,
+  origin: number,
+  body: number,
+  cell: number,
+  px: number,
+  fill: string | CanvasGradient,
+) {
+  const bgRgb = parseHex(style.bg);
+  const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  const paper = bgLum >= 0.42 ? style.bg : "#f3eee6";
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, px, px);
+
+  // Photo, letterboxed over the whole frame like the studio stage, then a
+  // gentle scrim so light dots never fight a bright picture.
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.12, Math.min(1, style.imageOpacity));
+  const ph = atlasFor(art, Math.min(Math.max(px, 256), 2048), style.photoZoom ?? 1);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(ph.canvas, 0, 0, px, px);
+  ctx.restore();
+  const fgRgb = parseHex(style.fg);
+  const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
+  ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
+  ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
+
+  // Finder plates: an opaque rounded island per eye + separator.
+  const corners: [number, number][] = [
+    [0, 0],
+    [qr.size - 7, 0],
+    [0, qr.size - 7],
+  ];
+  const g = cell * 0.45;
+  for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+    const sepX = ex === 0 ? ox : ox - cell;
+    const sepY = ey === 0 ? oy : oy - cell;
+    ctx.fillStyle = paper;
+    roundedRect(ctx, sepX - g, sepY - g, cell * 8 + g * 2, cell * 8 + g * 2, cell * 0.9, cell * 0.9, cell * 0.9, cell * 0.9);
+    ctx.fill();
+  }
+
+  // Modules. Data cells keep the template's shape; protected cells stay
+  // square solids — the timing/alignment rhythm must not be decorated.
+  const gap = Math.max(0, Math.min(0.35, style.moduleGap));
+  const dotWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+  const eyeInk = style.eyeColor || style.fg;
+  for (let y = 0; y < qr.size; y++) {
+    for (let x = 0; x < qr.size; x++) {
+      if (isFinderCell(x, y, qr.size)) continue;
+      const dark = isDark(qr, x, y);
+      const type = qr.types[y]![x]!;
+      const px0 = origin + x * cell;
+      const py0 = origin + y * cell;
+      const protectedPattern =
+        type === QrCodeDataType.Function ||
+        type === QrCodeDataType.Timing ||
+        type === QrCodeDataType.Alignment;
+      if (protectedPattern) {
+        if (dark) {
+          ctx.fillStyle = fill;
+          ctx.fillRect(px0, py0, cell, cell);
+        }
+        continue;
+      }
+      if (!dark) continue;
+      const pad = cell * gap * 0.5;
+      const mSize = (cell - pad * 2) * dotWeight;
+      const mOffset = (cell - mSize) / 2;
+      ctx.fillStyle = fill;
+      drawModuleShape(ctx, px0 + mOffset, py0 + mOffset, mSize, style.moduleShape, undefined, {
+        gx: x,
+        gy: y,
+        size: qr.size,
+      });
+    }
+  }
+
+  // Eyes last, on their plates: ink = eye color, ball = ball color.
+  for (const [ex, ey] of corners) {
+    const ox = origin + ex * cell;
+    const oy = origin + ey * cell;
+    drawEye(ctx, ox, oy, cell, style.eyeShape, style.ballShape, eyeInk, style.ballColor || eyeInk, paper);
+  }
+}
+
+/**
+ * Kernel effects for PHOTO modes. The photo bitmap is opaque, so the
+ * classic under-ink silhouette passes are invisible — instead:
+ *   shadow / glow / outline → a soft (or crisp) ring around the code body,
+ *   emboss / 3D → offset copies of the dot grid painted over the photo.
+ * Dots themselves are never touched, so scan safety is unaffected.
+ */
+function drawPhotoEffect(
+  ctx: CanvasRenderingContext2D,
+  effect: QrStyle["effect"],
+  g: { qr: EncodedQr; origin: number; body: number; cell: number; bg: string },
+) {
+  if (effect === "none") return;
+  const { qr, origin, body, cell, bg } = g;
+  const bgRgb = parseHex(bg);
+  const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  const x = origin;
+  const y = origin;
+
+  ctx.save();
+  if (effect === "shadow" || effect === "glow" || effect === "outline") {
+    const inset = body * 0.004;
+    if (effect === "shadow") {
+      ctx.shadowColor = "rgba(8,9,12,0.55)";
+      ctx.shadowBlur = body * 0.045;
+      ctx.strokeStyle = `rgba(8,9,12,${bgLum < 0.42 ? 0.7 : 0.4})`;
+      ctx.lineWidth = body * 0.02;
+    } else if (effect === "glow") {
+      ctx.shadowColor = "rgba(255,243,214,0.9)";
+      ctx.shadowBlur = body * 0.05;
+      ctx.strokeStyle = `rgba(255,246,224,${bgLum < 0.42 ? 0.95 : 0.75})`;
+      ctx.lineWidth = body * 0.012;
+    } else {
+      ctx.strokeStyle = "rgba(240,235,225,0.9)";
+      ctx.lineWidth = Math.max(2, body * 0.006);
+    }
+    ctx.strokeRect(x - inset, y - inset, body + inset * 2, body + inset * 2);
+    ctx.restore();
+    return;
+  }
+
+  // emboss / 3D: offset dot copies over the photo (light from top-left).
+  const off = cell * 0.1;
+  const passes: [number, string][] =
+    effect === "emboss"
+      ? [
+          [-1, "rgba(8,9,12,0.35)"],
+          [1, "rgba(255,255,255,0.5)"],
+        ]
+      : // 3D: stacked depth
+        [
+          [1, "rgba(8,9,12,0.2)"],
+          [2, "rgba(8,9,12,0.2)"],
+          [3, "rgba(8,9,12,0.22)"],
+          [4, "rgba(8,9,12,0.25)"],
+        ];
+  for (const [k, color] of passes) {
+    ctx.fillStyle = color;
+    for (let my = 0; my < qr.size; my++) {
+      for (let mx = 0; mx < qr.size; mx++) {
+        if (isFinderCell(mx, my, qr.size)) continue;
+        if (!isDark(qr, mx, my)) continue;
+        ctx.fillRect(origin + mx * cell + k * off, origin + my * cell + k * off, cell, cell);
+      }
+    }
+  }
+  ctx.restore();
+}
+
 export function renderQr(
   canvas: HTMLCanvasElement,
   qr: EncodedQr,
@@ -502,9 +671,12 @@ export function renderQr(
     logo?: HTMLImageElement | null;
     exportScale?: boolean;
     kernelBoost?: number;
+    frame?: FrameId;
   },
 ) {
   const px = opts.pixelSize;
+  const frame = opts.frame ?? "none";
+  const band = frameBandFor(frame, px);
   const ctx = opts.exportScale
     ? (() => {
         canvas.width = px;
@@ -524,7 +696,12 @@ export function renderQr(
 
   /* ---- ART QR STYLE SYSTEM: a direction paints the whole frame itself ---- */
   const direction = getArtDirection(style.artDirection);
-  if (direction) {
+  // A photo in the frame wins over the direction's own artwork: paint/mosaic/
+  // halftone/backdrop/duotone/mono all render through the photo engine, and
+  // ignoring that made uploads look dead while a template was active.
+  const photoModeActive =
+    Boolean(opts.art) && style.imageMode !== "none" && style.imageMode !== "logo";
+  if (direction && !photoModeActive) {
     const artCtx = opts.exportScale
       ? (() => {
           canvas.width = px;
@@ -547,7 +724,28 @@ export function renderQr(
       relax: style.artRelax ?? 0,
       cameraSafe: Boolean(style.artCameraSafe),
     });
-    paintArtPlan(artCtx, plan);
+    paintArtPlan(artCtx, plan, {
+      skipPaper: Boolean(style.transparentBg),
+      effect: style.effect,
+    });
+    // Template kits reserve the centre plate for a brand mark — honor that:
+    // the logo (or any `opts.logo` handed in) composes over the painted plan.
+    const dirLogo = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
+    if (dirLogo) {
+      const body = plan.modules * plan.cell;
+      const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
+      const lx = plan.origin + (body - logoSize) / 2;
+      const ly = plan.origin + (body - logoSize) / 2;
+      const pad = logoSize * 0.12;
+      artCtx.fillStyle = plan.paper;
+      roundedRect(artCtx, lx - pad * 0.4, ly - pad * 0.4, logoSize + pad * 0.8, logoSize + pad * 0.8, pad, pad, pad, pad);
+      artCtx.fill();
+      artCtx.save();
+      roundedRect(artCtx, lx, ly, logoSize, logoSize, pad * 0.6, pad * 0.6, pad * 0.6, pad * 0.6);
+      artCtx.clip();
+      coverDraw(artCtx, dirLogo, lx, ly, logoSize, logoSize, dirLogo.naturalWidth, dirLogo.naturalHeight);
+      artCtx.restore();
+    }
     return;
   }
 
@@ -556,14 +754,15 @@ export function renderQr(
     ? Math.max(2, Math.min(8, style.quietZone))
     : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
-  const cell = px / total;
-  const origin = qz * cell;
+  const cell = (px - band * 2) / total;
+  const origin = band + qz * cell;
   const body = qr.size * cell;
   const mode = pictured ? style.imageMode : "none";
 
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
   const paper = pictured && bgLum < 0.42 ? "#f3eee6" : style.bg;
+  const frameGeo = { px, band, origin, body, fg: style.fg, bg: paper };
 
   ctx.clearRect(0, 0, px, px);
   if (!style.transparentBg) {
@@ -573,6 +772,13 @@ export function renderQr(
 
   const fill = makeFill(ctx, style, origin, origin, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
+
+  if (opts.art && mode === "clean") {
+    renderCleanPhotoQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawFrame(ctx, frame, frameGeo);
+    return;
+  }
 
   if (
     opts.art &&
@@ -584,7 +790,65 @@ export function renderQr(
       mode === "mono")
   ) {
     renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawFrame(ctx, frame, frameGeo);
   } else {
+    /* ---- Kernel effects (Tune panel). Silhouette passes run under the ink,
+     * the outline keyline under every module; photo/artistic modes carry
+     * their own treatment in the photo engine. ---- */
+    const effect: QrStyle["effect"] = style.effect ?? "none";
+    const darkPaper = bgLum < 0.42;
+    const canFilter = "filter" in ctx;
+    const forEachDark = (fn: (px0: number, py0: number) => void) => {
+      for (let y = 0; y < qr.size; y++) {
+        for (let x = 0; x < qr.size; x++) {
+          if (isFinderCell(x, y, qr.size)) continue;
+          if (!isDark(qr, x, y)) continue;
+          fn(origin + x * cell, origin + y * cell);
+        }
+      }
+    };
+    const silhouette = (dx: number, dy: number, color: string, blurPx = 0) => {
+      ctx.save();
+      ctx.fillStyle = color;
+      if (blurPx > 0 && canFilter) ctx.filter = `blur(${Math.max(0.5, blurPx).toFixed(2)}px)`;
+      forEachDark((px0, py0) => ctx.fillRect(px0 + dx, py0 + dy, cell, cell));
+      const finderCorners: [number, number][] = [
+        [0, 0],
+        [qr.size - 7, 0],
+        [0, qr.size - 7],
+      ];
+      for (const [ex, ey] of finderCorners) {
+        ctx.fillRect(origin + ex * cell + dx, origin + ey * cell + dy, cell * 7, cell * 7);
+      }
+      ctx.restore();
+    };
+    if (effect === "shadow") {
+      silhouette(0, cell * 0.22, "rgba(4,5,9,0.32)", cell * 0.4);
+    } else if (effect === "glow") {
+      silhouette(0, 0, "rgba(255,214,140,0.42)", cell * 0.8);
+      silhouette(0, 0, "rgba(255,214,140,0.3)", cell * 0.28);
+    } else if (effect === "emboss") {
+      silhouette(-cell * 0.08, -cell * 0.08, "rgba(255,255,255,0.75)");
+      silhouette(cell * 0.09, cell * 0.09, "rgba(4,5,9,0.5)");
+    } else if (effect === "extrude") {
+      for (let k = 3; k >= 1; k--) silhouette(cell * 0.085 * k, cell * 0.115 * k, "rgba(4,5,9,0.55)");
+    }
+
+    if (effect === "outline") {
+      const ink = Math.max(0.5, cell * 0.06);
+      ctx.save();
+      ctx.fillStyle = darkPaper ? "rgba(255,255,255,0.6)" : "rgba(4,5,9,0.55)";
+      const outlineWeight = style.dotScale ? Math.max(0.35, Math.min(1.0, style.dotScale * 1.35)) : 1.0;
+      forEachDark((px0, py0) => {
+        const pad = cell * gap * 0.5;
+        const mSize = (cell - pad * 2) * outlineWeight + ink * 2;
+        const mOffset = (cell - mSize) / 2;
+        drawModuleShape(ctx, px0 + mOffset, py0 + mOffset, mSize, style.moduleShape);
+      });
+      ctx.restore();
+    }
+
     for (let y = 0; y < qr.size; y++) {
       for (let x = 0; x < qr.size; x++) {
         if (isFinderCell(x, y, qr.size)) continue;
@@ -705,6 +969,8 @@ export function renderQr(
     );
     ctx.restore();
   }
+
+  drawFrame(ctx, frame, { ...frameGeo, bg: paper });
 }
 
 export function downloadCanvasPng(canvas: HTMLCanvasElement, filename: string) {

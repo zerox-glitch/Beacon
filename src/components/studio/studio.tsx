@@ -8,9 +8,10 @@ import {
   Palette,
   Type,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Toaster } from "sonner";
+import { useEffect, useRef, useState } from "react";
+import { Toaster, toast } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
+import { SupportButton } from "@/components/support-button";
 import { AmbientArt } from "@/components/studio/ambient-art";
 import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
@@ -19,7 +20,9 @@ import { LibraryPanel } from "@/components/studio/library-panel";
 import { PresetGallery } from "@/components/studio/preset-gallery";
 import { QrStage } from "@/components/studio/qr-stage";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { PRESETS, PRESET_CATEGORIES } from "@/lib/qr/presets";
+import { getPresetMerged, useCms } from "@/lib/cms/runtime";
+import { classifyScan } from "@/lib/qr/scan-intent";
+import { getPreset } from "@/lib/qr/presets";
 import { useStudio } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
@@ -46,13 +49,14 @@ function RotatingHook() {
 
 const STUDIO_TABS = [
   { id: "content" as const, label: "Create", icon: Type },
-  { id: "image" as const, label: "Picture", icon: ImageIcon },
-  { id: "presets" as const, label: "Looks", icon: LayoutGrid },
-  { id: "design" as const, label: "Tune", icon: Palette },
+  { id: "image" as const, label: "Photo Art", icon: ImageIcon },
+  { id: "presets" as const, label: "Presets", icon: LayoutGrid },
+  { id: "design" as const, label: "Design", icon: Palette },
   { id: "library" as const, label: "Library", icon: FolderOpen },
 ] as const;
 
 export function Studio() {
+  const { brand, defaultTemplate } = useCms();
   const mobileTab = useStudio((s) => s.mobileTab);
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
@@ -62,6 +66,34 @@ export function Studio() {
   useEffect(() => {
     hydrateHistory();
   }, [hydrateHistory]);
+
+  // Deep link from the landing "remake" flow: /studio?scan=<decoded text>.
+  // Applies the payload once on load, over the seeded state.
+  useEffect(() => {
+    const scan = new URLSearchParams(window.location.search).get("scan");
+    if (!scan) return;
+    const intent = classifyScan(scan);
+    const s = useStudio.getState();
+    s.setKind(intent.kind);
+    s.patchPayload(intent);
+    toast.success("Scanned code loaded — make it yours");
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
+  // Admin-picked opening look: applied ONCE per session, and only over the
+  // seeded default view — a visitor who already started designing is never
+  // overwritten. Falls back to the stock seeded preset when no default is set.
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (!defaultTemplate || defaultApplied.current) return;
+    defaultApplied.current = true;
+    const s = useStudio.getState();
+    if (s.presetId !== "art-alpine-summit") return;
+    const preset = getPresetMerged(defaultTemplate) ?? getPreset(defaultTemplate);
+    if (!preset) return;
+    s.applyPreset(defaultTemplate);
+    if (preset.category) s.setCategory(preset.category);
+  }, [defaultTemplate]);
 
   function toggleShowcase() {
     const open = !showcaseOpen;
@@ -73,45 +105,27 @@ export function Studio() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
+      <div className="flex h-app flex-col overflow-hidden bg-bg text-fg">
         <header className="relative z-30 shrink-0 border-b border-white/10 bg-bg/95 px-3 py-2 backdrop-blur-md sm:px-6 sm:py-3">
           <div className="hero-glow pointer-events-none absolute inset-0 hidden sm:block" aria-hidden />
           <div className="relative flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <Link to="/" aria-label="QRWho home" className="shrink-0">
                 <img
-                  src="/logo.png"
-                  alt="QRWho"
-                  className="size-8 rounded-lg border border-border sm:size-10 sm:rounded-xl"
+                  src={brand.logoUrl || "/logo.png"}
+                  alt={brand.siteName || "QRWho"}
+                  className="size-10 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
                 />
               </Link>
               <div className="min-w-0">
-                <h1 className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
+                <h1 className="font-display text-2xl italic leading-none tracking-tight sm:text-3xl">
                   <span className="wordmark-shimmer">QRWho</span>
                 </h1>
                 <RotatingHook />
               </div>
             </div>
 
-            <div className="hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
-              {PRESET_CATEGORIES.filter((c) => c !== "All").map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  title={`Surprise me with a ${c} look`}
-                  onClick={() => {
-                    const pool = PRESETS.filter((p) => p.category === c);
-                    const pick = pool[Math.floor(Math.random() * pool.length)];
-                    if (!pick) return;
-                    useStudio.getState().setCategory(c);
-                    useStudio.getState().applyPreset(pick.id);
-                  }}
-                  className="h-7 rounded-full border border-white/20 bg-elevated px-2.5 text-xs font-semibold text-fg/90 transition hover:border-accent hover:bg-white/10 hover:text-fg"
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            <SupportButton />
           </div>
         </header>
 
@@ -125,7 +139,7 @@ export function Studio() {
             className={cn(
               "z-20 flex min-h-0 flex-col border-t border-border bg-elevated lg:h-full lg:border-t-0",
               sheetOpen
-                ? "h-[min(42dvh,420px)] shrink-0 lg:h-auto lg:max-h-none"
+                ? "h-[min(42vh,420px)] shrink-0 lg:h-auto lg:max-h-none"
                 : "h-12 shrink-0 lg:h-auto lg:max-h-none",
             )}
           >
@@ -163,14 +177,14 @@ export function Studio() {
                       setMobileTab(tab.id);
                     }}
                     className={cn(
-                      "flex h-11 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-medium transition-all",
+                      "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
                       active
-                        ? "border border-border-strong bg-elevated font-semibold text-fg shadow-sm"
-                        : "text-fg/75 hover:bg-surface-hover hover:text-fg",
+                        ? "border border-[#22d3ee] bg-[#22d3ee] font-bold text-[#04181d] shadow-[0_0_18px_-4px_rgba(34,211,238,0.55)]"
+                        : "font-medium text-fg/75 hover:bg-surface-hover hover:text-fg",
                     )}
                   >
-                    <Icon className="size-3.5 sm:size-4" />
-                    <span className="text-[10px] leading-none sm:text-[11px]">{tab.label}</span>
+                    <Icon className="size-4 sm:size-4.5" />
+                    <span className="text-[11px] leading-none">{tab.label}</span>
                   </button>
                 );
               })}
@@ -194,7 +208,7 @@ export function Studio() {
         {/* Art directions & print specs — inline in the studio (never navigates
             away). Always visible, high contrast, mobile + desktop. */}
         {showcaseOpen && (
-          <div className="z-30 max-h-[52dvh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46dvh]">
+          <div className="z-30 max-h-[52vh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46vh]">
             <ArtShowcase
               onTry={(id) => {
                 useStudio.getState().applyPreset(id);

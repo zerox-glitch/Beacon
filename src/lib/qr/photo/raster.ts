@@ -157,7 +157,7 @@ export function rasterizePhotoQr(field: ToneField, p: PhotoRenderParams): Render
         const pr = field.color[ci]!;
         const pg = field.color[ci + 1]!;
         const pb = field.color[ci + 2]!;
-        const photoT = clamp(0.18 + tone * 0.64, 0, 1); // softened photo tone
+        const photoT = clamp(0.14 + tone * 0.72, 0, 1); // photo tone, lightly softened
         const safeT = bitDark ? darkSoftT : lightSoftT;
         const t = safeT + (photoT - safeT) * clamp(p.surroundPhoto, 0, 1);
         const s = setLuminance(pr, pg, pb, t);

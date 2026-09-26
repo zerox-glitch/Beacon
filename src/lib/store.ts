@@ -8,8 +8,11 @@ import {
   type QrStyle,
 } from "@/lib/qr/types";
 import { getPreset } from "@/lib/qr/presets";
-import type { FrameKind } from "@/lib/qr/finish";
+import { getCmsState, getPresetMerged } from "@/lib/cms/runtime";
+import type { FrameId } from "@/lib/qr/frames";
 import { type UseCaseId, useCaseById } from "@/lib/qr/usecase";
+import { LOGOS, logoDataUrl } from "@/lib/qr/logo-set";
+import { readSessionCookie, writeSessionCookie } from "@/lib/session-cookie";
 
 export interface HistoryItem {
   id: string;
@@ -20,7 +23,7 @@ export interface HistoryItem {
   imageUrl: string | null;
   thumb: string;
   caption?: string;
-  frame?: FrameKind;
+  frame?: FrameId;
 }
 
 export type StageBgMood = "vibrant" | "cosmic" | "waves" | "minimal";
@@ -40,7 +43,7 @@ interface StudioState {
   history: HistoryItem[];
   mobileTab: StudioTab;
   caption: string;
-  frame: FrameKind;
+  frame: FrameId;
   useCase: UseCaseId | null;
   lastFixNotes: string[];
   smartArt: boolean;
@@ -57,7 +60,7 @@ interface StudioState {
   setError: (error: string | null) => void;
   setMobileTab: (tab: StudioTab) => void;
   setCaption: (caption: string) => void;
-  setFrame: (frame: FrameKind) => void;
+  setFrame: (frame: FrameId) => void;
   applyUseCase: (id: UseCaseId) => void;
   setFixNotes: (notes: string[]) => void;
   setSmartArt: (smartArt: boolean) => void;
@@ -83,24 +86,28 @@ function persist(history: HistoryItem[]) {
   }
 }
 
+const saved = readSessionCookie();
+
 export const useStudio = create<StudioState>((set, get) => ({
-  payload: {
-    ...emptyPayload(),
-    url: "https://qrwho.vercel.app",
-  },
-  style: { ...DEFAULT_STYLE },
-  imageUrl: DEFAULT_ART_URL,
-  logoUrl: null,
+  payload: saved
+    ? { ...emptyPayload(), ...saved.payload }
+    : {
+        ...emptyPayload(),
+        url: "https://qrwho.vercel.app",
+      },
+  style: saved ? { ...DEFAULT_STYLE, ...saved.style } : { ...DEFAULT_STYLE },
+  imageUrl: saved ? saved.imageUrl : DEFAULT_ART_URL,
+  logoUrl: saved?.logoId ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
   presetId: "art-alpine-summit",
   category: "Art",
+  caption: saved?.caption ?? "",
+  frame: saved?.frame ?? "none",
   stageBg: "cosmic",
   scanText: null,
   scanOk: null,
   error: null,
   history: [],
   mobileTab: "content",
-  caption: "",
-  frame: "none",
   useCase: null,
   lastFixNotes: [],
   smartArt: false,
@@ -114,7 +121,9 @@ export const useStudio = create<StudioState>((set, get) => ({
       lastFixNotes: [],
     })),
   applyPreset: (id) => {
-    const preset = getPreset(id);
+    // CMS-merged lookup: custom admin templates + overridden built-ins resolve
+    // here too; falls back to the static list until the catalog is loaded.
+    const preset = getPresetMerged(id) ?? getPreset(id);
     if (!preset) return;
     const current = get();
     if (preset.artUrl) {
@@ -123,6 +132,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         imageUrl: preset.artUrl,
         style: {
           ...preset.style,
+          dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
           imageMode: preset.style.imageMode || "paint",
         },
         lastFixNotes: [],
@@ -130,15 +140,27 @@ export const useStudio = create<StudioState>((set, get) => ({
       return;
     }
     const keepPhoto = Boolean(current.imageUrl) && current.imageUrl !== DEFAULT_ART_URL;
-    const nextMode = keepPhoto
-      ? current.style.imageMode === "none"
-        ? "paint"
-        : current.style.imageMode
-      : "none";
+    // A photo-aware template (clean/duotone/halftone/…) brings its own weave;
+    // flat templates keep whatever photo mode is already active so applying a
+    // palette never silently drops the user's picture.
+    const declaredMode =
+      preset.style.imageMode && preset.style.imageMode !== "none" && preset.style.imageMode !== "logo"
+        ? preset.style.imageMode
+        : null;
+    const nextMode = declaredMode
+      ? keepPhoto || Boolean(preset.artUrl)
+        ? declaredMode
+        : "none"
+      : keepPhoto
+        ? current.style.imageMode === "none"
+          ? "paint"
+          : current.style.imageMode
+        : "none";
     set({
       presetId: id,
       style: {
         ...preset.style,
+        dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
         imageMode: nextMode,
       },
       lastFixNotes: [],
@@ -149,11 +171,30 @@ export const useStudio = create<StudioState>((set, get) => ({
       if (s.imageUrl?.startsWith("blob:") && s.imageUrl !== url) {
         URL.revokeObjectURL(s.imageUrl);
       }
+      if (!url) {
+        return {
+          imageUrl: null,
+          style: { ...s.style, imageMode: "none" },
+          lastFixNotes: [],
+        };
+      }
+      if (url === s.imageUrl) {
+        return { lastFixNotes: [] };
+      }
+      // A NEW photo always starts from the owner's default photo look
+      // (Admin → Branding → Photo defaults) so uploads look good instantly.
+      const d = getCmsState().brand.photoDefaults;
       return {
         imageUrl: url,
         style: {
           ...s.style,
-          imageMode: url ? (s.style.imageMode === "none" ? "paint" : s.style.imageMode) : "none",
+          imageMode: d.imageMode,
+          dotScale: d.dotScale,
+          imageOpacity: d.imageOpacity,
+          contrast: d.contrast,
+          quietZone: d.quietZone,
+          minVersion: d.minVersion,
+          photoZoom: d.photoZoom ?? 1,
         },
         lastFixNotes: [],
       };
@@ -173,6 +214,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   setCaption: (caption) => set({ caption }),
   setFrame: (frame) => set({ frame }),
   applyUseCase: (id) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- plain lookup fn, not a hook
     const rec = useCaseById(id);
     set((s) => ({
       useCase: id,
@@ -236,3 +278,40 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
   },
 }));
+
+/**
+ * Session memory: the destination + look are mirrored into a one-year cookie
+ * so a return visit restores the code (see src/lib/session-cookie.ts).
+ * Debounced — sliders fire patchStyle on every frame.
+ */
+if (typeof window !== "undefined") {
+  let timer: number | null = null;
+  useStudio.subscribe((s, prev) => {
+    if (
+      s.payload === prev.payload &&
+      s.style === prev.style &&
+      s.imageUrl === prev.imageUrl &&
+      s.logoUrl === prev.logoUrl &&
+      s.caption === prev.caption &&
+      s.frame === prev.frame
+    ) {
+      return;
+    }
+    if (timer !== null) return;
+    timer = window.setTimeout(() => {
+      timer = null;
+      const st = useStudio.getState();
+      // Reverse-map the logo data URL back to its built-in id (compact).
+      const logo = LOGOS.find((l) => logoDataUrl(l) === st.logoUrl) ?? null;
+      writeSessionCookie({
+        payload: st.payload,
+        style: st.style,
+        logoId: logo ? logo.id : null,
+        imageUrl: st.imageUrl && !st.imageUrl.startsWith("blob:") ? st.imageUrl : null,
+        caption: st.caption,
+        frame: st.frame,
+      });
+    }, 1500);
+  });
+}
+

@@ -22,12 +22,20 @@ export async function verifyQr(canvas: HTMLCanvasElement): Promise<string | null
     return scaled?.data ?? null;
   };
 
-  if (width > 560) {
-    const scaled = tryScale(480);
-    if (scaled) return scaled;
-  }
-  if (width > 400) {
-    const scaled = tryScale(360);
+  // A marginal code (thin modules, soft contrast) often fails at ONE raster
+  // size and decodes fine a step away — jsQR's grid estimate is
+  // size-sensitive, exactly like a real camera's sampling. Walk a ladder
+  // around the native size (down AND up) before declaring the code
+  // unscannable: every ladder hit is a genuine ECC-verified decode, so the
+  // badge only ever flips false→true, never fakes a pass.
+  const ladder =
+    width > 560
+      ? [480, 420, 360, 320]
+      : width > 400
+        ? [512, 420, 360, 320]
+        : [512, 480, 400, 360, 320, 280];
+  for (const s of ladder) {
+    const scaled = tryScale(s);
     if (scaled) return scaled;
   }
 

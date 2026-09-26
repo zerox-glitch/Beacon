@@ -1,4 +1,5 @@
-import { ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { BadgeCheck, ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -8,6 +9,7 @@ import { WEAVE_PRESETS } from "@/lib/qr/art/weave-presets";
 import { loadImage } from "@/lib/qr/render";
 import { IMAGE_MODES } from "@/lib/qr/types";
 import { SAMPLE_IMAGES } from "@/lib/qr/presets";
+import { LOGOS, LOGO_CATEGORIES, logoDataUrl } from "@/lib/qr/logo-set";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 
@@ -17,6 +19,19 @@ function readFile(file: File, onUrl: (url: string) => void) {
 }
 
 const WEAVE_MODES = IMAGE_MODES.filter((m) => m.id !== "logo");
+
+/**
+ * How much of the photograph the user wants to see. Maps onto the engine's
+ * validated kernel candidates: "detail" paints the most photo-true surround,
+ * "camera-safe" the least. "Auto" lets the engine choose (and escalates if a
+ * candidate fails the camera gate).
+ */
+const PHOTO_VISIBILITY: { id: "detail" | "balanced" | "camera-safe" | ""; label: string; hint: string }[] = [
+  { id: "", label: "Auto", hint: "The engine picks the most photographic style that still passes the camera check" },
+  { id: "detail", label: "Photo first", hint: "The picture leads — the photo's own tones fill the frame, thin dots carry the code" },
+  { id: "balanced", label: "Balanced", hint: "Half picture, half dot-grid — the default feel" },
+  { id: "camera-safe", label: "Scan first", hint: "Thickest locked centers — maximum distance + angle tolerance" },
+];
 
 export function ImagePanel() {
   const imageUrl = useStudio((s) => s.imageUrl);
@@ -132,6 +147,15 @@ export function ImagePanel() {
         </div>
       </div>
 
+      <LogoGallery
+        logoUrl={logoUrl}
+        onPick={(url) => {
+          setLogoUrl(url);
+          patchStyle({ imageMode: "logo" });
+        }}
+        onClear={() => setLogoUrl(null)}
+      />
+
       <div>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave</p>
         <div className="grid grid-cols-2 gap-1.5">
@@ -177,6 +201,33 @@ export function ImagePanel() {
         </div>
       )}
 
+      {pictured && (
+        <div>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted">How much photo should show?</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {PHOTO_VISIBILITY.map((v) => (
+              <button
+                key={v.label}
+                type="button"
+                title={v.hint}
+                onClick={() => patchStyle(v.id ? { photoKernel: v.id } : { photoKernel: undefined })}
+                className={cn(
+                  "h-10 rounded-md border px-1 text-[10px] font-semibold transition active:scale-95",
+                  (style.photoKernel ?? "") === v.id
+                    ? "border-accent bg-accent text-accent-fg shadow-sm"
+                    : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
+                )}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-snug text-subtle">
+            {(PHOTO_VISIBILITY.find((v) => (style.photoKernel ?? "") === v.id) ?? PHOTO_VISIBILITY[0])!.hint}
+          </p>
+        </div>
+      )}
+
       {imageUrl && (
         <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
           <span className="inline-flex items-center gap-1.5">
@@ -217,9 +268,63 @@ export function ImagePanel() {
             </p>
           </div>
 
-          <details className="rounded-lg border border-border bg-surface/50 p-3">
-            <summary className="cursor-pointer text-xs font-semibold text-fg">Advanced</summary>
+          <details className="rounded-lg border border-border bg-surface/50 p-3" open>
+            <summary className="cursor-pointer text-xs font-semibold text-fg">Tune the picture</summary>
             <div className="mt-3 grid gap-4">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Dot size</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.dotScale * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.55}
+                  max={0.96}
+                  step={0.01}
+                  value={[Math.max(0.55, style.dotScale)]}
+                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.9 })}
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  Smaller dots show more of the picture between them.
+                </p>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Photo size</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.photoZoom * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.5}
+                  max={2}
+                  step={0.01}
+                  value={[style.photoZoom]}
+                  onValueChange={([v]) => patchStyle({ photoZoom: v ?? 1 })}
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  100% shows the whole photo; less adds a margin, more zooms into the centre.
+                </p>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label>Photo color</Label>
+                  <span className="text-xs font-medium tabular-nums text-fg">
+                    {Math.round(style.imageOpacity * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.2}
+                  max={1}
+                  step={0.01}
+                  value={[style.imageOpacity]}
+                  onValueChange={([v]) => patchStyle({ imageOpacity: v ?? 0.85 })}
+                />
+                <p className="mt-1 text-[11px] text-muted">
+                  How much of the photo's own colors the inks keep (low = grayscale).
+                </p>
+              </div>
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <Label>Contrast</Label>
@@ -233,21 +338,6 @@ export function ImagePanel() {
                   step={0.01}
                   value={[style.contrast]}
                   onValueChange={([v]) => patchStyle({ contrast: v ?? 0.82 })}
-                />
-              </div>
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Label>Module scale</Label>
-                  <span className="text-xs font-medium tabular-nums text-fg">
-                    {Math.round(style.dotScale * 100)}%
-                  </span>
-                </div>
-                <Slider
-                  min={0.55}
-                  max={0.96}
-                  step={0.01}
-                  value={[Math.max(0.55, style.dotScale)]}
-                  onValueChange={([v]) => patchStyle({ dotScale: v ?? 0.9 })}
                 />
               </div>
               <div>
@@ -333,6 +423,98 @@ export function ImagePanel() {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+/** 66 built-in brand/emoji center logos + upload fallback. */
+function LogoGallery({
+  logoUrl,
+  onPick,
+  onClear,
+}: {
+  logoUrl: string | null;
+  onPick: (url: string) => void;
+  onClear: () => void;
+}) {
+  const [cat, setCat] = useState<(typeof LOGO_CATEGORIES)[number] | "All">("All");
+  const list = useMemo(() => (cat === "All" ? LOGOS : LOGOS.filter((l) => l.category === cat)), [cat]);
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium tracking-wide text-muted">
+          Center logo <span className="text-subtle">— {LOGOS.length} built-in marks</span>
+        </p>
+        {logoUrl && (
+          <button
+            type="button"
+            className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] text-danger hover:bg-danger/10 transition"
+            onClick={onClear}
+          >
+            <X className="size-3" />
+            Remove logo
+          </button>
+        )}
+      </div>
+      <div className="mb-2 flex flex-wrap gap-1">
+        {(["All", ...LOGO_CATEGORIES] as const).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className={cn(
+              "h-7 rounded-full border px-2.5 text-[11px] font-medium transition",
+              cat === c ? "border-accent bg-accent text-accent-fg" : "border-border text-muted hover:text-fg",
+            )}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+        {list.map((logo) => {
+          const url = logoDataUrl(logo);
+          return (
+            <button
+              key={logo.id}
+              type="button"
+              title={logo.name}
+              onClick={() => onPick(url)}
+              className={cn(
+                "relative aspect-square overflow-hidden rounded-lg border bg-white/5 transition-all active:scale-95",
+                logoUrl === url ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
+              )}
+            >
+              <img src={url} alt={logo.name} loading="lazy" className="size-full object-cover" />
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => logoRef.current?.click()}
+        className="mt-1.5 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-elevated px-2.5 text-[11px] font-medium text-muted hover:text-fg transition"
+      >
+        <ImagePlus className="size-3.5" />
+        Or use your own logo
+      </button>
+      <input
+        ref={logoRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onPick(URL.createObjectURL(file));
+          e.target.value = "";
+        }}
+      />
+      <p className="mt-1.5 flex items-center gap-1 text-[11px] leading-snug text-subtle">
+        <BadgeCheck className="size-3 text-ok" />
+        The mark gets a quiet plate behind it, so it stays readable on any template.
+      </p>
     </div>
   );
 }
