@@ -356,7 +356,7 @@ export function Landing() {
             <img
               src={brand.logoUrl || "/logo.png"}
               alt={brand.siteName || "QRWho"}
-              className="size-10 shrink-0 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
+              className="size-[52px] shrink-0 rounded-xl border border-border sm:size-[62px] sm:rounded-2xl"
             />
             <div className="min-w-0">
               <p className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">

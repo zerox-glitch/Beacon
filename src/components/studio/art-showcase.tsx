@@ -351,7 +351,7 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
         {/* Semantic SEO Keywords & Footer */}
         <footer className="border-t border-border pt-12 text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <img src={brand.logoUrl || "/logo.png"} alt={`${brand.siteName || "QRWho"} Logo`} className="size-8 rounded-lg border border-border" />
+            <img src={brand.logoUrl || "/logo.png"} alt={`${brand.siteName || "QRWho"} Logo`} className="size-[42px] rounded-lg border border-border" />
             <span className="font-display text-xl italic text-fg">{brand.siteName || "QRWho"}</span>
           </div>
           <p className="text-xs text-subtle max-w-xl mx-auto leading-relaxed">

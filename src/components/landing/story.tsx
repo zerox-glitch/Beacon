@@ -44,7 +44,7 @@ export function StoryPage() {
             <img
               src={brand.logoUrl || "/logo.png"}
               alt={`${name} logo`}
-              className="size-10 shrink-0 rounded-xl border border-border"
+              className="size-[52px] shrink-0 rounded-xl border border-border"
             />
             <span className="font-display text-xl italic leading-none tracking-tight">{name}</span>
           </Link>
