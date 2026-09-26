@@ -125,6 +125,13 @@ export interface ArtPlan {
   directionName: string;
   /** The direction as actually resolved for this size (post-LOD). */
   resolved: ArtDirection;
+  /**
+   * True when the data modules carry a shape the user explicitly picked for
+   * this template. The mass floor then no longer guards the plan — the user
+   * owns the module mass (exactly like the classic renderer, which has no
+   * floor); the scanability meter and Fix scan report what a camera sees.
+   */
+  userShape: boolean;
   paints: Paint[];
   /** Ink coverage of a dark data module (0–1). */
   darkMass: number;
@@ -144,8 +151,24 @@ export interface ArtPlanInput {
   cameraSafe?: boolean;
 }
 
-/** Line shapes the classic renderer draws un-plated — the user's explicit pick of one of these keeps that treatment in templates too. */
-const LINE_SHAPES = new Set<ArtShape>(["hbar", "vbar", "dash", "diag", "cross", "confetti"]);
+/**
+ * Classic-parity geometry for a user-picked module shape in a template. The
+ * values mirror `drawModuleShape` in render.ts (the classic path) so a pick
+ * looks the same in templates as in the plain QR: the template's own corner
+ * radius would otherwise flatten "Round"/"Soft" into its native square.
+ */
+const USER_SHAPE_RADIUS: Partial<Record<ArtShape, number>> = {
+  square: 0,
+  rounded: 0.28,
+  squircle: 0.42,
+  fluid: 0.52,
+  leaf: 0.62,
+  petal: 0.62,
+};
+const USER_SHAPE_CORNERS: Partial<Record<ArtShape, [number, number, number, number]>> = {
+  // Classic "classy": two large diagonal corners.
+  classy: [0, 0.55, 0, 0.55],
+};
 
 /** Map a direction's module shape onto the painter vocabulary. */
 export function paintShapeFor(shape: ArtShape): PaintShape {
@@ -681,34 +704,39 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const inner = 1 - gapInk;
 
   /**
-   * A line shape the user explicitly picked (Bars/Streak/Dash/Cross/Confetti)
+   * A module shape the user explicitly picked for this template (differs from
+   * the direction's own authored shape; the "square" seed placeholder counts
+   * as a pick only when the Design tab recorded an actual click). Such a pick
    * is rendered the way the classic QR renderer draws it — un-plated, at full
-   * cell size, standard stroke weight — instead of the template's mass
-   * system, which would bury it under a solid plate. Only a pick that
-   * *differs from the template's own shape* counts: presets seed the picker
-   * with the direction's shape, so an untouched picker leaves templates alone.
+   * cell size, classic corner radii — instead of the template's mass system,
+   * which would bury low-coverage silhouettes (diamond, star, plus…) under a
+   * solid same-colour plate and make the pick look like the template's own
+   * shape. Only a pick that *differs from the template's own shape* counts:
+   * presets seed the picker with the direction's shape, so an untouched
+   * picker leaves templates alone.
    */
-  const userLine =
+  const userShape =
     style.moduleShape !== undefined &&
-    style.moduleShape !== "square" &&
-    input.direction.shape !== style.moduleShape &&
-    LINE_SHAPES.has(style.moduleShape);
-  // The dot-size slider travels along line shapes too (down to 0.75×, never
+    (style.modulePicked === true || style.moduleShape !== "square") &&
+    input.direction.shape !== style.moduleShape;
+  // The dot-size slider travels along user picks too (down to 0.75×, never
   // past the cell); an untouched slider renders them exactly full cell.
-  const lineScale =
+  const userScale =
     (1 - gapInk) * (dotTouched ? clamp(dotScaleValue / dotScaleRef!, 0.75, 1) : 1);
   /**
    * Decorative silhouettes that cannot reach MIN_DARK_MASS even at full cell
    * size get a solid plate underneath: art on top, QR signal beneath. Anything
-   * that can carry its own mass does, un-plated.
+   * that can carry its own mass does, un-plated. A user pick owns its own
+   * mass (like the classic renderer, which has no floor) — the scanability
+   * meter and Fix scan take over.
    */
-  const needsPlate = perCell && needsPlateFor(shape, inner) && !userLine && !dotTouched;
+  const needsPlate = perCell && needsPlateFor(shape, inner) && !userShape && !dotTouched;
   /* The SHAPE RULE: a dark module must never become a tiny decorative dot.
    * Grouped geometry fills its cells and bridges the gaps, so the floor is
    * already met there; per-cell silhouettes either scale up to the floor or
    * ride on a plate that carries the mass for them. Either way the shape never
    * leaves its own cell — that is what keeps light modules light. */
-  const scale = userLine ? lineScale : perCellScale(shape, targetMass, gapInk, needsPlate);
+  const scale = userShape ? userScale : perCellScale(shape, targetMass, gapInk, needsPlate);
 
   /* ---- data modules ----
    *
@@ -723,9 +751,9 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
   const geometry = level === "lean" && dir.geometry === "traces" ? "runs-both" : dir.geometry;
   const grouped = geometry !== "single";
   const links = grouped ? bridgeMask(grid, size, { ...dir, geometry }, level) : null;
-  // User-picked line shapes stay discrete modules (like the classic renderer)
-  // — a solid bridge between two streaks would smear them into a blob.
-  const bridge = grouped && gapInk > 0.005 && !userLine;
+  // User-picked shapes stay discrete modules (like the classic renderer) —
+  // a solid bridge between two diamonds would smear them into a blob.
+  const bridge = grouped && gapInk > 0.005 && !userShape;
   const side = cell * scale * inner;
 
   for (let y = 0; y < size; y++) {
@@ -787,20 +815,40 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
                 ? (hash2(x, y) % 2 === 1 ? Math.PI / 2 : undefined)
                 : undefined
           : undefined;
+      // Classic "Bubbles": a per-cell hash radius (0.26–0.48 of the cell,
+      // exactly the classic renderer's range) — the plan carries the box.
+      let bx0 = clipped.x;
+      let by0 = clipped.y;
+      let bw0 = clipped.w;
+      let bh0 = clipped.h;
+      if (userShape && shape === "bubbles") {
+        const b = Math.min(side, clipped.w, clipped.h) * (0.52 + ((hash2(x, y) % 64) / 64) * 0.44);
+        bx0 = clipped.x + (clipped.w - b) / 2;
+        by0 = clipped.y + (clipped.h - b) / 2;
+        bw0 = bh0 = b;
+      }
+      // A user pick takes the classic renderer's own geometry (corner radius
+      // / per-corner radii) — the template's radius would flatten Round/Soft
+      // into its native square, and the pick would look like nothing changed.
+      const uc = userShape ? USER_SHAPE_CORNERS[shape] : undefined;
+      const userCorners: [number, number, number, number] | undefined = uc
+        ? [uc[0]! * cell, uc[1]! * cell, uc[2]! * cell, uc[3]! * cell]
+        : undefined;
+      const userR = userShape ? (USER_SHAPE_RADIUS[shape] ?? 0) * cell : radius;
       paints.push({
         shape: paintShape,
-        x: clipped.x,
-        y: clipped.y,
-        w: clipped.w,
-        h: clipped.h,
-        r: radius,
-        corners: grouped ? corners : undefined,
+        x: bx0,
+        y: by0,
+        w: bw0,
+        h: bh0,
+        r: userR,
+        corners: userCorners ?? (grouped ? corners : undefined),
         rot:
           paintShape === "facet" || paintShape === "gem"
             ? ((hash2(x, y) % 4) * Math.PI) / 8
             : (barRot ?? undefined),
         vertical: shape === "vbar",
-        barThick: userLine && paintShape === "bar" ? 0.56 : undefined,
+        barThick: userShape && paintShape === "bar" ? 0.56 : undefined,
         fill: fillFor(dir, inks, x, y, size),
         role: "data",
         gx: x,
@@ -970,6 +1018,7 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
     directionId: dir.id,
     directionName: dir.name,
     resolved: dir,
+    userShape,
     paints,
     darkMass,
     lightMark,
@@ -1016,7 +1065,11 @@ export function auditPlan(plan: ArtPlan): PlanAudit {
     }
   }
   if (!quietZoneClean) problems.push("artwork crosses into the quiet zone");
-  if (plan.darkMass < MIN_DARK_MASS - 0.02) {
+  // The mass floor guards untouched templates; a user-picked shape owns its
+  // own mass (like the classic renderer) and is judged by the camera battery
+  // instead — otherwise every low-coverage pick (Star, Cross, Bubbles…) would
+  // trip the audit and push Fix scan to walk the whole ladder for no reason.
+  if (!plan.userShape && plan.darkMass < MIN_DARK_MASS - 0.02) {
     problems.push(`dark modules carry only ${(plan.darkMass * 100).toFixed(0)}% mass`);
   }
   if (plan.lightMark > MAX_LIGHT_MARK + 0.001) {

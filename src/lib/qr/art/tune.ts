@@ -21,14 +21,15 @@ import type { ArtDirection, ArtFinder, ArtShape, EyeShape, QrStyle } from "../ty
 
 /**
  * Eye-frame picker → finder design. Templates own their finders (camera-
- * validated), but an explicit non-default pick maps onto a WHOLE validated
+ * validated), but an explicit pick maps onto a WHOLE validated
  * FINDER_STYLES design — the camera battery proves complete designs, not
  * individual parameters, so we never hand-mix corner values. Only designs
  * that pass the battery on (nearly) every one of the 81 templates are used:
- * soft / cut / bracket (81/81) and halo (80/81). "square" is the preset seed
- * placeholder ("no preference") and is never applied.
+ * solid / soft / cut / bracket (81/81) and halo (80/81). Every picker value
+ * has a mapping, so any explicit pick restyles the finder.
  */
-const FINDER_TUNE: Partial<Record<EyeShape, ArtFinder>> = {
+const FINDER_TUNE: Record<EyeShape, ArtFinder> = {
+  square: "solid",
   rounded: "soft",
   "extra-rounded": "halo",
   circle: "halo",
@@ -43,15 +44,18 @@ const FINDER_TUNE: Partial<Record<EyeShape, ArtFinder>> = {
 /**
  * Pupil picker → centre-ball silhouette. Only the three silhouettes the
  * validated finder styles actually use (a diamond ball reads as eroded
- * modules at the light gap and is deliberately unused).
+ * modules at the light gap and is deliberately unused — the angular picks
+ * therefore read as the close validated octagon).
  */
-// Picker values that mean "no preference" for the art pipeline: "square" is
-// the preset seed placeholder, and "extra-rounded" is DEFAULT_STYLE's classic
-// default — styles built the classic way (and legacy saves) must keep
-// rendering the template's own finder.
+// Picker values that mean "no preference" for the art pipeline UNLESS the
+// user explicitly picked them (style.eyePicked / style.ballPicked): "square"
+// is the preset seed placeholder, and "extra-rounded" is DEFAULT_STYLE's
+// classic default — styles built the classic way (and legacy saves) must
+// keep rendering the template's own finder.
 const NO_PREFERENCE_EYES: readonly EyeShape[] = ["square", "extra-rounded"];
 
-const BALL_TUNE: Partial<Record<EyeShape, "square" | "circle" | "octagon">> = {
+const BALL_TUNE: Record<EyeShape, "square" | "circle" | "octagon"> = {
+  square: "square",
   rounded: "circle",
   "extra-rounded": "circle",
   circle: "circle",
@@ -110,19 +114,34 @@ export function tuneDirection(dir: ArtDirection, style: QrStyle): ArtDirection {
   // When the direction's native shape is outside the picker's vocabulary, the
   // preset seeds "square" as a placeholder — treat that value as "no
   // preference" so applying a preset never flattens a petal direction.
+  // A pick is "explicit" when it differs from the direction's own shape, or
+  // when the Design tab recorded an actual click (style.modulePicked) — the
+  // marker also honours a Square pick on a template whose seed is "square".
   const dirShapeKnown = (MODULE_SHAPES as readonly { id: string }[]).some((m) => m.id === dir.shape);
-  if (style.moduleShape && (dirShapeKnown || style.moduleShape !== "square")) {
+  if (
+    style.moduleShape &&
+    (style.modulePicked === true || dirShapeKnown || style.moduleShape !== "square")
+  ) {
     patch.shape = style.moduleShape as ArtShape;
   }
   // Eye / pupil picks: "square" (preset seed) and "extra-rounded" (the
-  // classic DEFAULT_STYLE default) both mean "no preference", so only a
-  // genuinely chosen shape overrides the template's camera-validated finder.
+  // classic DEFAULT_STYLE default) mean "no preference" — unless the user
+  // explicitly clicked them (eyePicked / ballPicked) — so a legacy or seeded
+  // value never flattens the template's camera-validated finder.
   const eyeShape = style.eyeShape;
-  if (eyeShape && !NO_PREFERENCE_EYES.includes(eyeShape) && FINDER_TUNE[eyeShape]) {
+  if (
+    eyeShape &&
+    (style.eyePicked === true || !NO_PREFERENCE_EYES.includes(eyeShape)) &&
+    FINDER_TUNE[eyeShape]
+  ) {
     patch.finderTune = FINDER_TUNE[eyeShape];
   }
   const ballShape = style.ballShape;
-  if (ballShape && !NO_PREFERENCE_EYES.includes(ballShape) && BALL_TUNE[ballShape]) {
+  if (
+    ballShape &&
+    (style.ballPicked === true || !NO_PREFERENCE_EYES.includes(ballShape)) &&
+    BALL_TUNE[ballShape]
+  ) {
     patch.ballTune = BALL_TUNE[ballShape];
   }
   if (typeof style.moduleGap === "number" && Number.isFinite(style.moduleGap)) {

@@ -91,6 +91,17 @@ export interface QrStyle {
    * templates ignore dotScale entirely and render exactly as authored.
    */
   dotScaleRef?: number;
+  /**
+   * The user explicitly picked a module shape in the Design tab (as opposed
+   * to the value the active template seeded the picker with). With the
+   * marker, even a pick that matches the "square" seed placeholder is
+   * honoured — e.g. Square on a petal template actually renders squares.
+   */
+  modulePicked?: boolean;
+  /** The user explicitly picked an eye-frame shape in the Design tab. */
+  eyePicked?: boolean;
+  /** The user explicitly picked a pupil shape in the Design tab. */
+  ballPicked?: boolean;
   contrast: number;
   logoScale: number;
   minVersion: number;

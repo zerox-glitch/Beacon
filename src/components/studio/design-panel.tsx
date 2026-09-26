@@ -109,7 +109,7 @@ export function DesignPanel() {
             <button
               key={sh.id}
               type="button"
-              onClick={() => patch({ moduleShape: sh.id })}
+              onClick={() => patch({ moduleShape: sh.id, modulePicked: true })}
               title={sh.label}
               aria-label={`Module shape: ${sh.label}`}
               className={cn(
@@ -140,7 +140,7 @@ export function DesignPanel() {
             <button
               key={sh.id}
               type="button"
-              onClick={() => patch({ eyeShape: sh.id })}
+              onClick={() => patch({ eyeShape: sh.id, eyePicked: true })}
               title={sh.label}
               aria-label={`Eye frame: ${sh.label}`}
               className={cn(
@@ -178,7 +178,7 @@ export function DesignPanel() {
             <button
               key={sh.id}
               type="button"
-              onClick={() => patch({ ballShape: sh.id })}
+              onClick={() => patch({ ballShape: sh.id, ballPicked: true })}
               title={sh.label}
               aria-label={`Eye pupil: ${sh.label}`}
               className={cn(
@@ -201,12 +201,12 @@ export function DesignPanel() {
         </div>
       </section>
 
-      {/* Honesty note: what the template keeps vs. what your picks override */}
+      {/* Honesty note: what your picks do on top of a template */}
       {Boolean(style.artDirection) && !pictured && (
         <p className="-mt-3 text-[11px] leading-snug text-muted">
-          Art templates keep their own eye design — “Square” and “Soft” leave it untouched. Choose
-          another eye or pupil shape to restyle the template, and dot size adjusts the module
-          weight it prints with.
+          Your shape picks apply on top of the template: dot shapes redraw every module, and eye /
+          pupil picks restyle the finder corners (camera-validated silhouettes). Lighter shapes
+          like Star or Cross lower scan quality — watch the meter and use Fix scan.
         </p>
       )}
 
