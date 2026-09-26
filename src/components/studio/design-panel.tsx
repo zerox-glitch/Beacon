@@ -201,14 +201,20 @@ export function DesignPanel() {
         </div>
       </section>
 
-      {/* Honesty note: what your picks do on top of a template */}
-      {Boolean(style.artDirection) && !pictured && (
+      {/* Honesty note: what your picks do on top of a template / photo weave */}
+      {Boolean(style.artDirection) && !pictured ? (
         <p className="-mt-3 text-[11px] leading-snug text-muted">
           Your shape picks apply on top of the template: dot shapes redraw every module, and eye /
           pupil picks restyle the finder corners (camera-validated silhouettes). Lighter shapes
-          like Star or Cross lower scan quality — watch the meter and use Fix scan.
+          like Star or Cross lower scan quality — watch the meter and use Fix scan. Round pupils
+          show on Circle, Soft and Target eyes; on angular eyes the pupil stays square.
         </p>
-      )}
+      ) : pictured ? (
+        <p className="-mt-3 text-[11px] leading-snug text-muted">
+          Dot and eye shapes show on Mosaic, Blend and plain QR; fully-photographic weaves
+          (Paint, Halftone, Duotone, Mono) fill the modules with the photo itself.
+        </p>
+      ) : null}
 
       {/* Colors — target picker, HSB sliders, swatches, themes */}
       <ColorStudio style={style} patch={patch} />

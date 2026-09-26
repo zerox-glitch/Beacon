@@ -512,13 +512,28 @@ function finderPaints(
   const baseFinder: ArtFinder =
     level !== "lean" && dir.finderTune ? dir.finderTune : level === "lean" ? "solid" : dir.finder;
   let fs: FinderStyle = FINDER_STYLES[baseFinder] ?? FINDER_STYLES.solid;
+  // A pupil the user explicitly picked (Design tab) overrides the design's
+  // ball — where the camera battery (81 templates) proves it safe: halo
+  // carries every ball (80–81/81); the square-based carriers (solid/soft/cut/
+  // bracket) read a square pupil on their own ball. An explicit EYE pick owns
+  // the finder design: if its ball can't carry the pupil safely, the pupil
+  // keeps the design's own ball instead of yanking the whole finder to halo —
+  // that used to silently erase the eye pick (Ticks eye + Circle pupil
+  // rendered as a plain halo ring, so the eye picker looked dead). Without an
+  // eye pick, an explicit pupil still rides halo — the only proven
+  // multi-ball carrier.
   if (level !== "lean" && dir.ballTune) {
-    // A pupil pick that changes the ball silhouette moves the whole finder to
-    // the halo design — the only finder the camera battery passes on (nearly)
-    // every template with every ball. Picking the ball a design already uses
-    // keeps the design as-is (its own validated pairing).
-    if (fs.ball !== dir.ballTune) fs = FINDER_STYLES.halo ?? fs;
-    fs = { ...fs, ball: dir.ballTune };
+    if (fs.ball !== dir.ballTune) {
+      if (baseFinder === "halo") {
+        fs = { ...fs, ball: dir.ballTune };
+      } else if (!dir.finderTune) {
+        fs = { ...(FINDER_STYLES.halo ?? fs), ball: dir.ballTune };
+      } else if (dir.ballTune === "square") {
+        fs = { ...fs, ball: "square" };
+      }
+      // else: explicit eye (soft/cut/bracket) + circle/octagon pupil — no
+      // camera-safe way to show that pupil silhouette on it; the eye stays.
+    }
   }
   const eyeFill: FillSpec = { kind: "solid", stops: [inks.eye] };
   const ballFill: FillSpec = { kind: "solid", stops: [inks.ball] };
@@ -697,7 +712,28 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
     dotTouched ? 0.35 : MIN_DARK_MASS,
     MAX_DARK_MASS,
   );
-  const shape = dir.shape;
+  /**
+   * A module shape the user explicitly picked for this template (differs from
+   * the direction's own authored shape; the "square" seed placeholder counts
+   * as a pick only when the Design tab recorded an actual click). Such a pick
+   * is rendered the way the classic QR renderer draws it — un-plated, at full
+   * cell size, classic corner radii — instead of the template's mass system,
+   * which would bury low-coverage silhouettes (diamond, star, plus…) under a
+   * solid same-colour plate and make the pick look like the template's own
+   * shape. Only a pick that *differs from the template's own shape* counts:
+   * presets seed the picker with the direction's shape, so an untouched
+   * picker leaves templates alone.
+   */
+  const userShape =
+    style.moduleShape !== undefined &&
+    (style.modulePicked === true || style.moduleShape !== "square") &&
+    input.direction.shape !== style.moduleShape;
+  // The pick survives EVERY rung — including the camera-safe last resort,
+  // whose shape fallback would otherwise swap it back to the template's own
+  // silhouette and leave the dot picker looking dead after Fix scan. The
+  // pick is drawn un-plated at full cell (its mass is the user's choice),
+  // and Fix scan's real levers (gaps, quiet zone, ECC, contrast) still apply.
+  const shape: ArtShape = userShape ? (style.moduleShape as ArtShape) : dir.shape;
   const paintShape = paintShapeFor(shape);
   const radius = (level === "lean" ? Math.min(dir.radius, 0.3) : dir.radius) * cell;
   const perCell = dir.geometry === "single";
@@ -715,10 +751,6 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
    * presets seed the picker with the direction's shape, so an untouched
    * picker leaves templates alone.
    */
-  const userShape =
-    style.moduleShape !== undefined &&
-    (style.modulePicked === true || style.moduleShape !== "square") &&
-    input.direction.shape !== style.moduleShape;
   // The dot-size slider travels along user picks too (down to 0.75×, never
   // past the cell); an untouched slider renders them exactly full cell.
   const userScale =
@@ -842,7 +874,16 @@ export function buildArtPlan(input: ArtPlanInput): ArtPlan {
         w: bw0,
         h: bh0,
         r: userR,
-        corners: userCorners ?? (grouped ? corners : undefined),
+        // A user pick keeps ONE uniform corner profile across the whole code
+        // (the classic look). The neighbour-aware corners below would square
+        // off every cell that touches a run — jagged half-rounded blobs.
+        corners:
+          userCorners ??
+          (userShape
+            ? [userR, userR, userR, userR]
+            : grouped
+              ? corners
+              : undefined),
         rot:
           paintShape === "facet" || paintShape === "gem"
             ? ((hash2(x, y) % 4) * Math.PI) / 8
