@@ -1,11 +1,13 @@
 /**
- * Tiny live previews of the ACTUAL renderers — the same drawModuleShape /
- * drawEye calls the QR uses, so what you pick is pixel-for-pixel what the
- * code gets (no icon-font approximations, no names to guess at).
+ * Shape-picker preview components. The painting itself lives in
+ * shape-glyphs.ts (a port of the mobile app's ShapeVisuals.kt); these are
+ * the React canvas wrappers the design panel renders. Colours follow the
+ * app: unselected shapes are zinc #D4D4D8; selection is Electric Cyan
+ * #00F0FF (modules, pupils) and Neon Violet #7A5AF8 (frames).
  */
 import { useEffect, useRef } from "react";
-import { drawEye, drawModuleShape } from "@/lib/qr/render";
 import type { EyeShape, ModuleShape } from "@/lib/qr/types";
+import { drawEyeBallGlyph, drawEyeFrameGlyph, drawModuleClusterIcon } from "./shape-glyphs";
 
 function setup(ref: React.RefObject<HTMLCanvasElement | null>, size: number) {
   const c = ref.current;
@@ -20,6 +22,23 @@ function setup(ref: React.RefObject<HTMLCanvasElement | null>, size: number) {
   return ctx;
 }
 
+function Glyph({
+  size,
+  draw,
+}: {
+  size: number;
+  draw: (ctx: CanvasRenderingContext2D, size: number) => void;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const ctx = setup(ref, size);
+    if (!ctx) return;
+    draw(ctx, size);
+  }, [draw, size]);
+  return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
+}
+
+/** 2×2 cluster of the dot shape — the app's ModuleShapeVisualTile. */
 export function ModuleShapeIcon({
   shape,
   color,
@@ -29,43 +48,31 @@ export function ModuleShapeIcon({
   color: string;
   size?: number;
 }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const ctx = setup(ref, size);
-    if (!ctx) return;
-    ctx.fillStyle = color;
-    const s = size * 0.74;
-    // Fixed grid coords → confetti/dash/bubbles variants are stable per shape.
-    drawModuleShape(ctx, (size - s) / 2, (size - s) / 2, s, shape, undefined, {
-      gx: 3,
-      gy: 5,
-      size: 21,
-    });
-  }, [shape, color, size]);
-  return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
+  return <Glyph size={size} draw={(ctx, s) => drawModuleClusterIcon(ctx, s, shape, color)} />;
 }
 
-export function EyeIcon({
-  frame,
-  ball,
-  ink,
-  pupil,
-  paper,
+/** Stroke-outline silhouette — the app's EyeShapeVisualTile. */
+export function EyeFrameIcon({
+  shape,
+  color,
   size = 24,
 }: {
-  frame: EyeShape;
-  ball: EyeShape;
-  ink: string;
-  pupil: string;
-  paper: string;
+  shape: EyeShape;
+  color: string;
   size?: number;
 }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const ctx = setup(ref, size);
-    if (!ctx) return;
-    // A real 7×7 finder eye, edge to edge.
-    drawEye(ctx, 0, 0, size / 7, frame, ball, ink, pupil, paper);
-  }, [frame, ball, ink, pupil, paper, size]);
-  return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
+  return <Glyph size={size} draw={(ctx, s) => drawEyeFrameGlyph(ctx, s, shape, color)} />;
+}
+
+/** Solid pupil behind a faint finder hint — the app's EyeBallVisualTile. */
+export function EyeBallIcon({
+  shape,
+  color,
+  size = 24,
+}: {
+  shape: EyeShape;
+  color: string;
+  size?: number;
+}) {
+  return <Glyph size={size} draw={(ctx, s) => drawEyeBallGlyph(ctx, s, shape, color)} />;
 }

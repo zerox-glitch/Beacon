@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { FRAME_DEFS } from "@/lib/qr/frames";
 import { useStudio } from "@/lib/store";
 import { ColorStudio } from "@/components/studio/color-studio";
-import { EyeIcon, ModuleShapeIcon } from "@/components/studio/shape-icon";
+import { EyeBallIcon, EyeFrameIcon, ModuleShapeIcon } from "@/components/studio/shape-icon";
 
 /**
  * Per-element color pill (e.g. "Dot Color" beside Module Dot Shapes).
@@ -115,14 +115,17 @@ export function DesignPanel() {
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-xl border transition active:scale-95",
                 style.moduleShape === sh.id
-                  ? "border-accent bg-accent/15 shadow-sm"
-                  : "border-border bg-elevated hover:border-border-strong",
+                  ? "border-2 border-[#00F0FF] bg-[#00F0FF]/20 shadow-sm"
+                  : "border border-[#232F48] bg-[#161F32] hover:border-border-strong",
               )}
             >
-              {/* Icons stay a fixed light colour (like the mobile app): they
-                  are controls, not a preview of the ink — a black QR on a dark
-                  panel used to make the whole row unreadable. */}
-              <ModuleShapeIcon shape={sh.id} color="#ffffff" size={32} />
+              {/* Icons follow the app's ShapeVisuals tiles: zinc shapes,
+                  Electric Cyan when selected — controls, not an ink preview. */}
+              <ModuleShapeIcon
+                shape={sh.id}
+                color={style.moduleShape === sh.id ? "#00F0FF" : "#D4D4D8"}
+                size={32}
+              />
             </button>
           ))}
         </div>
@@ -149,17 +152,14 @@ export function DesignPanel() {
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-xl border p-2 transition active:scale-95",
                 style.eyeShape === sh.id
-                  ? "border-accent bg-accent/15 shadow-sm"
-                  : "border-border bg-elevated hover:border-border-strong",
+                  ? "border-2 border-[#7A5AF8] bg-[#7A5AF8]/20 shadow-sm"
+                  : "border border-[#232F48] bg-[#161F32] hover:border-border-strong",
               )}
             >
-              <EyeIcon
-                frame={sh.id}
-                ball={style.ballShape as never}
-                ink="#ffffff"
-                pupil="#ffffff"
-                paper="transparent"
-                size={34}
+              <EyeFrameIcon
+                shape={sh.id}
+                color={style.eyeShape === sh.id ? "#7A5AF8" : "#D4D4D8"}
+                size={32}
               />
             </button>
           ))}
@@ -187,17 +187,14 @@ export function DesignPanel() {
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-xl border p-2 transition active:scale-95",
                 style.ballShape === sh.id
-                  ? "border-accent bg-accent/15 shadow-sm"
-                  : "border-border bg-elevated hover:border-border-strong",
+                  ? "border-2 border-[#00F0FF] bg-[#00F0FF]/20 shadow-sm"
+                  : "border border-[#232F48] bg-[#161F32] hover:border-border-strong",
               )}
             >
-              <EyeIcon
-                frame={style.eyeShape as never}
-                ball={sh.id}
-                ink="#ffffff"
-                pupil="#ffffff"
-                paper="transparent"
-                size={34}
+              <EyeBallIcon
+                shape={sh.id}
+                color={style.ballShape === sh.id ? "#00F0FF" : "#D4D4D8"}
+                size={32}
               />
             </button>
           ))}
