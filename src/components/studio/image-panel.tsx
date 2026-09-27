@@ -1,12 +1,8 @@
-import { BadgeCheck, ImagePlus, Sliders, Sparkles, X } from "lucide-react";
+import { BadgeCheck, ImagePlus, Sliders, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { analyzeImage, smartArtPatch } from "@/lib/qr/art/analyzer";
-import { WEAVE_PRESETS } from "@/lib/qr/art/weave-presets";
-import { loadImage } from "@/lib/qr/render";
 import { IMAGE_MODES } from "@/lib/qr/types";
 import { SAMPLE_IMAGES } from "@/lib/qr/presets";
 import { LOGOS, LOGO_CATEGORIES, logoDataUrl } from "@/lib/qr/logo-set";
@@ -20,19 +16,6 @@ function readFile(file: File, onUrl: (url: string) => void) {
 
 const WEAVE_MODES = IMAGE_MODES.filter((m) => m.id !== "logo");
 
-/**
- * How much of the photograph the user wants to see. Maps onto the engine's
- * validated kernel candidates: "detail" paints the most photo-true surround,
- * "camera-safe" the least. "Auto" lets the engine choose (and escalates if a
- * candidate fails the camera gate).
- */
-const PHOTO_VISIBILITY: { id: "detail" | "balanced" | "camera-safe" | ""; label: string; hint: string }[] = [
-  { id: "", label: "Auto", hint: "The engine picks the most photographic style that still passes the camera check" },
-  { id: "detail", label: "Photo first", hint: "The picture leads — the photo's own tones fill the frame, thin dots carry the code" },
-  { id: "balanced", label: "Balanced", hint: "Half picture, half dot-grid — the default feel" },
-  { id: "camera-safe", label: "Scan first", hint: "Thickest locked centers — maximum distance + angle tolerance" },
-];
-
 export function ImagePanel() {
   const imageUrl = useStudio((s) => s.imageUrl);
   const logoUrl = useStudio((s) => s.logoUrl);
@@ -44,25 +27,6 @@ export function ImagePanel() {
   const logoRef = useRef<HTMLInputElement>(null);
   const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
   const strength = style.artisticStrength ?? 0.42;
-  const smartArt = useStudio((s) => s.smartArt);
-  const setSmartArt = useStudio((s) => s.setSmartArt);
-
-  useEffect(() => {
-    if (!smartArt || !imageUrl) return;
-    let cancelled = false;
-    loadImage(imageUrl)
-      .then((img) => {
-        if (cancelled) return;
-        const suggestion = smartArtPatch(analyzeImage(img));
-        useStudio.getState().patchStyle(suggestion.patch);
-      })
-      .catch(() => {
-        /* keep current knobs */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [smartArt, imageUrl]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -181,67 +145,6 @@ export function ImagePanel() {
           {IMAGE_MODES.find((m) => m.id === style.imageMode)?.hint}
         </p>
       </div>
-
-      {imageUrl && (
-        <div>
-          <p className="mb-2 text-xs font-medium tracking-wide text-muted">Weave look</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {WEAVE_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                title={p.hint}
-                onClick={() => patchStyle(p.patch)}
-                className="h-10 rounded-md border border-border bg-elevated px-1 text-[10px] font-semibold text-muted transition hover:border-border-strong hover:text-fg active:scale-95"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {pictured && (
-        <div>
-          <p className="mb-2 text-xs font-medium tracking-wide text-muted">How much photo should show?</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {PHOTO_VISIBILITY.map((v) => (
-              <button
-                key={v.label}
-                type="button"
-                title={v.hint}
-                onClick={() => patchStyle(v.id ? { photoKernel: v.id } : { photoKernel: undefined })}
-                className={cn(
-                  "h-10 rounded-md border px-1 text-[10px] font-semibold transition active:scale-95",
-                  (style.photoKernel ?? "") === v.id
-                    ? "border-accent bg-accent text-accent-fg shadow-sm"
-                    : "border-border bg-elevated text-muted hover:text-fg hover:border-border-strong",
-                )}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[11px] leading-snug text-subtle">
-            {(PHOTO_VISIBILITY.find((v) => (style.photoKernel ?? "") === v.id) ?? PHOTO_VISIBILITY[0])!.hint}
-          </p>
-        </div>
-      )}
-
-      {imageUrl && (
-        <label className="flex h-11 items-center justify-between rounded-md border border-border bg-elevated px-3 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles className="size-3.5 text-ok" />
-            Smart Art
-          </span>
-          <Switch checked={smartArt} onCheckedChange={setSmartArt} />
-        </label>
-      )}
-      {smartArt && imageUrl && (
-        <p className="text-[11px] leading-snug text-subtle">
-          Reads luma, contrast, edges and color in this browser, then picks a weave. Not a model.
-        </p>
-      )}
 
       {pictured && (
         <div className="grid gap-4 rounded-xl border border-border bg-elevated/60 p-4">
