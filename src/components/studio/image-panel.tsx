@@ -113,11 +113,13 @@ export function ImagePanel() {
 
       <LogoGallery
         logoUrl={logoUrl}
+        logoScale={style.logoScale}
         onPick={(url) => {
           setLogoUrl(url);
           patchStyle({ imageMode: "logo" });
         }}
         onClear={() => setLogoUrl(null)}
+        onScaleChange={(v) => patchStyle({ logoScale: v })}
       />
 
       <div>
@@ -288,21 +290,6 @@ export function ImagePanel() {
               <ImagePlus className="size-5 text-muted" />
             )}
           </button>
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center justify-between">
-              <Label>Logo Scale</Label>
-              <span className="text-xs tabular-nums text-subtle">
-                {Math.round(style.logoScale * 100)}%
-              </span>
-            </div>
-            <Slider
-              min={0.12}
-              max={0.3}
-              step={0.01}
-              value={[style.logoScale]}
-              onValueChange={([v]) => patchStyle({ logoScale: v ?? 0.22 })}
-            />
-          </div>
           {logoUrl && (
             <button
               type="button"
@@ -333,12 +320,16 @@ export function ImagePanel() {
 /** 66 built-in brand/emoji center logos + upload fallback. */
 function LogoGallery({
   logoUrl,
+  logoScale,
   onPick,
   onClear,
+  onScaleChange,
 }: {
   logoUrl: string | null;
+  logoScale: number;
   onPick: (url: string) => void;
   onClear: () => void;
+  onScaleChange: (v: number) => void;
 }) {
   const [cat, setCat] = useState<(typeof LOGO_CATEGORIES)[number] | "All">("All");
   const list = useMemo(() => (cat === "All" ? LOGOS : LOGOS.filter((l) => l.category === cat)), [cat]);
@@ -394,6 +385,21 @@ function LogoGallery({
             </button>
           );
         })}
+      </div>
+      <div className="mt-2">
+        <div className="mb-1 flex items-center justify-between">
+          <Label>Logo Scale</Label>
+          <span className="text-xs tabular-nums text-subtle">
+            {Math.round(logoScale * 100)}%
+          </span>
+        </div>
+        <Slider
+          min={0.12}
+          max={0.3}
+          step={0.01}
+          value={[logoScale]}
+          onValueChange={([v]) => onScaleChange(v ?? 0.22)}
+        />
       </div>
       <button
         type="button"
