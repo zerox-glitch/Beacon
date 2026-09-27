@@ -1,6 +1,13 @@
 import { QrCodeDataType } from "uqr";
 import { atlasFor, renderArtisticQr } from "./art-engine";
 import { drawFrame, frameBandFor, type FrameId } from "./frames";
+import {
+  drawTemplateFrameBg,
+  drawTemplateFrameFg,
+  drawTemplateDecor,
+  templateFrameInsets,
+  templateFramePaper,
+} from "./template-frames";
 import { getArtDirection } from "./art-directions";
 import { buildArtPlan } from "./art/art-plan";
 import { paintArtPlan } from "./art/paint";
@@ -504,7 +511,8 @@ function renderCleanPhotoQr(
   qr: EncodedQr,
   style: QrStyle,
   art: HTMLImageElement,
-  origin: number,
+  originX: number,
+  originY: number,
   body: number,
   cell: number,
   px: number,
@@ -512,9 +520,8 @@ function renderCleanPhotoQr(
 ) {
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
-  // Designed posters keep their own paper: the cream flip exists so dark
-  // *photos* get readable finder plates; artPoster art supplies them itself.
-  const paper = style.artPoster || bgLum >= 0.42 ? style.bg : "#f3eee6";
+  // The cream flip exists so dark photos get readable finder plates.
+  const paper = bgLum >= 0.42 ? style.bg : "#f3eee6";
 
   ctx.fillStyle = paper;
   ctx.fillRect(0, 0, px, px);
@@ -530,11 +537,8 @@ function renderCleanPhotoQr(
   ctx.restore();
   const fgRgb = parseHex(style.fg);
   const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
-  // Scrim only for user photos — posters are colour-keyed to their modules.
-  if (!style.artPoster) {
-    ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
-    ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
-  }
+  ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
+  ctx.fillRect(originX - cell * 0.5, originY - cell * 0.5, body + cell, body + cell);
 
   // Finder plates: an opaque rounded island per eye + separator.
   const corners: [number, number][] = [
@@ -544,8 +548,8 @@ function renderCleanPhotoQr(
   ];
   const g = cell * 0.45;
   for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
+    const ox = originX + ex * cell;
+    const oy = originY + ey * cell;
     const sepX = ex === 0 ? ox : ox - cell;
     const sepY = ey === 0 ? oy : oy - cell;
     ctx.fillStyle = paper;
@@ -563,8 +567,8 @@ function renderCleanPhotoQr(
       if (isFinderCell(x, y, qr.size)) continue;
       const dark = isDark(qr, x, y);
       const type = qr.types[y]![x]!;
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
+      const px0 = originX + x * cell;
+      const py0 = originY + y * cell;
       const protectedPattern =
         type === QrCodeDataType.Function ||
         type === QrCodeDataType.Timing ||
@@ -591,8 +595,8 @@ function renderCleanPhotoQr(
 
   // Eyes last, on their plates: ink = eye color, ball = ball color.
   for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
+    const ox = originX + ex * cell;
+    const oy = originY + ey * cell;
     drawEye(ctx, ox, oy, cell, style.eyeShape, style.ballShape, eyeInk, style.ballColor || eyeInk, paper);
   }
 }
@@ -607,10 +611,11 @@ function renderCleanPhotoQr(
 function drawPhotoEffect(
   ctx: CanvasRenderingContext2D,
   effect: QrStyle["effect"],
-  g: { qr: EncodedQr; origin: number; body: number; cell: number; bg: string },
+  g: { qr: EncodedQr; origin: number; originY?: number; body: number; cell: number; bg: string },
 ) {
   if (effect === "none") return;
   const { qr, origin, body, cell, bg } = g;
+  const originY = g.originY ?? origin;
   const bgRgb = parseHex(bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
   const x = origin;
@@ -659,7 +664,7 @@ function drawPhotoEffect(
       for (let mx = 0; mx < qr.size; mx++) {
         if (isFinderCell(mx, my, qr.size)) continue;
         if (!isDark(qr, mx, my)) continue;
-        ctx.fillRect(origin + mx * cell + k * off, origin + my * cell + k * off, cell, cell);
+        ctx.fillRect(origin + mx * cell + k * off, originY + my * cell + k * off, cell, cell);
       }
     }
   }
@@ -758,18 +763,35 @@ export function renderQr(
     ? Math.max(2, Math.min(8, style.quietZone))
     : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
-  // Themes template posters pull the code area inward so the designed frame
-  // art has breathing room; the poster itself still paints full-bleed.
-  const inset = Math.round(px * Math.max(0, Math.min(0.3, style.qrInset ?? 0)));
-  const band = frameBandFor(frame, px) + inset;
-  const cell = (px - band * 2) / total;
-  const origin = band + qz * cell;
+  // Template frames reserve per-side space (ported reference-app insets);
+  // legacy frames keep their uniform band. The code centres in the usable box.
+  const tf =
+    style.frameStyle && style.frameStyle !== "none"
+      ? templateFrameInsets(style.frameStyle, px)
+      : null;
+  const band = frameBandFor(frame, px);
+  const insetL = band + (tf?.l ?? 0);
+  const insetT = band + (tf?.t ?? 0);
+  const insetR = band + (tf?.r ?? 0);
+  const insetB = band + (tf?.b ?? 0);
+  const usableW = px - insetL - insetR;
+  const usableH = px - insetT - insetB;
+  const cell = Math.min(usableW, usableH) / total;
   const body = qr.size * cell;
+  const originX = insetL + (usableW - body) / 2;
+  const originY = insetT + (usableH - body) / 2;
+  const origin = originX;
   const mode = pictured ? style.imageMode : "none";
 
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
-  const paper = pictured && bgLum < 0.42 ? "#f3eee6" : style.bg;
+  // Template frames put the code on their container surface (white card,
+  // tinted disc) — light cells/eye holes must match that surface, not style.bg.
+  const paper = tf
+    ? templateFramePaper(style.frameStyle!, style.bg)
+    : pictured && bgLum < 0.42
+      ? "#f3eee6"
+      : style.bg;
   const frameGeo = { px, band, origin, body, fg: style.fg, bg: paper };
 
   ctx.clearRect(0, 0, px, px);
@@ -777,13 +799,25 @@ export function renderQr(
     ctx.fillStyle = paper;
     ctx.fillRect(0, 0, px, px);
   }
+  if (tf) drawTemplateFrameBg(ctx, style.frameStyle!, px);
 
-  const fill = makeFill(ctx, style, origin, origin, body, body);
+  const fill = makeFill(ctx, style, originX, originY, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
+  // Template layers: border art under the logo, caption frames on top
+  // (ports the reference app's decor → logo → frame-foreground order).
+  const finishTemplateLayers = () => {
+    drawTemplateDecor(ctx, style.decor, px, style.fg, style.bg);
+  };
+  const finalTemplateLayer = () => {
+    if (tf) drawTemplateFrameFg(ctx, style.frameStyle!, style.frameCaption ?? "", px, style.fg, style.gradientTo ?? style.fg);
+  };
+
   if (opts.art && mode === "clean") {
-    renderCleanPhotoQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
-    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    renderCleanPhotoQr(ctx, qr, style, opts.art, originX, originY, body, cell, px, fill);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin: originX, originY, body, cell, bg: style.bg });
+    finishTemplateLayers();
+    finalTemplateLayer();
     drawFrame(ctx, frame, frameGeo);
     return;
   }
@@ -798,7 +832,7 @@ export function renderQr(
       mode === "mono")
   ) {
     renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
-    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin: originX, originY, body, cell, bg: style.bg });
     drawFrame(ctx, frame, frameGeo);
   } else {
     /* ---- Kernel effects (Tune panel). Silhouette passes run under the ink,
@@ -812,7 +846,7 @@ export function renderQr(
         for (let x = 0; x < qr.size; x++) {
           if (isFinderCell(x, y, qr.size)) continue;
           if (!isDark(qr, x, y)) continue;
-          fn(origin + x * cell, origin + y * cell);
+          fn(originX + x * cell, originY + y * cell);
         }
       }
     };
@@ -827,7 +861,7 @@ export function renderQr(
         [0, qr.size - 7],
       ];
       for (const [ex, ey] of finderCorners) {
-        ctx.fillRect(origin + ex * cell + dx, origin + ey * cell + dy, cell * 7, cell * 7);
+        ctx.fillRect(originX + ex * cell + dx, originY + ey * cell + dy, cell * 7, cell * 7);
       }
       ctx.restore();
     };
@@ -863,8 +897,8 @@ export function renderQr(
 
         const type = qr.types[y]![x]!;
         const dark = isDark(qr, x, y);
-        const px0 = origin + x * cell;
-        const py0 = origin + y * cell;
+        const px0 = originX + x * cell;
+        const py0 = originY + y * cell;
         const pad = cell * gap * 0.5;
         const protectedPattern =
           type === QrCodeDataType.Function ||
@@ -923,8 +957,8 @@ export function renderQr(
     ];
 
     for (const [ex, ey] of corners) {
-      const ox = origin + ex * cell;
-      const oy = origin + ey * cell;
+      const ox = originX + ex * cell;
+      const oy = originY + ey * cell;
       const sepX = ex === 0 ? ox : ox - cell;
       const sepY = ey === 0 ? oy : oy - cell;
       ctx.fillStyle = paper;
@@ -943,11 +977,14 @@ export function renderQr(
     }
   }
 
+  // Template border art sits above the code, below the logo (app order).
+  finishTemplateLayers();
+
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
   if (logoImg) {
     const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
-    const lx = origin + (body - logoSize) / 2;
-    const ly = origin + (body - logoSize) / 2;
+    const lx = originX + (body - logoSize) / 2;
+    const ly = originY + (body - logoSize) / 2;
     const pad = logoSize * 0.12;
     ctx.fillStyle = paper;
     roundedRect(
@@ -978,6 +1015,7 @@ export function renderQr(
     ctx.restore();
   }
 
+  finalTemplateLayer();
   drawFrame(ctx, frame, { ...frameGeo, bg: paper });
 }
 

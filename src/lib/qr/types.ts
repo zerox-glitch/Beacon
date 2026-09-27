@@ -65,6 +65,32 @@ export type ImageMode =
 
 export type QrEffect = "none" | "shadow" | "glow" | "outline" | "emboss" | "extrude";
 
+/** Decorative container frames ported from the reference app's Templates engine. */
+export type TemplateFrameId =
+  | "none"
+  | "simple-border"
+  | "badge-scan-me"
+  | "modern-pill"
+  | "phone-frame"
+  | "stamp"
+  | "ticket"
+  | "neon-glow"
+  | "bracket"
+  | "badge"
+  | "arch"
+  | "cup"
+  | "card"
+  | "label"
+  | "speech"
+  | "note"
+  | "globe"
+  | "plaque"
+  | "pentagon"
+  | "hexagon"
+  | "diamond"
+  | "seal"
+  | "bucket";
+
 export type EccLevel = "L" | "M" | "Q" | "H";
 
 export interface QrStyle {
@@ -78,20 +104,13 @@ export interface QrStyle {
   gradientType: GradientType;
   gradientTo: string;
   quietZone: number;
-  /**
-   * Template-poster support (Themes presets): shrinks the code area toward
-   * the centre so designed artwork — plates, panels, scatter frames — has
-   * room around it, while the poster still paints full-bleed underneath.
-   * Fraction of the canvas per side (0.18 ≈ competitor template ratio).
-   * Rendered by the clean photo path; SVG export honors it for parity.
-   */
-  qrInset?: number;
-  /**
-   * The artwork IS the design (a Themes poster), not a user photo: keep the
-   * finder plates on the poster's own palette and skip the auto-scrim so the
-   * flat poster colours stay true. Default falsy → photos behave as before.
-   */
-  artPoster?: boolean;
+  /** Decorative container frame (Templates engine, ported from the reference
+   * app): per-side code insets + painted frame background/foreground. */
+  frameStyle?: TemplateFrameId;
+  /** Caption drawn by frames that show text (default "SCAN ME"). */
+  frameCaption?: string;
+  /** Template border decoration ("love", "halloween", "note", …). */
+  decor?: string;
   moduleGap: number;
   imageMode: ImageMode;
   imageOpacity: number;

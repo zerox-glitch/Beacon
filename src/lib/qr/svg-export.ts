@@ -52,13 +52,11 @@ function cellHash(gx: number, gy: number): number {
 export function exportQrSvg(qr: EncodedQr, style: QrStyle, viewBoxSize = 1000): string {
   const qz = Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
-  // Match renderQr's qrInset (Themes templates) so vector parity holds.
-  const insetPx = viewBoxSize * Math.max(0, Math.min(0.3, style.qrInset ?? 0));
-  const cell = (viewBoxSize - insetPx * 2) / total;
-  const origin = insetPx + qz * cell;
-  const body = qr.size * cell;
+  // Template frames/decor are canvas layers (like photo modes); the SVG is
+  // the clean code itself, centred at full size.
+  const cell = viewBoxSize / total;
+  const origin = qz * cell;
 
-  const paths: string[] = [];
   const defs: string[] = [];
 
   const fillId = "qr-fg-fill";
