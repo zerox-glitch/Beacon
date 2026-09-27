@@ -1,13 +1,12 @@
 /**
  * Finder-silhouette battery lookup tests (plain `node --test`).
  *
- * safeFinder() routes the user's eye/pupil pick to the closest (frame, ball)
- * the camera battery proved on the template. The table is generated (see
- * scripts/finder-battery.mjs); these tests pin the lookup CONTRACTS:
- * exact pairs survive, bare frame picks get the battery's best ball,
- * impossible pairs degrade down the fallback ladder, zero-passing templates
- * return null (keep the template's own finder), and unknown templates
- * trust the pick.
+ * safeFinder() maps a (frame, ball) pick to the closest pair the camera
+ * battery proved on a template. The table is generated (see
+ * scripts/finder-battery.mjs). NOTE: tuneDirection no longer routes picks
+ * through this battery — explicit picks render exactly as chosen (the app's
+ * drawEye rule) and scan quality is guarded by the meter + Fix scan. The
+ * battery remains as a lookup resource; these tests pin its contracts.
  */
 import { register } from "node:module";
 import assert from "node:assert/strict";
@@ -101,7 +100,11 @@ describe("tuneDirection eye/pupil picks", () => {
     assert.equal(tuned.finderBall, undefined);
   });
 
-  it("degrades to the template's own finder on a zero-passing template", () => {
+  it("applies the pick exactly even on a zero-passing template", () => {
+    // tmpl-wechat has no battery-passing silhouette — the old policy dropped
+    // the pick there, which read as "the pupil pickers don't work". Picks now
+    // always render as chosen (the mobile app's drawEye rule); scan quality
+    // is guarded by the scan meter + Fix scan instead of by surprise.
     const wechatDir = getArtDirection("tmpl-wechat") ?? { id: "tmpl-wechat", name: "WeChat" };
     const tuned = tuneDirection({ ...wechatDir, id: "tmpl-wechat" }, {
       ...baseStyle,
@@ -109,6 +112,6 @@ describe("tuneDirection eye/pupil picks", () => {
       eyeShape: "circle",
       eyePicked: true,
     });
-    assert.equal(tuned.finderFrame, undefined);
+    assert.equal(tuned.finderFrame, "circle");
   });
 });

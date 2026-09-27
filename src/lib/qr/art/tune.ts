@@ -18,7 +18,6 @@
 
 import { MODULE_SHAPES } from "../types.ts";
 import type { ArtDirection, ArtShape, EyeShape, QrStyle } from "../types.ts";
-import { safeFinder } from "./finder-battery.ts";
 
 // Picker values that mean "no preference" for the art pipeline UNLESS the
 // user explicitly picked them (style.eyePicked / style.ballPicked): "square"
@@ -89,14 +88,12 @@ export function tuneDirection(dir: ArtDirection, style: QrStyle): ArtDirection {
   // — unless the user explicitly clicked them (eyePicked / ballPicked) — so a
   // legacy or seeded value never flattens the template's finder.
   //
-  // An explicit pick goes through the per-template camera battery
-  // (safeFinder): the rendered (frame, ball) is the closest pair the battery
-  // proved on THIS template. The old 5-design mapping (10 icons → 5 subtle
-  // FINDER_STYLES) made most clicks visually no-ops — Circle on a
-  // ringed-look template was a literal no-op — which read as "the eye and
-  // pupil pickers don't work". Now every pick is a whole classic silhouette
-  // (7×7 frame + 5×5 gap + 3×3 ball, exactly what the picker icons preview),
-  // and the battery keeps it camera-safe per template.
+  // An explicit pick renders EXACTLY as picked — the mobile app's drawEye
+  // rule, and what the picker icons preview (frame = style.eyeShape,
+  // ball = style.ballShape, drawn as the classic 7×7 / 5×5 / 3×3 silhouette).
+  // An earlier per-template scan battery silently swapped or dropped shapes
+  // here, which read as "the eye and pupil pickers don't work"; scan quality
+  // is guarded by the scan meter + Fix scan instead of by surprise.
   const eyeShape = style.eyeShape;
   const ballShape = style.ballShape;
   const eyeExplicit =
@@ -105,22 +102,9 @@ export function tuneDirection(dir: ArtDirection, style: QrStyle): ArtDirection {
   const ballExplicit =
     ballShape !== undefined &&
     (style.ballPicked === true || !NO_PREFERENCE_EYES.includes(ballShape));
-  const applySafe = (frame: EyeShape, ball: EyeShape | undefined) => {
-    const safe = safeFinder(dir.id, frame, ball);
-    // null = no silhouette decodes on this template: keep the template's
-    // own camera-validated finder instead of shipping a rejected one.
-    if (safe.frame) {
-      patch.finderFrame = safe.frame;
-      patch.finderBall = safe.ball;
-    }
-  };
-  if (eyeShape && eyeExplicit) {
-    applySafe(eyeShape, ballExplicit ? ballShape : undefined);
-  } else if (ballShape && ballExplicit) {
-    // Pupil-only pick: the pupil silhouette rides the circular ring — the
-    // carrier the battery proves on the most templates — the same
-    // "finder moves to carry the ball" behaviour the old mapping had.
-    applySafe("circle", ballShape);
+  if (eyeExplicit || ballExplicit) {
+    patch.finderFrame = eyeShape ?? "square";
+    patch.finderBall = ballShape ?? "square";
   }
   if (typeof style.moduleGap === "number" && Number.isFinite(style.moduleGap)) {
     patch.gap = clamp(style.moduleGap, 0, 0.18);

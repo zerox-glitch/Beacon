@@ -380,7 +380,10 @@ function drawLayer(
     ctx.fill();
     return;
   }
-  if (shape === "circle") {
+  // "target" as a LAYER (i.e. a pupil) is a plain disc — matching the app's
+  // drawEyeLayer (`Circle, Target -> drawCircle`). As a FRAME it is handled
+  // separately in drawEye (ring + ball).
+  if (shape === "circle" || shape === "target") {
     ctx.beginPath();
     ctx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2);
     ctx.fill();
@@ -403,15 +406,33 @@ export function drawEye(
   bg: string,
 ) {
   const s = cell * 7;
+  // A transparent paper must ERASE the ink below it (canvas ignores
+  // "transparent" fills — source-over with alpha 0 changes nothing, which
+  // used to turn every picker icon into a solid blob). destination-out is
+  // the true "hole" operation; opaque papers keep the classic over-paint.
+  const erase = bg === "transparent";
+  const paintHole = (draw: () => void) => {
+    if (erase) {
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "#000000";
+      draw();
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = bg;
+    draw();
+  };
   if (eyeShape === "target") {
     ctx.fillStyle = eyeColor;
     ctx.beginPath();
     ctx.arc(ox + s / 2, oy + s / 2, s * 0.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = bg;
-    ctx.beginPath();
-    ctx.arc(ox + s / 2, oy + s / 2, s * (0.5 - 1 / 7), 0, Math.PI * 2);
-    ctx.fill();
+    paintHole(() => {
+      ctx.beginPath();
+      ctx.arc(ox + s / 2, oy + s / 2, s * (0.5 - 1 / 7), 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.fillStyle = ballColor;
     ctx.beginPath();
     ctx.arc(ox + s / 2, oy + s / 2, s * (1.5 / 7), 0, Math.PI * 2);
@@ -420,7 +441,7 @@ export function drawEye(
   }
   drawLayer(ctx, ox, oy, s, eyeShape, eyeColor);
   const inset = cell;
-  drawLayer(ctx, ox + inset, oy + inset, cell * 5, eyeShape, bg);
+  paintHole(() => drawLayer(ctx, ox + inset, oy + inset, cell * 5, eyeShape, erase ? "#000000" : bg));
   const ball = cell * 3;
   const bx = ox + cell * 2;
   const by = oy + cell * 2;
@@ -963,6 +984,7 @@ export function renderQr(
       const sepY = ey === 0 ? oy : oy - cell;
       ctx.fillStyle = paper;
       ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
+      const eyeInk = style.eyeColor || style.fg;
       drawEye(
         ctx,
         ox,
@@ -970,8 +992,8 @@ export function renderQr(
         cell,
         style.eyeShape,
         style.ballShape,
-        style.eyeColor,
-        style.ballColor,
+        eyeInk,
+        style.ballColor || eyeInk,
         paper,
       );
     }
