@@ -14,3 +14,14 @@ dist/
 # Materialized by the sign-in enablement flow (source: migrations/auth/0001_auth.sql).
 # Must never be committed — see scripts/migration-plan.test.mjs.
 migrations/0001_auth.sql
+
+# QA scratch (template scan harness)
+sheets/*.raw
+sheets/dbg-*
+sheets/dbg.*
+sheets/ablate/
+sheets/tune*/
+sheets/template-raw/
+sheets/one-*.json
+sheets/template-matrices.json
+scripts/__pycache__/

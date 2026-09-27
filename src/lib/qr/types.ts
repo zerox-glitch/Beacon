@@ -78,6 +78,20 @@ export interface QrStyle {
   gradientType: GradientType;
   gradientTo: string;
   quietZone: number;
+  /**
+   * Template-poster support (Themes presets): shrinks the code area toward
+   * the centre so designed artwork — plates, panels, scatter frames — has
+   * room around it, while the poster still paints full-bleed underneath.
+   * Fraction of the canvas per side (0.18 ≈ competitor template ratio).
+   * Rendered by the clean photo path; SVG export honors it for parity.
+   */
+  qrInset?: number;
+  /**
+   * The artwork IS the design (a Themes poster), not a user photo: keep the
+   * finder plates on the poster's own palette and skip the auto-scrim so the
+   * flat poster colours stay true. Default falsy → photos behave as before.
+   */
+  artPoster?: boolean;
   moduleGap: number;
   imageMode: ImageMode;
   imageOpacity: number;

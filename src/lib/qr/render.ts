@@ -512,7 +512,9 @@ function renderCleanPhotoQr(
 ) {
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
-  const paper = bgLum >= 0.42 ? style.bg : "#f3eee6";
+  // Designed posters keep their own paper: the cream flip exists so dark
+  // *photos* get readable finder plates; artPoster art supplies them itself.
+  const paper = style.artPoster || bgLum >= 0.42 ? style.bg : "#f3eee6";
 
   ctx.fillStyle = paper;
   ctx.fillRect(0, 0, px, px);
@@ -528,8 +530,11 @@ function renderCleanPhotoQr(
   ctx.restore();
   const fgRgb = parseHex(style.fg);
   const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
-  ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
-  ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
+  // Scrim only for user photos — posters are colour-keyed to their modules.
+  if (!style.artPoster) {
+    ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
+    ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
+  }
 
   // Finder plates: an opaque rounded island per eye + separator.
   const corners: [number, number][] = [
@@ -676,7 +681,6 @@ export function renderQr(
 ) {
   const px = opts.pixelSize;
   const frame = opts.frame ?? "none";
-  const band = frameBandFor(frame, px);
   const ctx = opts.exportScale
     ? (() => {
         canvas.width = px;
@@ -754,6 +758,10 @@ export function renderQr(
     ? Math.max(2, Math.min(8, style.quietZone))
     : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
+  // Themes template posters pull the code area inward so the designed frame
+  // art has breathing room; the poster itself still paints full-bleed.
+  const inset = Math.round(px * Math.max(0, Math.min(0.3, style.qrInset ?? 0)));
+  const band = frameBandFor(frame, px) + inset;
   const cell = (px - band * 2) / total;
   const origin = band + qz * cell;
   const body = qr.size * cell;
