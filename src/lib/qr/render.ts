@@ -82,6 +82,18 @@ function coverDraw(
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 
+/** Darken (amt < 0) or lighten (amt > 0) a #rrggbb color toward black/white. */
+function shadeHex(hex: string, amt: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const n = m ? parseInt(m[1]!, 16) : 0xffffff;
+  const f = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  const r = f((n >> 16) & 255);
+  const g = f((n >> 8) & 255);
+  const b = f(n & 255);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function roundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -830,26 +842,24 @@ export function renderQr(
   if (isDecorFrame(frame)) {
     drawFrameArt(ctx, frame, px);
     const pr = Math.max(6, px * 0.032);
-    // Wide dissolve halo — ornaments fade out over ~6% of the canvas…
-    ctx.save();
-    if ("filter" in ctx) ctx.filter = `blur(${Math.max(3, Math.round(px * 0.025))}px)`;
-    ctx.fillStyle = paper;
-    roundedRect(ctx, insetL - px * 0.05, insetT - px * 0.05, usableW + px * 0.1, usableH + px * 0.1, pr + px * 0.05, pr + px * 0.05, pr + px * 0.05, pr + px * 0.05);
-    ctx.fill();
-    ctx.restore();
-    // …then a solid card slightly beyond the quiet zone, so the fade is fully
-    // gone before the code area — no faint ghost sits near the modules.
-    ctx.save();
-    if ("filter" in ctx) ctx.filter = `blur(${Math.max(1, Math.round(px * 0.006))}px)`;
-    ctx.fillStyle = paper;
-    roundedRect(ctx, insetL - px * 0.022, insetT - px * 0.022, usableW + px * 0.044, usableH + px * 0.044, pr + px * 0.022, pr + px * 0.022, pr + px * 0.022, pr + px * 0.022);
-    ctx.fill();
-    ctx.restore();
-    // …and an exact plate over the code area so the quiet zone is guaranteed
-    // pure paper.
+    // Crisp card — no dissolve haze. The seam between ornament and card is
+    // finished with a classic double mat line (dark rule + light hairline),
+    // so the frame reads as a deliberate raster frame edge: art ends at the
+    // rule, card begins at the rule, nothing is fogged or half-cut.
     ctx.fillStyle = paper;
     roundedRect(ctx, insetL, insetT, usableW, usableH, pr, pr, pr, pr);
     ctx.fill();
+    const lw = Math.max(2, px * 0.0055);
+    ctx.save();
+    ctx.strokeStyle = shadeHex(paper, -0.22);
+    ctx.lineWidth = lw;
+    roundedRect(ctx, insetL + lw / 2, insetT + lw / 2, usableW - lw, usableH - lw, pr, pr, pr, pr);
+    ctx.stroke();
+    ctx.strokeStyle = shadeHex(paper, 0.35);
+    ctx.lineWidth = Math.max(1, lw * 0.45);
+    roundedRect(ctx, insetL + lw * 1.7, insetT + lw * 1.7, usableW - lw * 3.4, usableH - lw * 3.4, pr, pr, pr, pr);
+    ctx.stroke();
+    ctx.restore();
   }
 
   const fill = makeFill(ctx, style, originX, originY, body, body);
