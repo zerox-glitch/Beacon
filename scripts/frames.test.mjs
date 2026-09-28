@@ -49,10 +49,10 @@ describe("frameBandFor", () => {
       const b1 = frameBandFor(id, 1000);
       const b2 = frameBandFor(id, 4096);
       const expect = isDecorFrame(id)
-        ? Math.max(12, Math.round(1000 * 0.06)) // thin decorative ring — the code card keeps the rest
+        ? Math.max(18, Math.round(1000 * 0.1)) // decorative ring — wide enough to show the art
         : Math.max(10, Math.round(1000 * 0.045));
       assert.equal(b1, expect);
-      assert.ok(isDecorFrame(id) ? b1 / 1000 <= 0.065 : true, "decor border stays thin");
+      assert.ok(isDecorFrame(id) ? b1 / 1000 <= 0.11 : true, "decor border stays reasonably thin");
       assert.ok(b2 > b1, "margin scales with size");
     }
   });

@@ -25,7 +25,17 @@ export type FrameId =
   | "decor-memphis"
   | "decor-aurora"
   | "decor-steel"
-  | "decor-marble";
+  | "decor-marble"
+  | "decor-floral"
+  | "decor-tropical"
+  | "decor-wood"
+  | "decor-watercolor"
+  | "decor-boho"
+  | "decor-cyber"
+  | "decor-sunflower"
+  | "decor-henna"
+  | "decor-arabesque"
+  | "decor-feather";
 
 export const FRAME_IDS: FrameId[] = [
   "none",
@@ -45,6 +55,16 @@ export const FRAME_IDS: FrameId[] = [
   "decor-aurora",
   "decor-steel",
   "decor-marble",
+  "decor-floral",
+  "decor-tropical",
+  "decor-wood",
+  "decor-watercolor",
+  "decor-boho",
+  "decor-cyber",
+  "decor-sunflower",
+  "decor-henna",
+  "decor-arabesque",
+  "decor-feather",
 ];
 
 export interface FrameDef {
@@ -73,6 +93,16 @@ export const FRAME_DEFS: FrameDef[] = [
   { id: "decor-aurora", label: "Aurora", hint: "Glowing rainbow ribbons" },
   { id: "decor-steel", label: "Steel", hint: "Brushed industrial panels" },
   { id: "decor-marble", label: "Tide", hint: "Flowing marble waves" },
+  { id: "decor-floral", label: "Floral", hint: "Bright mixed flower wreath" },
+  { id: "decor-tropical", label: "Tropical", hint: "Big jungle leaves" },
+  { id: "decor-wood", label: "Wood", hint: "Carved warm wood grain" },
+  { id: "decor-watercolor", label: "Watercolor", hint: "Painted brush splashes" },
+  { id: "decor-boho", label: "Boho", hint: "Colorful folk pattern" },
+  { id: "decor-cyber", label: "Cyber", hint: "Futuristic HUD brackets" },
+  { id: "decor-sunflower", label: "Sunflower", hint: "Golden sunflower ring" },
+  { id: "decor-henna", label: "Henna", hint: "Mehndi mandala lace" },
+  { id: "decor-arabesque", label: "Arabesque", hint: "Geometric tilework" },
+  { id: "decor-feather", label: "Peacock", hint: "Peacock feather plumes" },
 ];
 
 /** Decorative frame artwork (public assets) — drawn under the code's card. */
@@ -86,6 +116,16 @@ export const FRAME_ART: Partial<Record<FrameId, string>> = {
   "decor-aurora": "/frames/aurora.jpg",
   "decor-steel": "/frames/steel.jpg",
   "decor-marble": "/frames/marble.jpg",
+  "decor-floral": "/frames/floral.jpg",
+  "decor-tropical": "/frames/tropical.jpg",
+  "decor-wood": "/frames/wood.jpg",
+  "decor-watercolor": "/frames/watercolor.jpg",
+  "decor-boho": "/frames/boho.jpg",
+  "decor-cyber": "/frames/cyber.jpg",
+  "decor-sunflower": "/frames/sunflower.jpg",
+  "decor-henna": "/frames/henna.jpg",
+  "decor-arabesque": "/frames/arabesque.jpg",
+  "decor-feather": "/frames/feather.jpg",
 };
 
 export function isDecorFrame(id: FrameId | string): boolean {
@@ -114,10 +154,11 @@ export function preloadFrameArt(id: FrameId): Promise<void> {
 }
 
 /**
- * Paint a decorative frame's artwork across the whole canvas. The renderer
- * covers the code area with a clean paper card right after, so anything the
- * art places toward the centre can never touch the modules. No-op until the
- * art is loaded (or for non-decorative frames).
+ * Paint a decorative frame's artwork across the whole canvas (1:1, edge to
+ * edge — the art's ornament is drawn to reach the canvas borders). The
+ * renderer covers the code area with a clean paper card right after, so
+ * nothing can touch the modules. No-op until the art is loaded (or for
+ * non-decorative frames).
  */
 export function drawFrameArt(ctx: CanvasRenderingContext2D, frame: FrameId, px: number): void {
   const img = artCache.get(frame);
@@ -271,8 +312,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, g: Fram
 /** Margin (px) the canvas needs around the QR body for a frame. */
 export function frameBandFor(frame: FrameId, px: number): number {
   if (frame === "none") return 0;
-  // Decorative art frames: a THIN border ring (6%) — the code card keeps the
-  // rest of the canvas so the QR stays big and clear.
-  if (isDecorFrame(frame)) return Math.max(12, Math.round(px * 0.06));
+  // Decorative art frames: a 10% border ring — wide enough for the ornament
+  // to read as a frame, while the QR card keeps 80% of the canvas.
+  if (isDecorFrame(frame)) return Math.max(18, Math.round(px * 0.1));
   return Math.max(10, Math.round(px * 0.045));
 }

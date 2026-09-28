@@ -122,7 +122,7 @@ for (const preset of looks) {
     }
   }
   const band = frameBandFor(preset.frame ?? "none", 512);
-  const thin = isDecorFrame(preset.frame ?? "") && band / 512 <= 0.065;
+  const thin = isDecorFrame(preset.frame ?? "") && band / 512 <= 0.11;
   if (thin) bandOk++;
   plateOk += plates;
   console.log(

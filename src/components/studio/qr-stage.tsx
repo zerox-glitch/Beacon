@@ -26,7 +26,7 @@ import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { useCms } from "@/lib/cms/runtime";
 import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
-import { preloadFrameArt } from "@/lib/qr/frames";
+import { preloadFrameArt, isDecorFrame } from "@/lib/qr/frames";
 import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { useStudio } from "@/lib/store";
@@ -422,6 +422,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         onDrop={onDropImage}
         className={cn(
           "qr-mat relative aspect-square h-full max-h-[min(100%,280px)] w-auto max-w-full p-2 transition duration-200 sm:max-h-[340px] sm:p-4 md:max-h-[400px] md:p-5 lg:max-h-[440px]",
+          isDecorFrame(frame) && "p-0.5 sm:p-0.5 md:p-0.5",
           frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
         )}
         style={{
@@ -431,7 +432,10 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       >
         <div
           ref={innerRef}
-          className="relative mx-auto aspect-square h-full w-full overflow-hidden rounded-xl"
+          className={cn(
+            "relative mx-auto aspect-square h-full w-full overflow-hidden",
+            isDecorFrame(frame) ? "rounded-[2px]" : "rounded-xl",
+          )}
           style={{ background: paper }}
         >
           <canvas ref={workRef} className="block h-full w-full max-h-full max-w-full" aria-label="QR code preview" />
