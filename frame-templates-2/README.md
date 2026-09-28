@@ -8,12 +8,12 @@ Same construction spec as `frame-templates/`:
 - **2048×2048 PNG** (print-quality, lossless)
 - Ornate border occupying roughly the **outer 25–30%** of the canvas, on all four sides and corners
 - The **center is a completely flat, empty dark area** — place the QR code there
-- Category: **Soft, Seasonal & Celebration** (batch 1 of 2)
+- Categories: **Soft, Seasonal & Celebration** and **Culture, Nature & Play**
 
 ## Suggested composition
 
 1. Draw the QR itself (dark modules on a light card) as a rounded square in the **center ~55–65%** of the frame.
-2. Use the frame's **center color** (table below) as the QR card's surround/padding color so the card blends seamlessly into the frame's empty middle.
+2. Use the frame's **center color** (tables below) as the QR card's surround/padding color so the card blends seamlessly into the frame's empty middle.
 3. Keep a quiet zone of at least 4 modules around the QR; never let the ornament touch the modules.
 
 ## Batch 1 — Soft, Seasonal & Celebration
@@ -30,5 +30,20 @@ Same construction spec as `frame-templates/`:
 | `halloween-night.png` | Pumpkins, bats, cobwebs & candy corn | `#160423` |
 | `christmas-frost.png` | Holly, baubles, snowflakes & candy canes | `#09190F` |
 | `zen-mandala.png` | Mandalas, lotus geometry & mala beads | `#0E0925` |
+
+## Batch 2 — Culture, Nature & Play
+
+| File | Style | Center color (use as card surround) |
+|---|---|---|
+| `arabian-nights.png` | Oil lamps, arabesque arches, crescents & jewels | `#080113` |
+| `sumi-ink.png` | Ink-wash mountains, bamboo, cranes & red sun | `#191611` |
+| `cocoa-cafe.png` | Coffee cups, beans, croissants & steam | `#1D0E03` |
+| `royal-baroque.png` | Gold scrollwork, crests & fleur-de-lis | `#060502` |
+| `safari-savanna.png` | Acacia trees, animal silhouettes & setting sun | `#1A0F05` |
+| `nautical-bay.png` | Dolphins, anchors, ship wheels & waves | `#021730` |
+| `rainy-april.png` | Umbrellas, raindrops, clouds & rainbows | `#101E2D` |
+| `balloon-party.png` | Balloons, confetti, streamers & gifts | `#1D0F24` |
+| `dino-world.png` | Cartoon dinosaurs, volcanoes & ferns | `#0B1A08` |
+| `fireworks-night.png` | Firework bursts, stars & city rooftops | `#010929` |
 
 Each frame's middle was verified to be a flat, decoration-free fill (pixel stddev < 0.7), so content placed there never collides with the ornament.
