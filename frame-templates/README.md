@@ -8,7 +8,7 @@ Artistic decorative **frame artwork** for composing QR codes into beautiful card
 - **2048×2048 PNG** (print-quality, lossless)
 - Ornate painterly border occupying roughly the **outer 25–30%** of the canvas, on all four sides and corners
 - The **center is a completely flat, empty dark area** — place the QR code there
-- Two categories: **glowing florals / botanical** (batch 1) and **geometric, cosmic & luxury** (batch 2)
+- Three categories: **glowing florals / botanical**, **geometric, cosmic & luxury**, and **world art, fantasy & retro**
 
 ## Suggested composition
 
@@ -45,5 +45,20 @@ Artistic decorative **frame artwork** for composing QR codes into beautiful card
 | `stained-glass.png` | Jewel-tone stained glass gothic panes | `#0F0C13` |
 | `aurora-night.png` | Aurora borealis ribbons & mountain silhouettes | `#050D26` |
 | `marble-gold.png` | Black marble with flowing gold veins | `#0F0D0B` |
+
+## Batch 3 — World Art, Fantasy & Retro
+
+| File | Style | Center color (use as card surround) |
+|---|---|---|
+| `great-wave.png` | Ukiyo-e indigo waves & seigaiha scales | `#051431` |
+| `aztec-sun.png` | Aztec/Mayan sun glyphs, stepped frets | `#0E0804` |
+| `steampunk.png` | Brass gears, copper pipes, rivets | `#0E0A04` |
+| `coral-reef.png` | Coral, seahorses, starfish & bubbles | `#011D33` |
+| `vintage-glam.png` | Rose-gold filigree, pearls & crystals | `#240E16` |
+| `groovy-70s.png` | Retro swirls, daisies & mushrooms | `#231509` |
+| `kawaii-sweets.png` | Pastel candies, donuts, stars & clouds | `#2D1531` |
+| `enchanted-forest.png` | Glowing mushrooms, lanterns & fireflies | `#051208` |
+| `phoenix-fire.png` | Phoenix flame feathers & ember sparks | `#110805` |
+| `festival-lights.png` | Paper lanterns, fairy lights & marigolds | `#0E0B20` |
 
 Each frame's middle was verified to be a flat, decoration-free fill (pixel stddev < 0.7), so content placed there never collides with the ornament.
