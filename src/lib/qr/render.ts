@@ -1,6 +1,6 @@
 import { QrCodeDataType } from "uqr";
 import { atlasFor, renderArtisticQr } from "./art-engine";
-import { drawFrame, frameBandFor, type FrameId } from "./frames";
+import { drawFrame, drawFrameArt, frameBandFor, isDecorFrame, type FrameId } from "./frames";
 import {
   drawTemplateFrameBg,
   drawTemplateFrameFg,
@@ -821,6 +821,18 @@ export function renderQr(
     ctx.fillRect(0, 0, px, px);
   }
   if (tf) drawTemplateFrameBg(ctx, style.frameStyle!, px);
+
+  // Decorative art frames: the artwork fills the canvas as a thin border,
+  // then a clean paper card covers the whole code area (quiet zone included)
+  // so the decoration never overlaps the modules — the QR stays big, on a
+  // calm high-contrast surface, and scans exactly like an unframed code.
+  if (isDecorFrame(frame)) {
+    drawFrameArt(ctx, frame, px);
+    const pr = Math.max(6, px * 0.032);
+    ctx.fillStyle = paper;
+    roundedRect(ctx, insetL, insetT, usableW, usableH, pr, pr, pr, pr);
+    ctx.fill();
+  }
 
   const fill = makeFill(ctx, style, originX, originY, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));

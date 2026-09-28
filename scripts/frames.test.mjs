@@ -11,9 +11,8 @@ import { describe, it } from "node:test";
 
 register(new URL("./ts-resolve.mjs", import.meta.url).href);
 
-const { FRAME_IDS, FRAME_DEFS, frameDef, frameBandFor, drawFrame } = await import(
-  "../src/lib/qr/frames.ts"
-);
+const { FRAME_IDS, FRAME_DEFS, frameDef, frameBandFor, drawFrame, drawFrameArt, setFrameArt, isDecorFrame } =
+  await import("../src/lib/qr/frames.ts");
 
 function mockCtx() {
   const calls = [];
@@ -25,7 +24,7 @@ function mockCtx() {
       }
       if (prop === "measureText") return () => ({ width: 10 });
       if (!(prop in target)) {
-        target[prop] = (...args) => {
+        target[prop] = (..._args) => {
           if (typeof prop === "string" && !prop.startsWith("is")) calls.push(prop);
         };
         return target[prop];
@@ -49,7 +48,11 @@ describe("frameBandFor", () => {
       if (id === "none") continue;
       const b1 = frameBandFor(id, 1000);
       const b2 = frameBandFor(id, 4096);
-      assert.equal(b1, Math.max(10, Math.round(1000 * 0.045)));
+      const expect = isDecorFrame(id)
+        ? Math.max(12, Math.round(1000 * 0.06)) // thin decorative ring — the code card keeps the rest
+        : Math.max(10, Math.round(1000 * 0.045));
+      assert.equal(b1, expect);
+      assert.ok(isDecorFrame(id) ? b1 / 1000 <= 0.065 : true, "decor border stays thin");
       assert.ok(b2 > b1, "margin scales with size");
     }
   });
@@ -66,6 +69,14 @@ describe("drawFrame", () => {
       drawFrame(ctx, id, { px, band, origin, body, fg: "#141412", bg: "#f4f1ea" });
       if (id === "none") {
         assert.equal(ctx.calls.length, 0, "none draws nothing");
+      } else if (isDecorFrame(id)) {
+        // Decorative art frames paint under the code via drawFrameArt —
+        // drawFrame must stay a no-op so nothing overlays the modules.
+        assert.equal(ctx.calls.length, 0, `${id} overlays nothing`);
+        setFrameArt(id, {});
+        const art = mockCtx();
+        drawFrameArt(art, id, px);
+        assert.ok(art.calls.includes("drawImage"), `${id} paints its artwork under the card`);
       } else {
         assert.ok(ctx.calls.length > 0, `${id} must draw something`);
         assert.ok(ctx.calls.includes("save") && ctx.calls.includes("restore"));

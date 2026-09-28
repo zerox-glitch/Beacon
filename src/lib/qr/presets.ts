@@ -1,4 +1,5 @@
 import { DEFAULT_STYLE, type ModuleShape, type EyeShape, type Preset, type QrStyle } from "./types";
+import type { FrameId } from "./frames";
 import { ART_DIRECTION_CATEGORY, TEMPLATE_CATEGORY, artDirectionPresets } from "./art-directions";
 
 interface Palette {
@@ -2233,7 +2234,179 @@ const THEMES_PRESETS: Preset[] = [
   }),
 ];
 
-export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS, ...SALON_PRESETS, ...THEMES_PRESETS];
+/**
+ * "Frames" looks — a decorative art frame + its scan-safe themed card.
+ * Each look pairs a decor frame with a calm high-contrast style: the QR sits
+ * on a clean light card (quiet zone 4, ECC H) inside a thin decorative
+ * border, so scanning is identical to an unframed code. Eye colours carry
+ * the theme; inks stay dark on light for camera contrast.
+ */
+const FRAME_CATEGORY = "Frames";
+
+function frameLook(
+  p: Omit<Preset, "style" | "category"> & { frame: FrameId; style: Partial<QrStyle> },
+): Preset {
+  return {
+    id: p.id,
+    name: p.name,
+    category: FRAME_CATEGORY,
+    featured: p.featured,
+    blurb: p.blurb,
+    frame: p.frame,
+    style: {
+      ...DEFAULT_STYLE,
+      imageMode: "none",
+      minVersion: 1,
+      ecc: "H",
+      quietZone: 4,
+      moduleGap: 0.2256,
+      dotScale: 1,
+      gradientType: "none",
+      effect: "none",
+      ...p.style,
+    },
+  };
+}
+
+const FRAME_PRESETS: Preset[] = [
+  frameLook({
+    id: "look-garden",
+    name: "Evergreen Garden",
+    blurb: "Leafy garland around a cream card",
+    frame: "decor-garden",
+    style: {
+      bg: "#F6F3E7",
+      fg: "#1B3A26",
+      eyeColor: "#2C5E3A",
+      ballColor: "#2C5E3A",
+      moduleShape: "leaf",
+      eyeShape: "leaf",
+      ballShape: "leaf",
+    },
+  }),
+  frameLook({
+    id: "look-royal",
+    name: "Royal Gilt",
+    blurb: "Gold filigree and a crown on black marble",
+    frame: "decor-royal",
+    style: {
+      bg: "#FAF3E3",
+      fg: "#171310",
+      eyeColor: "#6B5216",
+      ballColor: "#171310",
+      moduleShape: "square",
+      eyeShape: "square",
+      ballShape: "square",
+    },
+  }),
+  frameLook({
+    id: "look-circuit",
+    name: "Circuit Blue",
+    blurb: "Neon tech circuitry, teal finders",
+    frame: "decor-circuit",
+    style: {
+      bg: "#EEF2F6",
+      fg: "#0B2447",
+      eyeColor: "#0E7490",
+      ballColor: "#0E7490",
+      moduleShape: "dots",
+      eyeShape: "rounded",
+      ballShape: "rounded",
+    },
+  }),
+  frameLook({
+    id: "look-cosmic",
+    name: "Cosmic Violet",
+    blurb: "Nebula swirl on a lavender card",
+    frame: "decor-galaxy",
+    style: {
+      bg: "#EFEAFB",
+      fg: "#2A1258",
+      eyeColor: "#2A1258",
+      ballColor: "#6D28D9",
+      moduleShape: "dots",
+      eyeShape: "extra-rounded",
+      ballShape: "extra-rounded",
+    },
+  }),
+  frameLook({
+    id: "look-sakura",
+    name: "Sakura Bloom",
+    blurb: "Cherry blossoms on blush pink",
+    frame: "decor-sakura",
+    style: {
+      bg: "#FDEEF2",
+      fg: "#4A1230",
+      eyeColor: "#A8265E",
+      ballColor: "#A8265E",
+      moduleShape: "rounded",
+      eyeShape: "rounded",
+      ballShape: "rounded",
+    },
+  }),
+  frameLook({
+    id: "look-memphis",
+    name: "Memphis Pop",
+    blurb: "Playful geometry, candy finders",
+    frame: "decor-memphis",
+    style: {
+      bg: "#FFFFFF",
+      fg: "#131A2E",
+      eyeColor: "#C81E4A",
+      ballColor: "#881337",
+      moduleShape: "squircle",
+      eyeShape: "square",
+      ballShape: "square",
+    },
+  }),
+  frameLook({
+    id: "look-aurora",
+    name: "Aurora Glow",
+    blurb: "Rainbow light ribbons, soft tiles",
+    frame: "decor-aurora",
+    style: {
+      bg: "#E8FBFF",
+      fg: "#083344",
+      eyeColor: "#0E7490",
+      ballColor: "#083344",
+      moduleShape: "squircle",
+      eyeShape: "extra-rounded",
+      ballShape: "extra-rounded",
+    },
+  }),
+  frameLook({
+    id: "look-steel",
+    name: "Steel Works",
+    blurb: "Brushed industrial panels, hard squares",
+    frame: "decor-steel",
+    style: {
+      bg: "#EFEFEE",
+      fg: "#1C1917",
+      eyeColor: "#1C1917",
+      ballColor: "#57534E",
+      moduleShape: "square",
+      eyeShape: "square",
+      ballShape: "square",
+    },
+  }),
+  frameLook({
+    id: "look-tide",
+    name: "Marble Tide",
+    blurb: "Flowing marble waves on pale blue",
+    frame: "decor-marble",
+    style: {
+      bg: "#EAF4FB",
+      fg: "#0C2D5A",
+      eyeColor: "#0C2D5A",
+      ballColor: "#0E7490",
+      moduleShape: "rounded",
+      eyeShape: "rounded",
+      ballShape: "rounded",
+    },
+  }),
+];
+
+export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS, ...SALON_PRESETS, ...THEMES_PRESETS, ...FRAME_PRESETS];
 
 export const GALLERY_PRESETS: Preset[] = PRESETS.filter((p) => Boolean(p.artUrl));
 

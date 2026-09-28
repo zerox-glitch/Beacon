@@ -219,6 +219,8 @@ export interface Preset {
    * templates that cannot carry a photo, and admins can pin either way.
    */
   imageCompatible?: boolean;
+  /** Frame (Frame & caption picker) this look is designed around. */
+  frame?: import("./frames").FrameId;
   style: QrStyle;
 }
 

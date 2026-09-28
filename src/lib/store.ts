@@ -130,6 +130,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({
         presetId: id,
         imageUrl: preset.artUrl,
+        frame: preset.frame ?? current.frame,
         style: {
           ...preset.style,
           dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
@@ -158,6 +159,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         : "none";
     set({
       presetId: id,
+      frame: preset.frame ?? current.frame,
       style: {
         ...preset.style,
         dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it

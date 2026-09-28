@@ -26,6 +26,7 @@ import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { useCms } from "@/lib/cms/runtime";
 import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
+import { preloadFrameArt } from "@/lib/qr/frames";
 import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { useStudio } from "@/lib/store";
@@ -130,6 +131,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       useStudio.getState().setError(null);
       const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
       const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
+      await preloadFrameArt(frame);
       if (cancelled) return;
       const canvas = workRef.current;
       if (!canvas) {
@@ -211,6 +213,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
     const canvas = makeCanvas();
     const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
     const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
+    await preloadFrameArt(frame);
     const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
     if (pictured) {
       const expected = buildPayload(payload).trim() || null;

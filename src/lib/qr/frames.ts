@@ -16,7 +16,16 @@ export type FrameId =
   | "neon"
   | "vintage"
   | "dots"
-  | "gradient";
+  | "gradient"
+  | "decor-garden"
+  | "decor-royal"
+  | "decor-circuit"
+  | "decor-galaxy"
+  | "decor-sakura"
+  | "decor-memphis"
+  | "decor-aurora"
+  | "decor-steel"
+  | "decor-marble";
 
 export const FRAME_IDS: FrameId[] = [
   "none",
@@ -27,6 +36,15 @@ export const FRAME_IDS: FrameId[] = [
   "vintage",
   "dots",
   "gradient",
+  "decor-garden",
+  "decor-royal",
+  "decor-circuit",
+  "decor-galaxy",
+  "decor-sakura",
+  "decor-memphis",
+  "decor-aurora",
+  "decor-steel",
+  "decor-marble",
 ];
 
 export interface FrameDef {
@@ -44,7 +62,67 @@ export const FRAME_DEFS: FrameDef[] = [
   { id: "vintage", label: "Vintage", hint: "A double rule with corner squares" },
   { id: "dots", label: "Dot ring", hint: "A ring of dots — playful print feel" },
   { id: "gradient", label: "Gradient", hint: "A border fading through the accent" },
+  // Decorative art frames: a thin illustrated border around a clean card —
+  // the code keeps the big light centre and the art never touches modules.
+  { id: "decor-garden", label: "Garden", hint: "Leafy botanical garland" },
+  { id: "decor-royal", label: "Royal", hint: "Gold filigree with a crown" },
+  { id: "decor-circuit", label: "Circuit", hint: "Neon tech circuitry" },
+  { id: "decor-galaxy", label: "Cosmic", hint: "Nebula swirl and stars" },
+  { id: "decor-sakura", label: "Sakura", hint: "Cherry blossom branches" },
+  { id: "decor-memphis", label: "Memphis", hint: "Playful geometric confetti" },
+  { id: "decor-aurora", label: "Aurora", hint: "Glowing rainbow ribbons" },
+  { id: "decor-steel", label: "Steel", hint: "Brushed industrial panels" },
+  { id: "decor-marble", label: "Tide", hint: "Flowing marble waves" },
 ];
+
+/** Decorative frame artwork (public assets) — drawn under the code's card. */
+export const FRAME_ART: Partial<Record<FrameId, string>> = {
+  "decor-garden": "/frames/garden.jpg",
+  "decor-royal": "/frames/royal.jpg",
+  "decor-circuit": "/frames/circuit.jpg",
+  "decor-galaxy": "/frames/galaxy.jpg",
+  "decor-sakura": "/frames/sakura.jpg",
+  "decor-memphis": "/frames/memphis.jpg",
+  "decor-aurora": "/frames/aurora.jpg",
+  "decor-steel": "/frames/steel.jpg",
+  "decor-marble": "/frames/marble.jpg",
+};
+
+export function isDecorFrame(id: FrameId | string): boolean {
+  return Object.hasOwn(FRAME_ART, id);
+}
+
+const artCache = new Map<FrameId, CanvasImageSource>();
+
+export function setFrameArt(id: FrameId, img: CanvasImageSource): void {
+  artCache.set(id, img);
+}
+
+/** Load a decorative frame's artwork into the cache (browser Image). */
+export function preloadFrameArt(id: FrameId): Promise<void> {
+  const src = FRAME_ART[id];
+  if (!src || artCache.has(id) || typeof Image === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      artCache.set(id, img);
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
+
+/**
+ * Paint a decorative frame's artwork across the whole canvas. The renderer
+ * covers the code area with a clean paper card right after, so anything the
+ * art places toward the centre can never touch the modules. No-op until the
+ * art is loaded (or for non-decorative frames).
+ */
+export function drawFrameArt(ctx: CanvasRenderingContext2D, frame: FrameId, px: number): void {
+  const img = artCache.get(frame);
+  if (img) ctx.drawImage(img, 0, 0, px, px);
+}
 
 export function frameDef(id: string): FrameDef {
   return FRAME_DEFS.find((f) => f.id === id) ?? FRAME_DEFS[0]!;
@@ -89,6 +167,9 @@ const WARM = "#ece4d4";
 /** Draw the chosen frame into the margin band. No-op for "none". */
 export function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, g: FrameGeometry): void {
   if (frame === "none" || g.band <= 0) return;
+  // Decorative art frames paint their artwork under the code (drawFrameArt);
+  // nothing overlays the modules.
+  if (isDecorFrame(frame)) return;
   const e = g.band;
   const inset = e * 0.3;
   const lw = Math.max(1.5, e * 0.1);
@@ -189,5 +270,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, g: Fram
 
 /** Margin (px) the canvas needs around the QR body for a frame. */
 export function frameBandFor(frame: FrameId, px: number): number {
-  return frame === "none" ? 0 : Math.max(10, Math.round(px * 0.045));
+  if (frame === "none") return 0;
+  // Decorative art frames: a THIN border ring (6%) — the code card keeps the
+  // rest of the canvas so the QR stays big and clear.
+  if (isDecorFrame(frame)) return Math.max(12, Math.round(px * 0.06));
+  return Math.max(10, Math.round(px * 0.045));
 }
