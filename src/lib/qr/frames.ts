@@ -35,7 +35,11 @@ export type FrameId =
   | "decor-sunflower"
   | "decor-henna"
   | "decor-arabesque"
-  | "decor-feather";
+  | "decor-feather"
+  | "decor-persian"
+  | "decor-roses"
+  | "decor-pines"
+  | "decor-ocean";
 
 export const FRAME_IDS: FrameId[] = [
   "none",
@@ -65,6 +69,10 @@ export const FRAME_IDS: FrameId[] = [
   "decor-henna",
   "decor-arabesque",
   "decor-feather",
+  "decor-persian",
+  "decor-roses",
+  "decor-pines",
+  "decor-ocean",
 ];
 
 export interface FrameDef {
@@ -103,6 +111,10 @@ export const FRAME_DEFS: FrameDef[] = [
   { id: "decor-henna", label: "Henna", hint: "Mehndi mandala lace" },
   { id: "decor-arabesque", label: "Arabesque", hint: "Geometric tilework" },
   { id: "decor-feather", label: "Peacock", hint: "Peacock feather plumes" },
+  { id: "decor-persian", label: "Persian", hint: "Medallions and paisley" },
+  { id: "decor-roses", label: "Roses", hint: "Cottage rose garland" },
+  { id: "decor-pines", label: "Pine", hint: "Nordic pine forest" },
+  { id: "decor-ocean", label: "Ocean", hint: "Curling waves and shells" },
 ];
 
 /** Decorative frame artwork (public assets) — drawn under the code's card. */
@@ -126,6 +138,10 @@ export const FRAME_ART: Partial<Record<FrameId, string>> = {
   "decor-henna": "/frames/henna.jpg",
   "decor-arabesque": "/frames/arabesque.jpg",
   "decor-feather": "/frames/feather.jpg",
+  "decor-persian": "/frames/persian.jpg",
+  "decor-roses": "/frames/roses.jpg",
+  "decor-pines": "/frames/pines.jpg",
+  "decor-ocean": "/frames/ocean.jpg",
 };
 
 export function isDecorFrame(id: FrameId | string): boolean {

@@ -824,11 +824,22 @@ export function renderQr(
 
   // Decorative art frames: the artwork fills the canvas as a thin border,
   // then a clean paper card covers the whole code area (quiet zone included)
-  // so the decoration never overlaps the modules — the QR stays big, on a
-  // calm high-contrast surface, and scans exactly like an unframed code.
+  // so the decoration never overlaps the modules. The card's edge is
+  // feathered — ornaments dissolve softly into the card instead of being
+  // sliced by a hard line, so the frame reads as complete artwork.
   if (isDecorFrame(frame)) {
     drawFrameArt(ctx, frame, px);
     const pr = Math.max(6, px * 0.032);
+    const g = px * 0.018;
+    // Soft halo (blurred edge) for the dissolve…
+    ctx.save();
+    if ("filter" in ctx) ctx.filter = `blur(${Math.max(2, Math.round(px * 0.011))}px)`;
+    ctx.fillStyle = paper;
+    roundedRect(ctx, insetL - g, insetT - g, usableW + 2 * g, usableH + 2 * g, pr + g, pr + g, pr + g, pr + g);
+    ctx.fill();
+    ctx.restore();
+    // …and a solid plate exactly over the code area so the quiet zone is
+    // guaranteed pure paper.
     ctx.fillStyle = paper;
     roundedRect(ctx, insetL, insetT, usableW, usableH, pr, pr, pr, pr);
     ctx.fill();
