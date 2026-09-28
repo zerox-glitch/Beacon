@@ -39,7 +39,15 @@ export type FrameId =
   | "decor-persian"
   | "decor-roses"
   | "decor-pines"
-  | "decor-ocean";
+  | "decor-ocean"
+  | "decor-bamboo"
+  | "decor-butterfly"
+  | "decor-frost"
+  | "decor-isfahan"
+  | "decor-zellige"
+  | "decor-desert"
+  | "decor-damask"
+  | "decor-deco";
 
 export const FRAME_IDS: FrameId[] = [
   "none",
@@ -73,6 +81,14 @@ export const FRAME_IDS: FrameId[] = [
   "decor-roses",
   "decor-pines",
   "decor-ocean",
+  "decor-bamboo",
+  "decor-butterfly",
+  "decor-frost",
+  "decor-isfahan",
+  "decor-zellige",
+  "decor-desert",
+  "decor-damask",
+  "decor-deco",
 ];
 
 export interface FrameDef {
@@ -115,33 +131,51 @@ export const FRAME_DEFS: FrameDef[] = [
   { id: "decor-roses", label: "Roses", hint: "Cottage rose garland" },
   { id: "decor-pines", label: "Pine", hint: "Nordic pine forest" },
   { id: "decor-ocean", label: "Ocean", hint: "Curling waves and shells" },
+  { id: "decor-bamboo", label: "Bamboo", hint: "Bamboo stalks and leaves" },
+  { id: "decor-butterfly", label: "Butterfly", hint: "Butterflies and flowers" },
+  { id: "decor-frost", label: "Frost", hint: "Snowflakes and sparkle" },
+  { id: "decor-isfahan", label: "Isfahan", hint: "Persian tile mosaic" },
+  { id: "decor-zellige", label: "Zellige", hint: "Moroccan star mosaic" },
+  { id: "decor-desert", label: "Desert", hint: "Cacti, dunes and sun" },
+  { id: "decor-damask", label: "Damask", hint: "Classic damask ornaments" },
+  { id: "decor-deco", label: "Deco", hint: "Art deco fans and gold" },
 ];
 
-/** Decorative frame artwork (public assets) — drawn under the code's card. */
+/** Decorative frame artwork (public assets) — drawn under the code's card.
+ * High-resolution 3072² PNGs so 2048px print and 4096px poster exports stay
+ * sharp. */
 export const FRAME_ART: Partial<Record<FrameId, string>> = {
-  "decor-garden": "/frames/garden.jpg",
-  "decor-royal": "/frames/royal.jpg",
-  "decor-circuit": "/frames/circuit.jpg",
-  "decor-galaxy": "/frames/galaxy.jpg",
-  "decor-sakura": "/frames/sakura.jpg",
-  "decor-memphis": "/frames/memphis.jpg",
-  "decor-aurora": "/frames/aurora.jpg",
-  "decor-steel": "/frames/steel.jpg",
-  "decor-marble": "/frames/marble.jpg",
-  "decor-floral": "/frames/floral.jpg",
-  "decor-tropical": "/frames/tropical.jpg",
-  "decor-wood": "/frames/wood.jpg",
-  "decor-watercolor": "/frames/watercolor.jpg",
-  "decor-boho": "/frames/boho.jpg",
-  "decor-cyber": "/frames/cyber.jpg",
-  "decor-sunflower": "/frames/sunflower.jpg",
-  "decor-henna": "/frames/henna.jpg",
-  "decor-arabesque": "/frames/arabesque.jpg",
-  "decor-feather": "/frames/feather.jpg",
-  "decor-persian": "/frames/persian.jpg",
-  "decor-roses": "/frames/roses.jpg",
-  "decor-pines": "/frames/pines.jpg",
-  "decor-ocean": "/frames/ocean.jpg",
+  "decor-garden": "/frames/garden.png",
+  "decor-royal": "/frames/royal.png",
+  "decor-circuit": "/frames/circuit.png",
+  "decor-galaxy": "/frames/galaxy.png",
+  "decor-sakura": "/frames/sakura.png",
+  "decor-memphis": "/frames/memphis.png",
+  "decor-aurora": "/frames/aurora.png",
+  "decor-steel": "/frames/steel.png",
+  "decor-marble": "/frames/marble.png",
+  "decor-floral": "/frames/floral.png",
+  "decor-tropical": "/frames/tropical.png",
+  "decor-wood": "/frames/wood.png",
+  "decor-watercolor": "/frames/watercolor.png",
+  "decor-boho": "/frames/boho.png",
+  "decor-cyber": "/frames/cyber.png",
+  "decor-sunflower": "/frames/sunflower.png",
+  "decor-henna": "/frames/henna.png",
+  "decor-arabesque": "/frames/arabesque.png",
+  "decor-feather": "/frames/feather.png",
+  "decor-persian": "/frames/persian.png",
+  "decor-roses": "/frames/roses.png",
+  "decor-pines": "/frames/pines.png",
+  "decor-ocean": "/frames/ocean.png",
+  "decor-bamboo": "/frames/bamboo.png",
+  "decor-butterfly": "/frames/butterfly.png",
+  "decor-frost": "/frames/frost.png",
+  "decor-isfahan": "/frames/isfahan.png",
+  "decor-zellige": "/frames/zellige.png",
+  "decor-desert": "/frames/desert.png",
+  "decor-damask": "/frames/damask.png",
+  "decor-deco": "/frames/deco.png",
 };
 
 export function isDecorFrame(id: FrameId | string): boolean {

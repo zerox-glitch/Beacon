@@ -830,16 +830,23 @@ export function renderQr(
   if (isDecorFrame(frame)) {
     drawFrameArt(ctx, frame, px);
     const pr = Math.max(6, px * 0.032);
-    const g = px * 0.018;
-    // Soft halo (blurred edge) for the dissolve…
+    // Wide dissolve halo — ornaments fade out over ~6% of the canvas…
     ctx.save();
-    if ("filter" in ctx) ctx.filter = `blur(${Math.max(2, Math.round(px * 0.011))}px)`;
+    if ("filter" in ctx) ctx.filter = `blur(${Math.max(3, Math.round(px * 0.025))}px)`;
     ctx.fillStyle = paper;
-    roundedRect(ctx, insetL - g, insetT - g, usableW + 2 * g, usableH + 2 * g, pr + g, pr + g, pr + g, pr + g);
+    roundedRect(ctx, insetL - px * 0.05, insetT - px * 0.05, usableW + px * 0.1, usableH + px * 0.1, pr + px * 0.05, pr + px * 0.05, pr + px * 0.05, pr + px * 0.05);
     ctx.fill();
     ctx.restore();
-    // …and a solid plate exactly over the code area so the quiet zone is
-    // guaranteed pure paper.
+    // …then a solid card slightly beyond the quiet zone, so the fade is fully
+    // gone before the code area — no faint ghost sits near the modules.
+    ctx.save();
+    if ("filter" in ctx) ctx.filter = `blur(${Math.max(1, Math.round(px * 0.006))}px)`;
+    ctx.fillStyle = paper;
+    roundedRect(ctx, insetL - px * 0.022, insetT - px * 0.022, usableW + px * 0.044, usableH + px * 0.044, pr + px * 0.022, pr + px * 0.022, pr + px * 0.022, pr + px * 0.022);
+    ctx.fill();
+    ctx.restore();
+    // …and an exact plate over the code area so the quiet zone is guaranteed
+    // pure paper.
     ctx.fillStyle = paper;
     roundedRect(ctx, insetL, insetT, usableW, usableH, pr, pr, pr, pr);
     ctx.fill();

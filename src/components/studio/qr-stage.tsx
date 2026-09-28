@@ -142,10 +142,13 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
       // Always paint a scan-sized bitmap (CSS scales it down). A 180px preview
       // is only ~3px/module on a version-7 photo QR — too small for jsQR or phones.
+      // Device-pixel aware so framed art stays crisp on hi-DPI screens.
+      const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 3) : 1;
       const workPx = pictured ? Math.max(px, 512) : Math.max(px, 320);
+      const renderPx = Math.max(workPx, Math.round(workPx * dpr));
       try {
         renderQr(canvas, encoded.qr, style, {
-          pixelSize: workPx,
+          pixelSize: renderPx,
           art,
           logo,
           frame,
@@ -157,7 +160,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         let report = await inspectRenderedQr(canvas, expected);
         if (!report.ok && pictured) {
           renderQr(canvas, encoded.qr, style, {
-            pixelSize: workPx,
+            pixelSize: renderPx,
             art,
             logo,
             frame,
