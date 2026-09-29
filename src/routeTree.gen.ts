@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiMediaMediaIdRouteImport } from './routes/api/media/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -38,6 +40,11 @@ const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
@@ -53,6 +60,11 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMediaMediaIdRoute = ApiMediaMediaIdRouteImport.update({
   id: '/api/media/$mediaId',
   path: '/api/media/$mediaId',
@@ -64,9 +76,11 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRoutesByTo {
@@ -74,9 +88,11 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRoutesById {
@@ -85,9 +101,11 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRouteTypes {
@@ -97,9 +115,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -107,9 +127,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   id:
     | '__root__'
@@ -117,9 +139,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   fileRoutesById: FileRoutesById
 }
@@ -128,9 +152,11 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   LabRoute: typeof LabRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  PrivacyRoute: typeof PrivacyRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StudioRoute: typeof StudioRoute
+  TermsRoute: typeof TermsRoute
   ApiMediaMediaIdRoute: typeof ApiMediaMediaIdRoute
 }
 
@@ -164,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/robots.txt': {
       id: '/robots.txt'
       path: '/robots.txt'
@@ -185,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/media/$mediaId': {
       id: '/api/media/$mediaId'
       path: '/api/media/$mediaId'
@@ -200,9 +240,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   LabRoute: LabRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  PrivacyRoute: PrivacyRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StudioRoute: StudioRoute,
+  TermsRoute: TermsRoute,
   ApiMediaMediaIdRoute: ApiMediaMediaIdRoute,
 }
 export const routeTree = rootRouteImport

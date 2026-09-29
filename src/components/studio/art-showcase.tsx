@@ -368,6 +368,14 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
             <a href="/lab" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
               Our story
             </a>
+            <span>·</span>
+            <a href="https://qrwho.online/privacy" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Privacy Policy
+            </a>
+            <span>·</span>
+            <a href="https://qrwho.online/terms" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Terms of Use
+            </a>
           </div>
         </footer>
       </div>

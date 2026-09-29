@@ -211,6 +211,15 @@ export function StoryPage() {
 
       <footer className="border-t border-border py-8 text-center text-[11px] text-muted">
         © {new Date().getFullYear()} {name} — free artistic QR codes, made on-device
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <a href="https://qrwho.online/privacy" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+            Privacy Policy
+          </a>
+          <span>·</span>
+          <a href="https://qrwho.online/terms" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+            Terms of Use
+          </a>
+        </div>
       </footer>
     </div>
   );
