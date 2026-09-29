@@ -57,5 +57,5 @@ test("session cookie: merged defaults keep unknown future fields safe", () => {
 
 test("session cookie: logo data URL <-> id mapping is stable", () => {
   const logo = LOGOS.find((l) => l.id === LOGOS[0].id)!;
-  assert.equal(logoDataUrl(logo), "data:image/svg+xml;utf8," + encodeURIComponent(logo.svg));
+  assert.equal(logoDataUrl(logo), logo.src ?? "data:image/svg+xml;utf8," + encodeURIComponent(logo.svg ?? ""));
 });

@@ -1,26 +1,30 @@
 /**
- * 66 built-in center logos for the studio's Logo mode — social apps, payment
- * apps, Wi-Fi / web / utility marks, plus cute & useful marks.
+ * Built-in center logos for the studio's Logo mode.
  *
- * Every logo is an inline SVG (64×64) converted to a data URL at call time,
- * so nothing needs to be hosted: the studio's `loadImage` draws them exactly
- * like any uploaded logo, and they work in PNG export (rasterized on the
- * same canvas) and in the 2048px print path.
+ * Two families live here:
+ *  - APP_LOGOS — the 81 real transparent PNG logos hosted in /public/logos
+ *    (brand logos, flower stickers, letter/sticker marks). Drawn by the studio
+ *    exactly like an uploaded logo.
+ *  - Legacy inline SVG marks (Payments/Connect/Fun/Cute/Useful) — simplified
+ *    single-color-friendly pictograms, kept as data URLs (no hosting needed).
  *
- * The marks are simplified, single-color-friendly recreations meant to be
- * instantly recognizable at QR center size — not pixel-perfect brand art.
+ * The old built-in "Social" recreations were removed in favor of the real logos.
  */
+
 
 export interface QrLogo {
   id: string;
   name: string;
-  category: "Social" | "Payments" | "Connect" | "Fun" | "Cute" | "Useful";
-  svg: string;
+  category: "Social" | "Payments" | "Connect" | "Fun" | "Cute" | "Useful" | "Marks";
+  /** Inline SVG mark (legacy built-ins). */
+  svg?: string;
+  /** Hosted PNG logo in /public/logos (the real logo set). */
+  src?: string;
 }
 
-/** SVG string → data URL (safe for <img>, canvas drawImage, and exports). */
+/** Logo entry → drawable URL (data URL for SVG marks, /logos/… for PNGs). */
 export function logoDataUrl(logo: QrLogo): string {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(logo.svg)}`;
+  return logo.src ?? `data:image/svg+xml;utf8,${encodeURIComponent(logo.svg ?? "")}`;
 }
 
 const bg = (shape: "circle" | "square", color: string, rx = 14) =>
@@ -31,100 +35,7 @@ const bg = (shape: "circle" | "square", color: string, rx = 14) =>
 const txt = (s: string, x: number, y: number, size: number, fill = "#fff", extra = "") =>
   `<text x="${x}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="${size}" fill="${fill}" text-anchor="middle" dominant-baseline="central" ${extra}>${s}</text>`;
 
-const SOCIAL: QrLogo[] = [
-  {
-    id: "whatsapp",
-    name: "WhatsApp",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#25D366")}<path d="M32 15c-9.4 0-17 7.4-17 16.5 0 3 .9 5.8 2.4 8.3L15 50l10.6-2.7c2.6 1.4 5.6 2.2 8.9 2.2 9.4 0 17-7.4 17-16.6S41.4 15 32 15z" fill="#fff"/><path d="M27.5 25.5c-.5-1-1-1-1.5-1h-1.3c-.5 0-1.2.2-1.8.9-.6.7-2.4 2.3-2.4 5.7s2.5 6.6 2.8 7c.3.4 3.8 6 9.3 8.3 4.6 2 5.5 1.6 6.5 1.5 1-.1 3.2-1.3 3.6-2.6.4-1.3.4-2.4.3-2.6-.1-.2-.5-.4-1-.6l-3.6-1.7c-.5-.2-.9-.3-1.2.3l-1.2 1.8c-.2.3-.5.4-.9.1-1.3-.6-3.2-1.7-5-3.4-1.4-1.3-2.3-2.9-2.6-3.4-.3-.5 0-.8.2-1l.8-.9c.2-.3.3-.5.5-.8.1-.3.1-.5 0-.8l-1.7-3.8z" fill="#25D366"/></svg>`,
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".35" stop-color="#FA7E1E"/><stop offset=".6" stop-color="#D62976"/><stop offset=".8" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs>${bg("square", "url(#ig)", 14)}<rect x="14" y="14" width="36" height="36" rx="10" fill="none" stroke="#fff" stroke-width="3.5"/><circle cx="32" cy="32" r="8.5" fill="none" stroke="#fff" stroke-width="3.5"/><circle cx="42.5" cy="21.5" r="2.8" fill="#fff"/></svg>`,
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#1877F2")}<path d="M35.5 50v-15h5l1-6h-6V26c0-1.8.7-3 3-3h3.2v-5.3s-2.4-.4-4.7-.4c-4.8 0-7.9 2.9-7.9 8.1V29h-5v6h5v15z" fill="#fff"/></svg>`,
-  },
-  {
-    id: "x",
-    name: "X (Twitter)",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#0F1419", 12)}<path d="M21 20l22 24M43 20L21 44" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/></svg>`,
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#010101", 12)}<g transform="translate(1.6,-1.4)"><path d="M39.5 19v15.5a8 8 0 1 1-7-8" fill="none" stroke="#25F4EE" stroke-width="5" stroke-linecap="round"/></g><g transform="translate(-1.6,1.4)"><path d="M39.5 19v15.5a8 8 0 1 1-7-8" fill="none" stroke="#FE2C55" stroke-width="5" stroke-linecap="round"/></g><path d="M39.5 19v15.5a8 8 0 1 1-7-8" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M39.5 19c.8 3.4 3.4 5.8 7.5 6.2" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>`,
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="6" y="16" width="52" height="32" rx="9" fill="#FF0000"/><path d="M27 24l14 8-14 8z" fill="#fff"/></svg>`,
-  },
-  {
-    id: "telegram",
-    name: "Telegram",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#229ED9")}<path d="M48 18L14 31.5c-1.8.7-1.7 2.7 0 3.4l8.4 3.1 3.2 9.6c.5 1.5 2 1.8 3.1.6l4.6-4.8 7.6 5.6c1.3 1 3 .4 3.4-1.2l5-23.5c.4-2-1.5-3.3-3.3-2.3zM25.6 37.9l12.3-9.6-9.6 11.5-.6 4.7z" fill="#fff"/></svg>`,
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#0A66C2", 12)}<circle cx="21.5" cy="21.5" r="3.6" fill="#fff"/><rect x="18" y="28" width="7" height="18" fill="#fff"/><path d="M31 28h6.5v3c2-2.2 5-3.4 8-2.6 3.8 1 5.5 3.8 5.5 8v9.6h-7v-8.2c0-2.4-1-3.8-3-3.8-2.2 0-3.5 1.5-3.5 4v8h-6.5z" fill="#fff"/></svg>`,
-  },
-  {
-    id: "snapchat",
-    name: "Snapchat",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#FFFC00")}<path d="M32 15c6.8 0 10.8 4.8 10.8 11.4v5.6c0 1.9 1.4 3 3 3.4-1 1.4-2.4 1.9-3.9 1.9-1.4 0-2.4.5-2.9 1.5-1 1.5-2.6 2-5 1.5-.9-.2-2.1-.2-3 0-2.4.5-4 0-5-1.5-.5-1-1.5-1.5-2.9-1.5-1.5 0-2.9-.5-3.9-1.9 1.6-.4 3-1.5 3-3.4v-5.6C21.2 19.8 25.2 15 32 15z" fill="#fff"/></svg>`,
-  },
-  {
-    id: "pinterest",
-    name: "Pinterest",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#E60023")}${txt("P", 32, 33, 34)}</svg>`,
-  },
-  {
-    id: "discord",
-    name: "Discord",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#5865F2", 14)}<path d="M20 25c4.5-2.8 19.5-2.8 24 0l3.2 12.4c-2.2 2.8-5.4 4.8-8.6 5.8l-1-2c-3.6 1-7.4 1-11 0l-1 2c-3.2-1-6.4-3-8.6-5.8z" fill="#fff"/><circle cx="26.5" cy="32.5" r="3.2" fill="#5865F2"/><circle cx="37.5" cy="32.5" r="3.2" fill="#5865F2"/></svg>`,
-  },
-  {
-    id: "reddit",
-    name: "Reddit",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#FF4500")}<path d="M32 29.5L41 19.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><circle cx="42" cy="18.5" r="2.5" fill="#fff"/><ellipse cx="32" cy="36" rx="11.5" ry="8" fill="#fff"/><circle cx="26.5" cy="35" r="2.6" fill="#FF4500"/><circle cx="37.5" cy="35" r="2.6" fill="#FF4500"/><path d="M26 40.5c3.6 2 8.4 2 12 0" stroke="#FF4500" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
-  },
-  {
-    id: "threads",
-    name: "Threads",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#111111", 12)}<path d="M39.5 25.5c-2.5-3.4-7-4.4-11-3c-5.5 1.8-7.8 7-6.5 12.5c1.3 5.5 5.8 8.8 11.3 7.8c3.3-.6 5.5-2.8 5.5-5.8c0-3.2-2.4-5-5.6-5c-4.3 0-7.4 3.3-7.4 8.3c0 6.5 4.3 10.7 10.7 10.7c5 0 8.8-2.5 9.8-6.8" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`,
-  },
-  {
-    id: "tumblr",
-    name: "Tumblr",
-    category: "Social",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("square", "#36465D", 12)}<path d="M31 16v10.5c-3 2-6.8 2.2-9.5 1.2v6.6c3.4 1.1 6.4 1 9.5.3v11.6c0 4.6 2.2 7 5.6 7.9v5.9c-8.4-1-12.6-5.4-12.6-12.6V36.6h-6.6v-7h6.6V16z" fill="#fff"/></svg>`,
-  },
-];
-
 const PAYMENTS: QrLogo[] = [
-  {
-    id: "paypal",
-    name: "PayPal",
-    category: "Payments",
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${bg("circle", "#003087")}<path d="M38 18h-8c-5 0-8 3-8 8s3 8 8 8h4l2-16z" fill="#009CDE"/><path d="M34.5 22h-6c-4 0-6.5 2.5-6.5 6.5S24.5 35 28.5 35h5l1.5-9.5-1 9.5h-4l-2 8H18z" fill="#fff" opacity=".9"/><path d="M30 18v18h-5V18z" fill="#fff"/><path d="M30 18h7c4.5 0 7 2.6 7 6.5S41.5 31 37 31h-5l1.5-10.5" fill="none" stroke="#fff" stroke-width="0"/></svg>`,
-  },
   {
     id: "visa",
     name: "Visa",
@@ -445,6 +356,91 @@ const USEFUL: QrLogo[] = [
   },
 ];
 
-export const LOGOS: QrLogo[] = [...SOCIAL, ...PAYMENTS, ...CONNECT, ...FUN, ...CUTE, ...USEFUL];
+/** The 81 real transparent PNG logos from /public/logos. */
+const APP_LOGOS: QrLogo[] = [
+  { id: "linkedin", name: "LinkedIn", category: "Social", src: "/logos/linkedin.png" },
+  { id: "facebook", name: "Facebook", category: "Social", src: "/logos/facebook.png" },
+  { id: "instagram", name: "Instagram", category: "Social", src: "/logos/instagram.png" },
+  { id: "tiktok", name: "TikTok", category: "Social", src: "/logos/tiktok.png" },
+  { id: "twitter", name: "Twitter (bird)", category: "Social", src: "/logos/twitter.png" },
+  { id: "x", name: "X (Twitter)", category: "Social", src: "/logos/x.png" },
+  { id: "telegram", name: "Telegram", category: "Social", src: "/logos/telegram.png" },
+  { id: "whatsapp", name: "WhatsApp", category: "Social", src: "/logos/whatsapp.png" },
+  { id: "snapchat", name: "Snapchat", category: "Social", src: "/logos/snapchat.png" },
+  { id: "discord", name: "Discord", category: "Social", src: "/logos/discord.png" },
+  { id: "vk", name: "VK", category: "Social", src: "/logos/vk.png" },
+  { id: "tumblr", name: "Tumblr", category: "Social", src: "/logos/tumblr.png" },
+  { id: "reddit", name: "Reddit", category: "Social", src: "/logos/reddit.png" },
+  { id: "quora", name: "Quora", category: "Social", src: "/logos/quora.png" },
+  { id: "pinterest", name: "Pinterest", category: "Social", src: "/logos/pinterest.png" },
+  { id: "messenger", name: "Messenger", category: "Social", src: "/logos/messenger.png" },
+  { id: "line", name: "LINE", category: "Social", src: "/logos/line.png" },
+  { id: "wechat", name: "WeChat", category: "Social", src: "/logos/wechat.png" },
+  { id: "viber", name: "Viber", category: "Social", src: "/logos/viber.png" },
+  { id: "skype-classic", name: "Skype (classic)", category: "Social", src: "/logos/skype-classic.png" },
+  { id: "skype-modern", name: "Skype (modern)", category: "Social", src: "/logos/skype-modern.png" },
+  { id: "paypal", name: "PayPal", category: "Payments", src: "/logos/paypal.png" },
+  { id: "binance", name: "Binance", category: "Payments", src: "/logos/binance.png" },
+  { id: "zoom", name: "Zoom", category: "Connect", src: "/logos/zoom.png" },
+  { id: "google-meet", name: "Google Meet", category: "Connect", src: "/logos/google-meet.png" },
+  { id: "teams", name: "Microsoft Teams", category: "Connect", src: "/logos/teams.png" },
+  { id: "facetime", name: "FaceTime", category: "Connect", src: "/logos/facetime.png" },
+  { id: "google", name: "Google", category: "Connect", src: "/logos/google.png" },
+  { id: "chrome", name: "Chrome", category: "Connect", src: "/logos/chrome.png" },
+  { id: "android", name: "Android", category: "Connect", src: "/logos/android.png" },
+  { id: "apple", name: "Apple", category: "Connect", src: "/logos/apple.png" },
+  { id: "openai", name: "OpenAI", category: "Connect", src: "/logos/openai.png" },
+  { id: "google-play", name: "Google Play", category: "Connect", src: "/logos/google-play.png" },
+  { id: "app-store", name: "App Store", category: "Connect", src: "/logos/app-store.png" },
+  { id: "steam", name: "Steam", category: "Fun", src: "/logos/steam.png" },
+  { id: "xbox", name: "Xbox", category: "Fun", src: "/logos/xbox.png" },
+  { id: "playstation", name: "PlayStation", category: "Fun", src: "/logos/playstation.png" },
+  { id: "twitch", name: "Twitch", category: "Fun", src: "/logos/twitch.png" },
+  { id: "epic-games", name: "Epic Games", category: "Fun", src: "/logos/epic-games.png" },
+  { id: "duolingo", name: "Duolingo", category: "Fun", src: "/logos/duolingo.png" },
+  { id: "flower-calla-lily", name: "Calla lilies", category: "Cute", src: "/logos/flower-calla-lily.png" },
+  { id: "flower-cherry-blossom", name: "Cherry blossom", category: "Cute", src: "/logos/flower-cherry-blossom.png" },
+  { id: "flower-crocus", name: "Crocus", category: "Cute", src: "/logos/flower-crocus.png" },
+  { id: "flower-dahlia", name: "Dahlia", category: "Cute", src: "/logos/flower-dahlia.png" },
+  { id: "flower-dandelion", name: "Dandelion", category: "Cute", src: "/logos/flower-dandelion.png" },
+  { id: "flower-echinacea", name: "Echinacea", category: "Cute", src: "/logos/flower-echinacea.png" },
+  { id: "flower-gerbera", name: "Gerbera daisies", category: "Cute", src: "/logos/flower-gerbera.png" },
+  { id: "flower-lavender", name: "Lavender", category: "Cute", src: "/logos/flower-lavender.png" },
+  { id: "flower-lotus", name: "Lotus", category: "Cute", src: "/logos/flower-lotus.png" },
+  { id: "flower-orchid", name: "Orchid", category: "Cute", src: "/logos/flower-orchid.png" },
+  { id: "flower-petunia", name: "Petunia", category: "Cute", src: "/logos/flower-petunia.png" },
+  { id: "flower-periwinkle", name: "Periwinkle", category: "Cute", src: "/logos/flower-periwinkle.png" },
+  { id: "flower-pink-blossom", name: "Pink blossoms", category: "Cute", src: "/logos/flower-pink-blossom.png" },
+  { id: "flower-plumeria", name: "Plumeria", category: "Cute", src: "/logos/flower-plumeria.png" },
+  { id: "flower-red-ginger", name: "Red ginger", category: "Cute", src: "/logos/flower-red-ginger.png" },
+  { id: "flower-sunflowers-1", name: "Sunflowers", category: "Cute", src: "/logos/flower-sunflowers-1.png" },
+  { id: "flower-sunflowers-2", name: "Sunflowers 2", category: "Cute", src: "/logos/flower-sunflowers-2.png" },
+  { id: "flower-tulips", name: "Tulips", category: "Cute", src: "/logos/flower-tulips.png" },
+  { id: "airbnb", name: "Airbnb", category: "Useful", src: "/logos/airbnb.png" },
+  { id: "amazon", name: "Amazon", category: "Useful", src: "/logos/amazon.png" },
+  { id: "shopify", name: "Shopify", category: "Useful", src: "/logos/shopify.png" },
+  { id: "etsy", name: "Etsy", category: "Useful", src: "/logos/etsy.png" },
+  { id: "microsoft-store", name: "Microsoft Store", category: "Useful", src: "/logos/microsoft-store.png" },
+  { id: "tripadvisor", name: "Tripadvisor", category: "Useful", src: "/logos/tripadvisor.png" },
+  { id: "icon-black-at", name: "@ mark", category: "Marks", src: "/logos/icon-black-at.png" },
+  { id: "icon-black-w", name: "W letter", category: "Marks", src: "/logos/icon-black-w.png" },
+  { id: "icon-blue-dashed-bubble", name: "Chat bubble", category: "Marks", src: "/logos/icon-blue-dashed-bubble.png" },
+  { id: "icon-blue-m-circle", name: "M circle", category: "Marks", src: "/logos/icon-blue-m-circle.png" },
+  { id: "icon-blue-ring", name: "Blue ring", category: "Marks", src: "/logos/icon-blue-ring.png" },
+  { id: "icon-color-blobs", name: "Color pinwheel", category: "Marks", src: "/logos/icon-color-blobs.png" },
+  { id: "icon-green-up", name: "Up mark", category: "Marks", src: "/logos/icon-green-up.png" },
+  { id: "icon-key-mark-dark", name: "Key mark", category: "Marks", src: "/logos/icon-key-mark-dark.png" },
+  { id: "icon-navy-b-dot", name: "B letter", category: "Marks", src: "/logos/icon-navy-b-dot.png" },
+  { id: "icon-orange-swoosh", name: "Swoosh", category: "Marks", src: "/logos/icon-orange-swoosh.png" },
+  { id: "icon-pink-f", name: "F letter", category: "Marks", src: "/logos/icon-pink-f.png" },
+  { id: "icon-pink-g", name: "G letter", category: "Marks", src: "/logos/icon-pink-g.png" },
+  { id: "icon-purple-m", name: "M letter", category: "Marks", src: "/logos/icon-purple-m.png" },
+  { id: "icon-red-bag", name: "Shopping bag", category: "Marks", src: "/logos/icon-red-bag.png" },
+  { id: "icon-red-burst", name: "Burst", category: "Marks", src: "/logos/icon-red-burst.png" },
+  { id: "icon-teal-k", name: "K letter", category: "Marks", src: "/logos/icon-teal-k.png" },
+  { id: "icon-teal-tag", name: "Price tag", category: "Marks", src: "/logos/icon-teal-tag.png" },
+];
 
-export const LOGO_CATEGORIES: QrLogo["category"][] = ["Social", "Payments", "Connect", "Fun", "Cute", "Useful"];
+export const LOGOS: QrLogo[] = [...APP_LOGOS, ...PAYMENTS, ...CONNECT, ...FUN, ...CUTE, ...USEFUL];
+
+export const LOGO_CATEGORIES: QrLogo["category"][] = ["Social", "Payments", "Connect", "Fun", "Cute", "Useful", "Marks"];

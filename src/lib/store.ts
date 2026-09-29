@@ -97,7 +97,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       },
   style: saved ? { ...DEFAULT_STYLE, ...saved.style } : { ...DEFAULT_STYLE },
   imageUrl: saved ? saved.imageUrl : DEFAULT_ART_URL,
-  logoUrl: saved?.logoId ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
+  logoUrl: saved?.logoId && LOGOS.some((l) => l.id === saved.logoId) ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
   presetId: "art-alpine-summit",
   category: "Art",
   caption: saved?.caption ?? "",
