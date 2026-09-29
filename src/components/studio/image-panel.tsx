@@ -94,19 +94,14 @@ export function ImagePanel() {
       <div>
         <p className="mb-2 text-xs font-medium tracking-wide text-muted">Or try a sample</p>
         <div className="grid grid-cols-6 gap-2">
-          {SAMPLE_IMAGES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              title={s.name}
-              onClick={() => setImageUrl(s.src)}
-              className={cn(
-                "aspect-square overflow-hidden rounded-lg border transition-all active:scale-95",
-                imageUrl === s.src ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
-              )}
-            >
-              <img src={s.src} alt={s.name} className="size-full object-cover" />
-            </button>
+          {SAMPLE_IMAGES.filter((s) => s.kind !== "frame").map((s) => (
+            <SampleTile key={s.id} sample={s} active={imageUrl === s.src} onPick={setImageUrl} />
+          ))}
+        </div>
+        <p className="mt-4 mb-2 text-xs font-medium tracking-wide text-muted">Frame templates</p>
+        <div className="grid grid-cols-6 gap-2">
+          {SAMPLE_IMAGES.filter((s) => s.kind === "frame").map((s) => (
+            <SampleTile key={s.id} sample={s} active={imageUrl === s.src} onPick={setImageUrl} />
           ))}
         </div>
       </div>
@@ -318,6 +313,22 @@ export function ImagePanel() {
 }
 
 /** 66 built-in brand/emoji center logos + upload fallback. */
+function SampleTile({ sample, active, onPick }: { sample: { src: string; name: string; thumb?: string }; active: boolean; onPick: (url: string) => void }) {
+  return (
+    <button
+      type="button"
+      title={sample.name}
+      onClick={() => onPick(sample.src)}
+      className={cn(
+        "aspect-square overflow-hidden rounded-lg border transition-all active:scale-95",
+        active ? "border-ok ring-2 ring-ok/40 scale-105" : "border-border hover:border-border-strong",
+      )}
+    >
+      <img src={sample.thumb ?? sample.src} alt={sample.name} loading="lazy" className="size-full object-cover" />
+    </button>
+  );
+}
+
 function LogoGallery({
   logoUrl,
   logoScale,

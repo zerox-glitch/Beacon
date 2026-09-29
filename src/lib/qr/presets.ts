@@ -2754,7 +2754,17 @@ export function getPreset(id: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);
 }
 
-export const SAMPLE_IMAGES: { id: string; name: string; src: string }[] = [
+export type SampleImage = {
+  id: string;
+  name: string;
+  src: string;
+  /** Small picker thumbnail (falls back to `src`). */
+  thumb?: string;
+  /** "frame" = pre-added frame-template photo asset (the app template art). */
+  kind?: "sample" | "frame";
+};
+
+export const SAMPLE_IMAGES: SampleImage[] = [
   { id: "mountain", name: "Summit", src: "/samples/mountain.jpg" },
   { id: "lake", name: "Lake", src: "/samples/lake.jpg" },
   { id: "peony", name: "Peony", src: "/samples/peony.jpg" },
@@ -2767,4 +2777,55 @@ export const SAMPLE_IMAGES: { id: string; name: string; src: string }[] = [
   { id: "blossom", name: "Blossom", src: "/samples/blossom.jpg" },
   { id: "marble", name: "Marble", src: "/samples/marble.jpg" },
   { id: "tide", name: "Tide", src: "/samples/tide.jpg" },
+  // — Frame templates: the app template art, pre-added as photo assets —
+  { id: "arabian-nights", name: "Arabian Nights", src: "/frame-templates/arabian-nights.jpg", thumb: "/frame-templates/thumbs/arabian-nights.jpg", kind: "frame" },
+  { id: "aurora-night", name: "Aurora Night", src: "/frame-templates/aurora-night.jpg", thumb: "/frame-templates/thumbs/aurora-night.jpg", kind: "frame" },
+  { id: "autumn-harvest", name: "Autumn Harvest", src: "/frame-templates/autumn-harvest.jpg", thumb: "/frame-templates/thumbs/autumn-harvest.jpg", kind: "frame" },
+  { id: "aztec-sun", name: "Aztec Sun", src: "/frame-templates/aztec-sun.jpg", thumb: "/frame-templates/thumbs/aztec-sun.jpg", kind: "frame" },
+  { id: "balloon-party", name: "Balloon Party", src: "/frame-templates/balloon-party.jpg", thumb: "/frame-templates/thumbs/balloon-party.jpg", kind: "frame" },
+  { id: "christmas-frost", name: "Christmas Frost", src: "/frame-templates/christmas-frost.jpg", thumb: "/frame-templates/thumbs/christmas-frost.jpg", kind: "frame" },
+  { id: "cocoa-cafe", name: "Cocoa Cafe", src: "/frame-templates/cocoa-cafe.jpg", thumb: "/frame-templates/thumbs/cocoa-cafe.jpg", kind: "frame" },
+  { id: "coral-bloom", name: "Coral Bloom", src: "/frame-templates/coral-bloom.jpg", thumb: "/frame-templates/thumbs/coral-bloom.jpg", kind: "frame" },
+  { id: "coral-reef", name: "Coral Reef", src: "/frame-templates/coral-reef.jpg", thumb: "/frame-templates/thumbs/coral-reef.jpg", kind: "frame" },
+  { id: "cosmic-nebula", name: "Cosmic Nebula", src: "/frame-templates/cosmic-nebula.jpg", thumb: "/frame-templates/thumbs/cosmic-nebula.jpg", kind: "frame" },
+  { id: "crystal-ice", name: "Crystal Ice", src: "/frame-templates/crystal-ice.jpg", thumb: "/frame-templates/thumbs/crystal-ice.jpg", kind: "frame" },
+  { id: "deco-gold", name: "Deco Gold", src: "/frame-templates/deco-gold.jpg", thumb: "/frame-templates/thumbs/deco-gold.jpg", kind: "frame" },
+  { id: "dino-world", name: "Dino World", src: "/frame-templates/dino-world.jpg", thumb: "/frame-templates/thumbs/dino-world.jpg", kind: "frame" },
+  { id: "ember-roses", name: "Ember Roses", src: "/frame-templates/ember-roses.jpg", thumb: "/frame-templates/thumbs/ember-roses.jpg", kind: "frame" },
+  { id: "emerald-fern", name: "Emerald Fern", src: "/frame-templates/emerald-fern.jpg", thumb: "/frame-templates/thumbs/emerald-fern.jpg", kind: "frame" },
+  { id: "enchanted-forest", name: "Enchanted Forest", src: "/frame-templates/enchanted-forest.jpg", thumb: "/frame-templates/thumbs/enchanted-forest.jpg", kind: "frame" },
+  { id: "festival-lights", name: "Festival Lights", src: "/frame-templates/festival-lights.jpg", thumb: "/frame-templates/thumbs/festival-lights.jpg", kind: "frame" },
+  { id: "fireworks-night", name: "Fireworks Night", src: "/frame-templates/fireworks-night.jpg", thumb: "/frame-templates/thumbs/fireworks-night.jpg", kind: "frame" },
+  { id: "frost-blue", name: "Frost Blue", src: "/frame-templates/frost-blue.jpg", thumb: "/frame-templates/thumbs/frost-blue.jpg", kind: "frame" },
+  { id: "golden-lotus", name: "Golden Lotus", src: "/frame-templates/golden-lotus.jpg", thumb: "/frame-templates/thumbs/golden-lotus.jpg", kind: "frame" },
+  { id: "golden-roses", name: "Golden Roses", src: "/frame-templates/golden-roses.jpg", thumb: "/frame-templates/thumbs/golden-roses.jpg", kind: "frame" },
+  { id: "great-wave", name: "Great Wave", src: "/frame-templates/great-wave.jpg", thumb: "/frame-templates/thumbs/great-wave.jpg", kind: "frame" },
+  { id: "groovy-70s", name: "Groovy 70s", src: "/frame-templates/groovy-70s.jpg", thumb: "/frame-templates/thumbs/groovy-70s.jpg", kind: "frame" },
+  { id: "halloween-night", name: "Halloween Night", src: "/frame-templates/halloween-night.jpg", thumb: "/frame-templates/thumbs/halloween-night.jpg", kind: "frame" },
+  { id: "holo-chrome", name: "Holo Chrome", src: "/frame-templates/holo-chrome.jpg", thumb: "/frame-templates/thumbs/holo-chrome.jpg", kind: "frame" },
+  { id: "kawaii-sweets", name: "Kawaii Sweets", src: "/frame-templates/kawaii-sweets.jpg", thumb: "/frame-templates/thumbs/kawaii-sweets.jpg", kind: "frame" },
+  { id: "marble-gold", name: "Marble Gold", src: "/frame-templates/marble-gold.jpg", thumb: "/frame-templates/thumbs/marble-gold.jpg", kind: "frame" },
+  { id: "moonlit-zodiac", name: "Moonlit Zodiac", src: "/frame-templates/moonlit-zodiac.jpg", thumb: "/frame-templates/thumbs/moonlit-zodiac.jpg", kind: "frame" },
+  { id: "mosaic-lapis", name: "Mosaic Lapis", src: "/frame-templates/mosaic-lapis.jpg", thumb: "/frame-templates/thumbs/mosaic-lapis.jpg", kind: "frame" },
+  { id: "music-groove", name: "Music Groove", src: "/frame-templates/music-groove.jpg", thumb: "/frame-templates/thumbs/music-groove.jpg", kind: "frame" },
+  { id: "nautical-bay", name: "Nautical Bay", src: "/frame-templates/nautical-bay.jpg", thumb: "/frame-templates/thumbs/nautical-bay.jpg", kind: "frame" },
+  { id: "neon-grid", name: "Neon Grid", src: "/frame-templates/neon-grid.jpg", thumb: "/frame-templates/thumbs/neon-grid.jpg", kind: "frame" },
+  { id: "pastel-dream", name: "Pastel Dream", src: "/frame-templates/pastel-dream.jpg", thumb: "/frame-templates/thumbs/pastel-dream.jpg", kind: "frame" },
+  { id: "phoenix-fire", name: "Phoenix Fire", src: "/frame-templates/phoenix-fire.jpg", thumb: "/frame-templates/thumbs/phoenix-fire.jpg", kind: "frame" },
+  { id: "pixel-voxel", name: "Pixel Voxel", src: "/frame-templates/pixel-voxel.jpg", thumb: "/frame-templates/thumbs/pixel-voxel.jpg", kind: "frame" },
+  { id: "rainy-april", name: "Rainy April", src: "/frame-templates/rainy-april.jpg", thumb: "/frame-templates/thumbs/rainy-april.jpg", kind: "frame" },
+  { id: "royal-baroque", name: "Royal Baroque", src: "/frame-templates/royal-baroque.jpg", thumb: "/frame-templates/thumbs/royal-baroque.jpg", kind: "frame" },
+  { id: "safari-savanna", name: "Safari Savanna", src: "/frame-templates/safari-savanna.jpg", thumb: "/frame-templates/thumbs/safari-savanna.jpg", kind: "frame" },
+  { id: "sakura-night", name: "Sakura Night", src: "/frame-templates/sakura-night.jpg", thumb: "/frame-templates/thumbs/sakura-night.jpg", kind: "frame" },
+  { id: "silver-frost", name: "Silver Frost", src: "/frame-templates/silver-frost.jpg", thumb: "/frame-templates/thumbs/silver-frost.jpg", kind: "frame" },
+  { id: "stained-glass", name: "Stained Glass", src: "/frame-templates/stained-glass.jpg", thumb: "/frame-templates/thumbs/stained-glass.jpg", kind: "frame" },
+  { id: "steampunk", name: "Steampunk", src: "/frame-templates/steampunk.jpg", thumb: "/frame-templates/thumbs/steampunk.jpg", kind: "frame" },
+  { id: "sumi-ink", name: "Sumi Ink", src: "/frame-templates/sumi-ink.jpg", thumb: "/frame-templates/thumbs/sumi-ink.jpg", kind: "frame" },
+  { id: "travel-wonders", name: "Travel Wonders", src: "/frame-templates/travel-wonders.jpg", thumb: "/frame-templates/thumbs/travel-wonders.jpg", kind: "frame" },
+  { id: "tropical-paradise", name: "Tropical Paradise", src: "/frame-templates/tropical-paradise.jpg", thumb: "/frame-templates/thumbs/tropical-paradise.jpg", kind: "frame" },
+  { id: "vintage-glam", name: "Vintage Glam", src: "/frame-templates/vintage-glam.jpg", thumb: "/frame-templates/thumbs/vintage-glam.jpg", kind: "frame" },
+  { id: "violet-stars", name: "Violet Stars", src: "/frame-templates/violet-stars.jpg", thumb: "/frame-templates/thumbs/violet-stars.jpg", kind: "frame" },
+  { id: "wedding-rose", name: "Wedding Rose", src: "/frame-templates/wedding-rose.jpg", thumb: "/frame-templates/thumbs/wedding-rose.jpg", kind: "frame" },
+  { id: "wisteria-glow", name: "Wisteria Glow", src: "/frame-templates/wisteria-glow.jpg", thumb: "/frame-templates/thumbs/wisteria-glow.jpg", kind: "frame" },
+  { id: "zen-mandala", name: "Zen Mandala", src: "/frame-templates/zen-mandala.jpg", thumb: "/frame-templates/thumbs/zen-mandala.jpg", kind: "frame" },
 ];
