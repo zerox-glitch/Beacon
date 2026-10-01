@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Wand2,
+  Crown,
 } from "lucide-react";
 import { ScanDecode } from "@/components/qr/scan-decode";
 import { SupportButton } from "@/components/support-button";
@@ -637,6 +638,34 @@ export function Landing() {
           onClose={() => setZoomed(null)}
         />
       )}
+
+      {/* Hall of Fame — the supporters' circles */}
+      <section className="relative border-t border-border">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent px-6 py-10 text-center sm:px-10">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-bg/60 px-3 py-1 text-xs font-semibold text-fg/85">
+              <Crown className="size-3.5 text-accent" />
+              The circles of our colorful world
+            </span>
+            <h2 className="mt-4 font-display text-3xl italic leading-tight tracking-tight sm:text-4xl">
+              Your name, in color, <span className="text-accent">forever</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-fg/85 sm:text-base">
+              Supporters who buy QRWho a coffee join one of the circles on our Hall of Fame — a
+              permanent place, and a title to keep.
+            </p>
+            <Link
+              to="/hall-of-fame"
+              preload="render"
+              className="mt-6 inline-flex h-12 items-center gap-2 rounded-2xl bg-accent px-6 text-base font-bold text-accent-fg shadow-lg transition hover:brightness-110 active:scale-[0.98]"
+            >
+              <Crown className="size-4.5" />
+              Visit the Hall of Fame
+              <ArrowRight className="size-4.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Art direction, promise, use cases, FAQ, footer */}
       <ArtShowcase onTry={tryInStudio} />

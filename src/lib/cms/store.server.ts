@@ -27,6 +27,8 @@ import {
   type SeoDoc,
   categoryDocSchema,
   DEFAULT_CATEGORIES,
+  hallOfFameDocSchema,
+  DEFAULT_HALL_OF_FAME,
 } from "./schemas";
 import { encodeBase64, MEDIA_KINDS, parseUpload, sanitizeFilename, type MediaKind } from "./media-format";
 import type { TemplateRow } from "./catalog-merge";
@@ -146,6 +148,15 @@ export async function saveSamples(doc: unknown, actor: string): Promise<import("
   await writeSetting("samples", doc, actor);
   invalidateCmsCache();
   return getSamples();
+}
+
+export async function getHallOfFame(): Promise<import("./schemas").HallOfFameDoc> {
+  return readSetting("hallOfFame", hallOfFameDocSchema, DEFAULT_HALL_OF_FAME);
+}
+export async function saveHallOfFame(doc: unknown, actor: string): Promise<import("./schemas").HallOfFameDoc> {
+  await writeSetting("hallOfFame", doc, actor);
+  invalidateCmsCache();
+  return getHallOfFame();
 }
 
 /* ------------------------------ templates table ----------------------------- */

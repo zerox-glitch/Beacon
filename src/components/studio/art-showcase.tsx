@@ -369,6 +369,10 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
               Our story
             </a>
             <span>·</span>
+            <a href="/hall-of-fame" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Hall of Fame
+            </a>
+            <span>·</span>
             <a href="https://qrwho.online/privacy" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
               Privacy Policy
             </a>

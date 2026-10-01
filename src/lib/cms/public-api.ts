@@ -10,6 +10,12 @@ export const getPublicCms = createServerFn({ method: "GET" }).handler(async () =
   return store.getPublicBundle();
 });
 
+/** Public (read-only) Hall of Fame — the supporters' circles on /hall-of-fame. */
+export const getHallOfFame = createServerFn({ method: "GET" }).handler(async () => {
+  const store = await import("./store.server");
+  return store.getHallOfFame();
+});
+
 /** SSR-safe per-page SEO meta (title/description/robots/og/canonical). */
 export const getPageSeo = createServerFn({ method: "GET" })
   .validator((v: unknown) => (typeof v === "string" && v.length <= 200 ? v : "/"))

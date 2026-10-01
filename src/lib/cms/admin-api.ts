@@ -35,6 +35,7 @@ import {
   templateSaveSchema,
   categoryDocSchema,
   samplesDocSchema,
+  hallOfFameDocSchema,
 } from "./schemas";
 
 /* ------------------------------ shared plumbing ----------------------------- */
@@ -240,18 +241,19 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async () => {
     const store = await import("./store.server");
-    const [brand, content, seo, templates, categories, samples, admin, media] = await Promise.all([
+    const [brand, content, seo, templates, categories, samples, hallOfFame, admin, media] = await Promise.all([
       store.getBrand(),
       store.getContent(),
       store.getSeo(),
       store.listTemplateRows(true),
       store.getCategories(),
       store.getSamples(),
+      store.getHallOfFame(),
       store.getAdmin(),
       store.listMedia(),
     ]);
     const { dbSource } = await import("../db");
-    return { brand, content, seo, templates, categories, samples, admin, media, meta: { dbSource } };
+    return { brand, content, seo, templates, categories, samples, hallOfFame, admin, media, meta: { dbSource } };
   });
 
 export const saveBrandDoc = createServerFn({ method: "POST" })
@@ -329,6 +331,17 @@ export const saveSamplesDoc = createServerFn({ method: "POST" })
     const admin = adminOf(context);
     const saved = await store.saveSamples(data, admin.userId);
     await store.audit(admin.userId, "settings.samples", "samples", undefined, reqMeta(), admin.name);
+    return saved;
+  });
+
+export const saveHallOfFameDoc = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .validator(hallOfFameDocSchema)
+  .handler(async ({ data, context }) => {
+    const store = await import("./store.server");
+    const admin = adminOf(context);
+    const saved = await store.saveHallOfFame(data, admin.userId);
+    await store.audit(admin.userId, "settings.hallOfFame", "hallOfFame", undefined, reqMeta(), admin.name);
     return saved;
   });
 

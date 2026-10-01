@@ -338,6 +338,36 @@ export const samplesDocSchema = z.object({
 });
 export type SamplesDoc = z.infer<typeof samplesDocSchema>;
 
+/* ------------------------------- hall of fame ------------------------------- */
+
+/**
+ * The public Hall of Fame — permanent members who supported QRWho (via the
+ * coffee / tip link). Four "circles" act as exclusive titles, grandest first:
+ * a member's circle is the title they keep. Members are added by hand in the
+ * admin panel (Admin → Hall of Fame) and render on /hall-of-fame grouped by
+ * circle, in list order inside each circle.
+ */
+export const HALL_OF_FAME_CIRCLES = ["chromatic", "prism", "aurora", "spark"] as const;
+export type HallOfFameCircle = (typeof HALL_OF_FAME_CIRCLES)[number];
+
+export const hallOfFameMemberSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+  /** Display name, exactly as the supporter should be credited. */
+  name: z.string().trim().min(1).max(60),
+  /** Their circle — the permanent title shown next to the name. */
+  circle: z.enum(HALL_OF_FAME_CIRCLES),
+  /** Optional one-liner under the name (a dedication, a hello…). */
+  note: z.string().trim().max(120).default(""),
+  /** Optional link on the name (their site / social). */
+  link: urlish.default(""),
+});
+export type HallOfFameMember = z.infer<typeof hallOfFameMemberSchema>;
+
+export const hallOfFameDocSchema = z.object({
+  members: z.array(hallOfFameMemberSchema).max(400).default([]),
+});
+export type HallOfFameDoc = z.infer<typeof hallOfFameDocSchema>;
+
 /* ---------------------------------- media ----------------------------------- */
 
 export const mediaUploadSchema = z.object({
@@ -381,6 +411,7 @@ export const settingsDocSchemas = {
   seo: seoSchema,
   categories: categoryDocSchema,
   samples: samplesDocSchema,
+  hallOfFame: hallOfFameDocSchema,
 } as const;
 export type SettingsKey = keyof typeof settingsDocSchemas;
 
@@ -389,3 +420,4 @@ export const DEFAULT_CONTENT: ContentDoc = contentSchema.parse({});
 export const DEFAULT_SEO: SeoDoc = seoSchema.parse({});
 export const DEFAULT_CATEGORIES: CategoryDoc = categoryDocSchema.parse({});
 export const DEFAULT_SAMPLES: SamplesDoc = samplesDocSchema.parse({});
+export const DEFAULT_HALL_OF_FAME: HallOfFameDoc = hallOfFameDocSchema.parse({});
