@@ -698,6 +698,7 @@ export async function sitemapXml(origin: string): Promise<string> {
           { path: "/", priority: "1.0", changefreq: "weekly" },
           { path: "/studio", priority: "0.9", changefreq: "weekly" },
           { path: "/lab", priority: "0.6", changefreq: "monthly" },
+          { path: "/fiverr-upwork-alternative", priority: "0.8", changefreq: "monthly" },
         ];
   const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const urls = paths

@@ -1,12 +1,13 @@
 /** JSON-LD graph for the document head — brand/SEO aware, pure. */
 import type { PageMeta } from "./types.ts";
 
-export function buildJsonLd(meta: PageMeta, presetCount: number): string {
+/** Pages that carry their own FAQPage JSON-LD must not also get the site FAQ. */
+const PAGES_WITH_OWN_FAQ = new Set(["/fiverr-upwork-alternative"]);
+
+export function buildJsonLd(meta: PageMeta, presetCount: number, pagePath?: string): string {
   const site = meta.canonical ? safeOrigin(meta.canonical) : "";
   const base = site || "https://qrwho.vercel.app";
-  return JSON.stringify({
-    "@context": "https://schema.org",
-    "@graph": [
+  const graph: unknown[] = [
       {
         "@type": "WebApplication",
         "@id": `${base}/#webapp`,
@@ -28,6 +29,8 @@ export function buildJsonLd(meta: PageMeta, presetCount: number): string {
           "ISO/IEC 18004 Error Correction Level H support",
         ],
       },
+    ];
+  const siteFaq = [
       {
         "@type": "FAQPage",
         "@id": `${base}/#faq`,
@@ -66,7 +69,11 @@ export function buildJsonLd(meta: PageMeta, presetCount: number): string {
           },
         ],
       },
-    ],
+  ];
+  if (!PAGES_WITH_OWN_FAQ.has(pagePath ?? "")) graph.push(...siteFaq);
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": graph,
   });
 }
 

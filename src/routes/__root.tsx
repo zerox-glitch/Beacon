@@ -71,7 +71,7 @@ export const Route = createRootRoute({
       // Client-side loader runs skip it — the store was already hydrated.
       isServer ? getPublicCms().catch(() => null) : Promise.resolve(null),
     ]);
-    return { seo: seo as PageMeta | null, cms: cms as PublicBundle | null };
+    return { seo: seo as PageMeta | null, cms: cms as PublicBundle | null, path };
   },
   head: ({ loaderData }) => {
     const m = loaderData?.seo ?? FALLBACK_META;
@@ -115,7 +115,7 @@ export const Route = createRootRoute({
       scripts: [
         {
           type: "application/ld+json",
-          children: buildJsonLd(m, PRESETS.length),
+          children: buildJsonLd(m, PRESETS.length, loaderData?.path),
         } as never,
       ],
     };
