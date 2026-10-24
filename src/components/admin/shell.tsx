@@ -17,6 +17,7 @@ import {
   SearchCode,
   ShieldCheck,
   TextCursorInput,
+  Crown,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { adminSignOut, getSetupStatus } from "@/lib/cms/admin-api";
@@ -31,6 +32,7 @@ import { OverviewPanel } from "./panels/overview";
 import { BrandingPanel } from "./panels/branding";
 import { MediaPanel } from "./panels/media";
 import { SamplesPanel } from "./panels/samples";
+import { HallOfFamePanel } from "./panels/hall-of-fame";
 import { TemplatesPanel } from "./panels/templates";
 import { SeoPanel } from "./panels/seo";
 import { ContentPanel } from "./panels/content";
@@ -42,6 +44,7 @@ const TABS = [
   { id: "media", label: "Media", icon: ImageIcon },
   { id: "templates", label: "QR templates", icon: LayoutTemplate },
   { id: "samples", label: "Landing samples", icon: Images },
+  { id: "hall-of-fame", label: "Hall of Fame", icon: Crown },
   { id: "seo", label: "SEO", icon: SearchCode },
   { id: "content", label: "Site content", icon: TextCursorInput },
   { id: "security", label: "Security", icon: ShieldCheck },
@@ -143,6 +146,7 @@ function Dashboard() {
           {tab === "media" ? <MediaPanel /> : null}
           {tab === "templates" ? <TemplatesPanel /> : null}
           {tab === "samples" ? <SamplesPanel /> : null}
+          {tab === "hall-of-fame" ? <HallOfFamePanel /> : null}
           {tab === "seo" ? <SeoPanel /> : null}
           {tab === "content" ? <ContentPanel /> : null}
           {tab === "security" ? <SecurityPanel /> : null}
@@ -175,7 +179,7 @@ function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-app flex-col items-center justify-center gap-6 bg-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgb(143_166_122/0.08),transparent)] px-4 py-10">
       <div className="text-center">
-        <img src="/logo.png" alt="" className="mx-auto size-12 rounded-xl border border-border" />
+        <img src="/logo.png" alt="" className="mx-auto size-[62px] rounded-xl border border-border" />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-subtle">QRWho · Restricted area</p>
       </div>
       {children}

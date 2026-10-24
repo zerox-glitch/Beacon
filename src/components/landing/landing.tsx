@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Wand2,
+  Crown,
 } from "lucide-react";
 import { ScanDecode } from "@/components/qr/scan-decode";
 import { SupportButton } from "@/components/support-button";
@@ -23,7 +24,7 @@ import { ArtShowcase } from "@/components/studio/art-showcase";
 import { PRESETS, getPreset } from "@/lib/qr/presets";
 import { getPresetMerged } from "@/lib/cms/runtime";
 import { useCms } from "@/lib/cms/runtime";
-import { renderSamplePreset, type SampleImage } from "@/lib/qr/sample-render";
+import { renderSamplePreset, SAMPLE_URL, type SampleImage } from "@/lib/qr/sample-render";
 import { resolveSamples, type SampleRef } from "@/lib/cms/catalog-merge";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -45,21 +46,31 @@ function RotatingWord({ words = HOOK_WORDS }: { words?: string[] }) {
   );
 }
 
+function sampleKey(id: string, url?: string) {
+  return `${id}|${url?.trim() || SAMPLE_URL}`;
+}
+
 function useSamples(entries: { id: string; url?: string }[], px: number) {
-  const [samples, setSamples] = useState<SampleImage[]>([]);
-  // Per-id start tracking (not a one-shot latch): the admin's samples doc
+  const [samples, setSamples] = useState<Map<string, SampleImage>>(() => new Map());
+  // Per-entry start tracking (not a one-shot latch): the admin's samples doc
   // arrives AFTER the first paint with the curated fallback, and the new
   // entries must still render — while double-effect re-runs stay no-ops.
   const started = useRef<Set<string>>(new Set());
   useEffect(() => {
     entries.forEach(({ id, url }) => {
-      if (started.current.has(id)) return;
-      started.current.add(id);
+      const key = sampleKey(id, url);
+      if (started.current.has(key)) return;
+      started.current.add(key);
       const preset = getPresetMerged(id) ?? getPreset(id);
       if (!preset) return;
       renderSamplePreset(preset, px, url)
         .then((s) => {
-          setSamples((prev) => (prev.some((p) => p.preset.id === s.preset.id) ? prev : [...prev, s]));
+          setSamples((prev) => {
+            if (prev.has(key)) return prev;
+            const next = new Map(prev);
+            next.set(key, s);
+            return next;
+          });
         })
         .catch(() => {});
     });
@@ -251,8 +262,13 @@ const GRID_SAMPLE_IDS = [
 
 const HERO_SAMPLE_IDS = ["art-neon-tokyo", "art-royal", "gal-duo-aurora"] as const;
 
-function HeroFan({ entries }: { entries: SampleRef[] }) {
-  const samples = useSamples(entries.map((e) => ({ id: e.preset.id, url: e.url })), 320);
+function HeroFan({
+  entries,
+  samples,
+}: {
+  entries: SampleRef[];
+  samples: Map<string, SampleImage>;
+}) {
   const tilts = [
     "z-0 -rotate-10 -translate-x-[46%] translate-y-6",
     "z-10 -translate-y-1",
@@ -261,7 +277,7 @@ function HeroFan({ entries }: { entries: SampleRef[] }) {
   return (
     <div className="relative mx-auto flex h-64 w-full max-w-md items-center justify-center sm:h-80">
       {entries.slice(0, 3).map((entry, i) => {
-        const s = samples.find((p) => p.preset.id === entry.preset.id);
+        const s = samples.get(sampleKey(entry.preset.id, entry.url));
         return (
           <div
             key={entry.preset.id}
@@ -339,7 +355,16 @@ export function Landing() {
     grid: [...GRID_SAMPLE_IDS, ...customArtIds],
     hero: [...HERO_SAMPLE_IDS],
   });
-  const samples = useSamples(sampleRefs.grid.map((r) => ({ id: r.preset.id, url: r.url })), 640);
+  // Hero cards share the grid's renders (same preset + destination at the same
+  // size) — one pass serves both, and hero entries enqueue first so the fold's
+  // fan fills before the wall below. 512px covers 2x retina for the largest
+  // card slot (~264 CSS px) at ~half the previous render/decode work.
+  const heroKeys = new Set(sampleRefs.hero.map((r) => sampleKey(r.preset.id, r.url)));
+  const sampleEntries = [
+    ...sampleRefs.hero,
+    ...sampleRefs.grid.filter((r) => !heroKeys.has(sampleKey(r.preset.id, r.url))),
+  ].map((r) => ({ id: r.preset.id, url: r.url }));
+  const samples = useSamples(sampleEntries, 512);
 
   function tryInStudio(id: string, url?: string) {
     applyPreset(id);
@@ -356,7 +381,7 @@ export function Landing() {
             <img
               src={brand.logoUrl || "/logo.png"}
               alt={brand.siteName || "QRWho"}
-              className="size-10 shrink-0 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
+              className="size-[52px] shrink-0 rounded-xl border border-border sm:size-[62px] sm:rounded-2xl"
             />
             <div className="min-w-0">
               <p className="font-display text-xl italic leading-none tracking-tight sm:text-2xl">
@@ -375,6 +400,7 @@ export function Landing() {
             </span>
             <Link
               to="/studio"
+              preload="render"
               className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-accent px-4 text-sm font-bold text-accent-fg shadow-md transition hover:brightness-110 active:scale-[0.97]"
             >
               Open the studio
@@ -431,6 +457,7 @@ export function Landing() {
             <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <Link
                 to="/studio"
+                preload="render"
                 className="inline-flex h-12 items-center gap-2 rounded-2xl bg-accent px-6 text-base font-bold text-accent-fg shadow-lg transition hover:brightness-110 active:scale-[0.98]"
               >
                 {content.ctaPrimary || "Open the studio"}
@@ -465,7 +492,7 @@ export function Landing() {
               })}
             </div>
           </div>
-          <HeroFan entries={sampleRefs.hero} />
+          <HeroFan entries={sampleRefs.hero} samples={samples} />
         </div>
       </section>
 
@@ -546,11 +573,11 @@ export function Landing() {
             {sampleRefs.grid.map((ref) => (
               <SampleCard
                 key={ref.preset.id}
-                sample={samples.find((s) => s.preset.id === ref.preset.id)}
+                sample={samples.get(sampleKey(ref.preset.id, ref.url))}
                 label={ref.label}
                 onTry={() => tryInStudio(ref.preset.id, ref.url)}
                 onZoom={() => {
-                  const image = samples.find((x) => x.preset.id === ref.preset.id);
+                  const image = samples.get(sampleKey(ref.preset.id, ref.url));
                   if (image) setZoomed({ image, label: ref.label, url: ref.url });
                 }}
               />
@@ -611,6 +638,34 @@ export function Landing() {
           onClose={() => setZoomed(null)}
         />
       )}
+
+      {/* Hall of Fame — the supporters' circles */}
+      <section className="relative border-t border-border">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent px-6 py-10 text-center sm:px-10">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-bg/60 px-3 py-1 text-xs font-semibold text-fg/85">
+              <Crown className="size-3.5 text-accent" />
+              The circles of our colorful world
+            </span>
+            <h2 className="mt-4 font-display text-3xl italic leading-tight tracking-tight sm:text-4xl">
+              Your name, in color, <span className="text-accent">forever</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-fg/85 sm:text-base">
+              Supporters who buy QRWho a coffee join one of the circles on our Hall of Fame — a
+              permanent place, and a title to keep.
+            </p>
+            <Link
+              to="/hall-of-fame"
+              preload="render"
+              className="mt-6 inline-flex h-12 items-center gap-2 rounded-2xl bg-accent px-6 text-base font-bold text-accent-fg shadow-lg transition hover:brightness-110 active:scale-[0.98]"
+            >
+              <Crown className="size-4.5" />
+              Visit the Hall of Fame
+              <ArrowRight className="size-4.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Art direction, promise, use cases, FAQ, footer */}
       <ArtShowcase onTry={tryInStudio} />

@@ -97,7 +97,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       },
   style: saved ? { ...DEFAULT_STYLE, ...saved.style } : { ...DEFAULT_STYLE },
   imageUrl: saved ? saved.imageUrl : DEFAULT_ART_URL,
-  logoUrl: saved?.logoId ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
+  logoUrl: saved?.logoId && LOGOS.some((l) => l.id === saved.logoId) ? logoDataUrl(LOGOS.find((l) => l.id === saved.logoId)!) : null,
   presetId: "art-alpine-summit",
   category: "Art",
   caption: saved?.caption ?? "",
@@ -130,6 +130,7 @@ export const useStudio = create<StudioState>((set, get) => ({
       set({
         presetId: id,
         imageUrl: preset.artUrl,
+        frame: preset.frame ?? current.frame,
         style: {
           ...preset.style,
           dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it
@@ -158,6 +159,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         : "none";
     set({
       presetId: id,
+      frame: preset.frame ?? current.frame,
       style: {
         ...preset.style,
         dotScaleRef: 0.9, // the canonical art-preset seed: slider travel is measured against it

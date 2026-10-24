@@ -1,6 +1,13 @@
 import { QrCodeDataType } from "uqr";
 import { atlasFor, renderArtisticQr } from "./art-engine";
-import { drawFrame, frameBandFor, type FrameId } from "./frames";
+import { drawFrame, drawFrameArt, frameBandFor, isDecorFrame, type FrameId } from "./frames";
+import {
+  drawTemplateFrameBg,
+  drawTemplateFrameFg,
+  drawTemplateDecor,
+  templateFrameInsets,
+  templateFramePaper,
+} from "./template-frames";
 import { getArtDirection } from "./art-directions";
 import { buildArtPlan } from "./art/art-plan";
 import { paintArtPlan } from "./art/paint";
@@ -73,6 +80,18 @@ function coverDraw(
   const dw = iw * scale;
   const dh = ih * scale;
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+/** Darken (amt < 0) or lighten (amt > 0) a #rrggbb color toward black/white. */
+function shadeHex(hex: string, amt: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const n = m ? parseInt(m[1]!, 16) : 0xffffff;
+  const f = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  const r = f((n >> 16) & 255);
+  const g = f((n >> 8) & 255);
+  const b = f(n & 255);
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function roundedRect(
@@ -373,7 +392,10 @@ function drawLayer(
     ctx.fill();
     return;
   }
-  if (shape === "circle") {
+  // "target" as a LAYER (i.e. a pupil) is a plain disc — matching the app's
+  // drawEyeLayer (`Circle, Target -> drawCircle`). As a FRAME it is handled
+  // separately in drawEye (ring + ball).
+  if (shape === "circle" || shape === "target") {
     ctx.beginPath();
     ctx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2);
     ctx.fill();
@@ -396,15 +418,33 @@ export function drawEye(
   bg: string,
 ) {
   const s = cell * 7;
+  // A transparent paper must ERASE the ink below it (canvas ignores
+  // "transparent" fills — source-over with alpha 0 changes nothing, which
+  // used to turn every picker icon into a solid blob). destination-out is
+  // the true "hole" operation; opaque papers keep the classic over-paint.
+  const erase = bg === "transparent";
+  const paintHole = (draw: () => void) => {
+    if (erase) {
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "#000000";
+      draw();
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = bg;
+    draw();
+  };
   if (eyeShape === "target") {
     ctx.fillStyle = eyeColor;
     ctx.beginPath();
     ctx.arc(ox + s / 2, oy + s / 2, s * 0.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = bg;
-    ctx.beginPath();
-    ctx.arc(ox + s / 2, oy + s / 2, s * (0.5 - 1 / 7), 0, Math.PI * 2);
-    ctx.fill();
+    paintHole(() => {
+      ctx.beginPath();
+      ctx.arc(ox + s / 2, oy + s / 2, s * (0.5 - 1 / 7), 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.fillStyle = ballColor;
     ctx.beginPath();
     ctx.arc(ox + s / 2, oy + s / 2, s * (1.5 / 7), 0, Math.PI * 2);
@@ -413,7 +453,7 @@ export function drawEye(
   }
   drawLayer(ctx, ox, oy, s, eyeShape, eyeColor);
   const inset = cell;
-  drawLayer(ctx, ox + inset, oy + inset, cell * 5, eyeShape, bg);
+  paintHole(() => drawLayer(ctx, ox + inset, oy + inset, cell * 5, eyeShape, erase ? "#000000" : bg));
   const ball = cell * 3;
   const bx = ox + cell * 2;
   const by = oy + cell * 2;
@@ -504,7 +544,8 @@ function renderCleanPhotoQr(
   qr: EncodedQr,
   style: QrStyle,
   art: HTMLImageElement,
-  origin: number,
+  originX: number,
+  originY: number,
   body: number,
   cell: number,
   px: number,
@@ -512,6 +553,7 @@ function renderCleanPhotoQr(
 ) {
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
+  // The cream flip exists so dark photos get readable finder plates.
   const paper = bgLum >= 0.42 ? style.bg : "#f3eee6";
 
   ctx.fillStyle = paper;
@@ -529,7 +571,7 @@ function renderCleanPhotoQr(
   const fgRgb = parseHex(style.fg);
   const fgLum = fgRgb ? luma(fgRgb[0], fgRgb[1], fgRgb[2]) : 1;
   ctx.fillStyle = fgLum >= 0.55 ? "rgba(8,9,12,0.26)" : "rgba(8,9,12,0.12)";
-  ctx.fillRect(origin - cell * 0.5, origin - cell * 0.5, body + cell, body + cell);
+  ctx.fillRect(originX - cell * 0.5, originY - cell * 0.5, body + cell, body + cell);
 
   // Finder plates: an opaque rounded island per eye + separator.
   const corners: [number, number][] = [
@@ -539,8 +581,8 @@ function renderCleanPhotoQr(
   ];
   const g = cell * 0.45;
   for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
+    const ox = originX + ex * cell;
+    const oy = originY + ey * cell;
     const sepX = ex === 0 ? ox : ox - cell;
     const sepY = ey === 0 ? oy : oy - cell;
     ctx.fillStyle = paper;
@@ -558,8 +600,8 @@ function renderCleanPhotoQr(
       if (isFinderCell(x, y, qr.size)) continue;
       const dark = isDark(qr, x, y);
       const type = qr.types[y]![x]!;
-      const px0 = origin + x * cell;
-      const py0 = origin + y * cell;
+      const px0 = originX + x * cell;
+      const py0 = originY + y * cell;
       const protectedPattern =
         type === QrCodeDataType.Function ||
         type === QrCodeDataType.Timing ||
@@ -586,8 +628,8 @@ function renderCleanPhotoQr(
 
   // Eyes last, on their plates: ink = eye color, ball = ball color.
   for (const [ex, ey] of corners) {
-    const ox = origin + ex * cell;
-    const oy = origin + ey * cell;
+    const ox = originX + ex * cell;
+    const oy = originY + ey * cell;
     drawEye(ctx, ox, oy, cell, style.eyeShape, style.ballShape, eyeInk, style.ballColor || eyeInk, paper);
   }
 }
@@ -602,10 +644,11 @@ function renderCleanPhotoQr(
 function drawPhotoEffect(
   ctx: CanvasRenderingContext2D,
   effect: QrStyle["effect"],
-  g: { qr: EncodedQr; origin: number; body: number; cell: number; bg: string },
+  g: { qr: EncodedQr; origin: number; originY?: number; body: number; cell: number; bg: string },
 ) {
   if (effect === "none") return;
   const { qr, origin, body, cell, bg } = g;
+  const originY = g.originY ?? origin;
   const bgRgb = parseHex(bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
   const x = origin;
@@ -654,7 +697,7 @@ function drawPhotoEffect(
       for (let mx = 0; mx < qr.size; mx++) {
         if (isFinderCell(mx, my, qr.size)) continue;
         if (!isDark(qr, mx, my)) continue;
-        ctx.fillRect(origin + mx * cell + k * off, origin + my * cell + k * off, cell, cell);
+        ctx.fillRect(origin + mx * cell + k * off, originY + my * cell + k * off, cell, cell);
       }
     }
   }
@@ -676,7 +719,6 @@ export function renderQr(
 ) {
   const px = opts.pixelSize;
   const frame = opts.frame ?? "none";
-  const band = frameBandFor(frame, px);
   const ctx = opts.exportScale
     ? (() => {
         canvas.width = px;
@@ -754,14 +796,35 @@ export function renderQr(
     ? Math.max(2, Math.min(8, style.quietZone))
     : Math.max(0, Math.min(8, style.quietZone));
   const total = qr.size + qz * 2;
-  const cell = (px - band * 2) / total;
-  const origin = band + qz * cell;
+  // Template frames reserve per-side space (ported reference-app insets);
+  // legacy frames keep their uniform band. The code centres in the usable box.
+  const tf =
+    style.frameStyle && style.frameStyle !== "none"
+      ? templateFrameInsets(style.frameStyle, px)
+      : null;
+  const band = frameBandFor(frame, px);
+  const insetL = band + (tf?.l ?? 0);
+  const insetT = band + (tf?.t ?? 0);
+  const insetR = band + (tf?.r ?? 0);
+  const insetB = band + (tf?.b ?? 0);
+  const usableW = px - insetL - insetR;
+  const usableH = px - insetT - insetB;
+  const cell = Math.min(usableW, usableH) / total;
   const body = qr.size * cell;
+  const originX = insetL + (usableW - body) / 2;
+  const originY = insetT + (usableH - body) / 2;
+  const origin = originX;
   const mode = pictured ? style.imageMode : "none";
 
   const bgRgb = parseHex(style.bg);
   const bgLum = bgRgb ? luma(bgRgb[0], bgRgb[1], bgRgb[2]) : 1;
-  const paper = pictured && bgLum < 0.42 ? "#f3eee6" : style.bg;
+  // Template frames put the code on their container surface (white card,
+  // tinted disc) — light cells/eye holes must match that surface, not style.bg.
+  const paper = tf
+    ? templateFramePaper(style.frameStyle!, style.bg)
+    : pictured && bgLum < 0.42
+      ? "#f3eee6"
+      : style.bg;
   const frameGeo = { px, band, origin, body, fg: style.fg, bg: paper };
 
   ctx.clearRect(0, 0, px, px);
@@ -769,13 +832,53 @@ export function renderQr(
     ctx.fillStyle = paper;
     ctx.fillRect(0, 0, px, px);
   }
+  if (tf) drawTemplateFrameBg(ctx, style.frameStyle!, px);
 
-  const fill = makeFill(ctx, style, origin, origin, body, body);
+  // Decorative art frames: the artwork fills the canvas as a thin border,
+  // then a clean paper card covers the whole code area (quiet zone included)
+  // so the decoration never overlaps the modules. The card's edge is
+  // feathered — ornaments dissolve softly into the card instead of being
+  // sliced by a hard line, so the frame reads as complete artwork.
+  if (isDecorFrame(frame)) {
+    drawFrameArt(ctx, frame, px);
+    const pr = Math.max(6, px * 0.032);
+    // Crisp card — no dissolve haze. The seam between ornament and card is
+    // finished with a classic double mat line (dark rule + light hairline),
+    // so the frame reads as a deliberate raster frame edge: art ends at the
+    // rule, card begins at the rule, nothing is fogged or half-cut.
+    ctx.fillStyle = paper;
+    roundedRect(ctx, insetL, insetT, usableW, usableH, pr, pr, pr, pr);
+    ctx.fill();
+    const lw = Math.max(2, px * 0.0055);
+    ctx.save();
+    ctx.strokeStyle = shadeHex(paper, -0.22);
+    ctx.lineWidth = lw;
+    roundedRect(ctx, insetL + lw / 2, insetT + lw / 2, usableW - lw, usableH - lw, pr, pr, pr, pr);
+    ctx.stroke();
+    ctx.strokeStyle = shadeHex(paper, 0.35);
+    ctx.lineWidth = Math.max(1, lw * 0.45);
+    roundedRect(ctx, insetL + lw * 1.7, insetT + lw * 1.7, usableW - lw * 3.4, usableH - lw * 3.4, pr, pr, pr, pr);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const fill = makeFill(ctx, style, originX, originY, body, body);
   const gap = Math.max(0, Math.min(0.35, style.moduleGap));
 
+  // Template layers: border art under the logo, caption frames on top
+  // (ports the reference app's decor → logo → frame-foreground order).
+  const finishTemplateLayers = () => {
+    drawTemplateDecor(ctx, style.decor, px, style.fg, style.bg);
+  };
+  const finalTemplateLayer = () => {
+    if (tf) drawTemplateFrameFg(ctx, style.frameStyle!, style.frameCaption ?? "", px, style.fg, style.gradientTo ?? style.fg);
+  };
+
   if (opts.art && mode === "clean") {
-    renderCleanPhotoQr(ctx, qr, style, opts.art, origin, body, cell, px, fill);
-    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    renderCleanPhotoQr(ctx, qr, style, opts.art, originX, originY, body, cell, px, fill);
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin: originX, originY, body, cell, bg: style.bg });
+    finishTemplateLayers();
+    finalTemplateLayer();
     drawFrame(ctx, frame, frameGeo);
     return;
   }
@@ -790,7 +893,7 @@ export function renderQr(
       mode === "mono")
   ) {
     renderArtisticQr(ctx, qr, style, opts.art, origin, body, cell, px, fill, opts.kernelBoost ?? 0);
-    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin, body, cell, bg: style.bg });
+    drawPhotoEffect(ctx, style.effect ?? "none", { qr, origin: originX, originY, body, cell, bg: style.bg });
     drawFrame(ctx, frame, frameGeo);
   } else {
     /* ---- Kernel effects (Tune panel). Silhouette passes run under the ink,
@@ -804,7 +907,7 @@ export function renderQr(
         for (let x = 0; x < qr.size; x++) {
           if (isFinderCell(x, y, qr.size)) continue;
           if (!isDark(qr, x, y)) continue;
-          fn(origin + x * cell, origin + y * cell);
+          fn(originX + x * cell, originY + y * cell);
         }
       }
     };
@@ -819,7 +922,7 @@ export function renderQr(
         [0, qr.size - 7],
       ];
       for (const [ex, ey] of finderCorners) {
-        ctx.fillRect(origin + ex * cell + dx, origin + ey * cell + dy, cell * 7, cell * 7);
+        ctx.fillRect(originX + ex * cell + dx, originY + ey * cell + dy, cell * 7, cell * 7);
       }
       ctx.restore();
     };
@@ -855,8 +958,8 @@ export function renderQr(
 
         const type = qr.types[y]![x]!;
         const dark = isDark(qr, x, y);
-        const px0 = origin + x * cell;
-        const py0 = origin + y * cell;
+        const px0 = originX + x * cell;
+        const py0 = originY + y * cell;
         const pad = cell * gap * 0.5;
         const protectedPattern =
           type === QrCodeDataType.Function ||
@@ -915,12 +1018,13 @@ export function renderQr(
     ];
 
     for (const [ex, ey] of corners) {
-      const ox = origin + ex * cell;
-      const oy = origin + ey * cell;
+      const ox = originX + ex * cell;
+      const oy = originY + ey * cell;
       const sepX = ex === 0 ? ox : ox - cell;
       const sepY = ey === 0 ? oy : oy - cell;
       ctx.fillStyle = paper;
       ctx.fillRect(sepX, sepY, cell * 8, cell * 8);
+      const eyeInk = style.eyeColor || style.fg;
       drawEye(
         ctx,
         ox,
@@ -928,18 +1032,21 @@ export function renderQr(
         cell,
         style.eyeShape,
         style.ballShape,
-        style.eyeColor,
-        style.ballColor,
+        eyeInk,
+        style.ballColor || eyeInk,
         paper,
       );
     }
   }
 
+  // Template border art sits above the code, below the logo (app order).
+  finishTemplateLayers();
+
   const logoImg = opts.logo ?? (style.imageMode === "logo" ? opts.art : null);
   if (logoImg) {
     const logoSize = body * Math.max(0.12, Math.min(0.32, style.logoScale));
-    const lx = origin + (body - logoSize) / 2;
-    const ly = origin + (body - logoSize) / 2;
+    const lx = originX + (body - logoSize) / 2;
+    const ly = originY + (body - logoSize) / 2;
     const pad = logoSize * 0.12;
     ctx.fillStyle = paper;
     roundedRect(
@@ -970,6 +1077,7 @@ export function renderQr(
     ctx.restore();
   }
 
+  finalTemplateLayer();
   drawFrame(ctx, frame, { ...frameGeo, bg: paper });
 }
 

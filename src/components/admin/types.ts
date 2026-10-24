@@ -1,4 +1,4 @@
-import type { BrandDoc, CategoryDoc, ContentDoc, SamplesDoc, SeoDoc } from "@/lib/cms/schemas";
+import type { BrandDoc, CategoryDoc, ContentDoc, HallOfFameDoc, SamplesDoc, SeoDoc } from "@/lib/cms/schemas";
 import type { MediaRow } from "@/lib/cms/store-contract";
 import type { TemplateRow } from "@/lib/cms/catalog-merge";
 
@@ -10,6 +10,7 @@ export type AdminSettings = {
   templates: Array<TemplateRow & { updatedAt: string }>;
   categories: CategoryDoc;
   samples: SamplesDoc;
+  hallOfFame: HallOfFameDoc;
   admin: { userId: string; name: string; email: string; createdAt: string } | null;
   media: MediaRow[];
   meta?: { dbSource: "neon" | "pglite" };

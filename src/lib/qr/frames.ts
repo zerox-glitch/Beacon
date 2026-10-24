@@ -16,7 +16,38 @@ export type FrameId =
   | "neon"
   | "vintage"
   | "dots"
-  | "gradient";
+  | "gradient"
+  | "decor-garden"
+  | "decor-royal"
+  | "decor-circuit"
+  | "decor-galaxy"
+  | "decor-sakura"
+  | "decor-memphis"
+  | "decor-aurora"
+  | "decor-steel"
+  | "decor-marble"
+  | "decor-floral"
+  | "decor-tropical"
+  | "decor-wood"
+  | "decor-watercolor"
+  | "decor-boho"
+  | "decor-cyber"
+  | "decor-sunflower"
+  | "decor-henna"
+  | "decor-arabesque"
+  | "decor-feather"
+  | "decor-persian"
+  | "decor-roses"
+  | "decor-pines"
+  | "decor-ocean"
+  | "decor-bamboo"
+  | "decor-butterfly"
+  | "decor-frost"
+  | "decor-isfahan"
+  | "decor-zellige"
+  | "decor-desert"
+  | "decor-damask"
+  | "decor-deco";
 
 export const FRAME_IDS: FrameId[] = [
   "none",
@@ -27,6 +58,37 @@ export const FRAME_IDS: FrameId[] = [
   "vintage",
   "dots",
   "gradient",
+  "decor-garden",
+  "decor-royal",
+  "decor-circuit",
+  "decor-galaxy",
+  "decor-sakura",
+  "decor-memphis",
+  "decor-aurora",
+  "decor-steel",
+  "decor-marble",
+  "decor-floral",
+  "decor-tropical",
+  "decor-wood",
+  "decor-watercolor",
+  "decor-boho",
+  "decor-cyber",
+  "decor-sunflower",
+  "decor-henna",
+  "decor-arabesque",
+  "decor-feather",
+  "decor-persian",
+  "decor-roses",
+  "decor-pines",
+  "decor-ocean",
+  "decor-bamboo",
+  "decor-butterfly",
+  "decor-frost",
+  "decor-isfahan",
+  "decor-zellige",
+  "decor-desert",
+  "decor-damask",
+  "decor-deco",
 ];
 
 export interface FrameDef {
@@ -44,7 +106,114 @@ export const FRAME_DEFS: FrameDef[] = [
   { id: "vintage", label: "Vintage", hint: "A double rule with corner squares" },
   { id: "dots", label: "Dot ring", hint: "A ring of dots — playful print feel" },
   { id: "gradient", label: "Gradient", hint: "A border fading through the accent" },
+  // Decorative art frames: a thin illustrated border around a clean card —
+  // the code keeps the big light centre and the art never touches modules.
+  { id: "decor-garden", label: "Garden", hint: "Leafy botanical garland" },
+  { id: "decor-royal", label: "Royal", hint: "Gold filigree with a crown" },
+  { id: "decor-circuit", label: "Circuit", hint: "Neon tech circuitry" },
+  { id: "decor-galaxy", label: "Cosmic", hint: "Nebula swirl and stars" },
+  { id: "decor-sakura", label: "Sakura", hint: "Cherry blossom branches" },
+  { id: "decor-memphis", label: "Memphis", hint: "Playful geometric confetti" },
+  { id: "decor-aurora", label: "Aurora", hint: "Glowing rainbow ribbons" },
+  { id: "decor-steel", label: "Steel", hint: "Brushed industrial panels" },
+  { id: "decor-marble", label: "Tide", hint: "Flowing marble waves" },
+  { id: "decor-floral", label: "Floral", hint: "Bright mixed flower wreath" },
+  { id: "decor-tropical", label: "Tropical", hint: "Big jungle leaves" },
+  { id: "decor-wood", label: "Wood", hint: "Carved warm wood grain" },
+  { id: "decor-watercolor", label: "Watercolor", hint: "Painted brush splashes" },
+  { id: "decor-boho", label: "Boho", hint: "Colorful folk pattern" },
+  { id: "decor-cyber", label: "Cyber", hint: "Futuristic HUD brackets" },
+  { id: "decor-sunflower", label: "Sunflower", hint: "Golden sunflower ring" },
+  { id: "decor-henna", label: "Henna", hint: "Mehndi mandala lace" },
+  { id: "decor-arabesque", label: "Arabesque", hint: "Geometric tilework" },
+  { id: "decor-feather", label: "Peacock", hint: "Peacock feather plumes" },
+  { id: "decor-persian", label: "Persian", hint: "Medallions and paisley" },
+  { id: "decor-roses", label: "Roses", hint: "Cottage rose garland" },
+  { id: "decor-pines", label: "Pine", hint: "Nordic pine forest" },
+  { id: "decor-ocean", label: "Ocean", hint: "Curling waves and shells" },
+  { id: "decor-bamboo", label: "Bamboo", hint: "Bamboo stalks and leaves" },
+  { id: "decor-butterfly", label: "Butterfly", hint: "Butterflies and flowers" },
+  { id: "decor-frost", label: "Frost", hint: "Snowflakes and sparkle" },
+  { id: "decor-isfahan", label: "Isfahan", hint: "Persian tile mosaic" },
+  { id: "decor-zellige", label: "Zellige", hint: "Moroccan star mosaic" },
+  { id: "decor-desert", label: "Desert", hint: "Cacti, dunes and sun" },
+  { id: "decor-damask", label: "Damask", hint: "Classic damask ornaments" },
+  { id: "decor-deco", label: "Deco", hint: "Art deco fans and gold" },
 ];
+
+/** Decorative frame artwork (public assets) — drawn under the code's card.
+ * High-resolution 3072² PNGs so 2048px print and 4096px poster exports stay
+ * sharp. */
+export const FRAME_ART: Partial<Record<FrameId, string>> = {
+  "decor-garden": "/frames/garden.png",
+  "decor-royal": "/frames/royal.png",
+  "decor-circuit": "/frames/circuit.png",
+  "decor-galaxy": "/frames/galaxy.png",
+  "decor-sakura": "/frames/sakura.png",
+  "decor-memphis": "/frames/memphis.png",
+  "decor-aurora": "/frames/aurora.png",
+  "decor-steel": "/frames/steel.png",
+  "decor-marble": "/frames/marble.png",
+  "decor-floral": "/frames/floral.png",
+  "decor-tropical": "/frames/tropical.png",
+  "decor-wood": "/frames/wood.png",
+  "decor-watercolor": "/frames/watercolor.png",
+  "decor-boho": "/frames/boho.png",
+  "decor-cyber": "/frames/cyber.png",
+  "decor-sunflower": "/frames/sunflower.png",
+  "decor-henna": "/frames/henna.png",
+  "decor-arabesque": "/frames/arabesque.png",
+  "decor-feather": "/frames/feather.png",
+  "decor-persian": "/frames/persian.png",
+  "decor-roses": "/frames/roses.png",
+  "decor-pines": "/frames/pines.png",
+  "decor-ocean": "/frames/ocean.png",
+  "decor-bamboo": "/frames/bamboo.png",
+  "decor-butterfly": "/frames/butterfly.png",
+  "decor-frost": "/frames/frost.png",
+  "decor-isfahan": "/frames/isfahan.png",
+  "decor-zellige": "/frames/zellige.png",
+  "decor-desert": "/frames/desert.png",
+  "decor-damask": "/frames/damask.png",
+  "decor-deco": "/frames/deco.png",
+};
+
+export function isDecorFrame(id: FrameId | string): boolean {
+  return Object.hasOwn(FRAME_ART, id);
+}
+
+const artCache = new Map<FrameId, CanvasImageSource>();
+
+export function setFrameArt(id: FrameId, img: CanvasImageSource): void {
+  artCache.set(id, img);
+}
+
+/** Load a decorative frame's artwork into the cache (browser Image). */
+export function preloadFrameArt(id: FrameId): Promise<void> {
+  const src = FRAME_ART[id];
+  if (!src || artCache.has(id) || typeof Image === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      artCache.set(id, img);
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
+
+/**
+ * Paint a decorative frame's artwork across the whole canvas (1:1, edge to
+ * edge — the art's ornament is drawn to reach the canvas borders). The
+ * renderer covers the code area with a clean paper card right after, so
+ * nothing can touch the modules. No-op until the art is loaded (or for
+ * non-decorative frames).
+ */
+export function drawFrameArt(ctx: CanvasRenderingContext2D, frame: FrameId, px: number): void {
+  const img = artCache.get(frame);
+  if (img) ctx.drawImage(img, 0, 0, px, px);
+}
 
 export function frameDef(id: string): FrameDef {
   return FRAME_DEFS.find((f) => f.id === id) ?? FRAME_DEFS[0]!;
@@ -89,6 +258,9 @@ const WARM = "#ece4d4";
 /** Draw the chosen frame into the margin band. No-op for "none". */
 export function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, g: FrameGeometry): void {
   if (frame === "none" || g.band <= 0) return;
+  // Decorative art frames paint their artwork under the code (drawFrameArt);
+  // nothing overlays the modules.
+  if (isDecorFrame(frame)) return;
   const e = g.band;
   const inset = e * 0.3;
   const lw = Math.max(1.5, e * 0.1);
@@ -189,5 +361,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: FrameId, g: Fram
 
 /** Margin (px) the canvas needs around the QR body for a frame. */
 export function frameBandFor(frame: FrameId, px: number): number {
-  return frame === "none" ? 0 : Math.max(10, Math.round(px * 0.045));
+  if (frame === "none") return 0;
+  // Decorative art frames: a 10% border ring — wide enough for the ornament
+  // to read as a frame, while the QR card keeps 80% of the canvas.
+  if (isDecorFrame(frame)) return Math.max(18, Math.round(px * 0.1));
+  return Math.max(10, Math.round(px * 0.045));
 }

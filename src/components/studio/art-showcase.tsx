@@ -351,7 +351,7 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
         {/* Semantic SEO Keywords & Footer */}
         <footer className="border-t border-border pt-12 text-center space-y-4">
           <div className="flex items-center justify-center gap-3">
-            <img src={brand.logoUrl || "/logo.png"} alt={`${brand.siteName || "QRWho"} Logo`} className="size-8 rounded-lg border border-border" />
+            <img src={brand.logoUrl || "/logo.png"} alt={`${brand.siteName || "QRWho"} Logo`} className="size-[42px] rounded-lg border border-border" />
             <span className="font-display text-xl italic text-fg">{brand.siteName || "QRWho"}</span>
           </div>
           <p className="text-xs text-subtle max-w-xl mx-auto leading-relaxed">
@@ -367,6 +367,18 @@ export function ArtShowcase({ onTry }: { onTry?: (id: string) => void } = {}) {
             <span>·</span>
             <a href="/lab" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
               Our story
+            </a>
+            <span>·</span>
+            <a href="/hall-of-fame" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Hall of Fame
+            </a>
+            <span>·</span>
+            <a href="https://qrwho.online/privacy" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Privacy Policy
+            </a>
+            <span>·</span>
+            <a href="https://qrwho.online/terms" className="underline decoration-white/20 underline-offset-2 hover:text-fg">
+              Terms of Use
             </a>
           </div>
         </footer>

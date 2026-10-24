@@ -2,7 +2,6 @@ import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
-  Globe,
   ImageIcon,
   LayoutGrid,
   Palette,
@@ -13,7 +12,6 @@ import { Toaster, toast } from "sonner";
 import { ContentPanel } from "@/components/studio/content-panel";
 import { SupportButton } from "@/components/support-button";
 import { AmbientArt } from "@/components/studio/ambient-art";
-import { ArtShowcase } from "@/components/studio/art-showcase";
 import { DesignPanel } from "@/components/studio/design-panel";
 import { ImagePanel } from "@/components/studio/image-panel";
 import { LibraryPanel } from "@/components/studio/library-panel";
@@ -61,7 +59,6 @@ export function Studio() {
   const setMobileTab = useStudio((s) => s.setMobileTab);
   const hydrateHistory = useStudio((s) => s.hydrateHistory);
   const [sheetOpen, setSheetOpen] = useState(true);
-  const [showcaseOpen, setShowcaseOpen] = useState(false);
 
   useEffect(() => {
     hydrateHistory();
@@ -95,14 +92,6 @@ export function Studio() {
     if (preset.category) s.setCategory(preset.category);
   }, [defaultTemplate]);
 
-  function toggleShowcase() {
-    const open = !showcaseOpen;
-    setShowcaseOpen(open);
-    // On phones the sheet and the art panel would fight for the same
-    // vertical space — close the sheet so the stage stays visible.
-    if (open && !window.matchMedia("(min-width: 1024px)").matches) setSheetOpen(false);
-  }
-
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-app flex-col overflow-hidden bg-bg text-fg">
@@ -114,7 +103,7 @@ export function Studio() {
                 <img
                   src={brand.logoUrl || "/logo.png"}
                   alt={brand.siteName || "QRWho"}
-                  className="size-10 rounded-xl border border-border sm:size-12 sm:rounded-2xl"
+                  className="size-[52px] rounded-xl border border-border sm:size-[62px] sm:rounded-2xl"
                 />
               </Link>
               <div className="min-w-0">
@@ -204,29 +193,6 @@ export function Studio() {
             </div>
           </aside>
         </div>
-
-        {/* Art directions & print specs — inline in the studio (never navigates
-            away). Always visible, high contrast, mobile + desktop. */}
-        {showcaseOpen && (
-          <div className="z-30 max-h-[52vh] shrink-0 overflow-y-auto border-t border-border-strong bg-bg scrollbar-thin lg:max-h-[46vh]">
-            <ArtShowcase
-              onTry={(id) => {
-                useStudio.getState().applyPreset(id);
-                setShowcaseOpen(false);
-              }}
-            />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={toggleShowcase}
-          aria-expanded={showcaseOpen}
-          className="flex shrink-0 items-center justify-center gap-2 border-t border-border-strong bg-surface px-4 py-2.5 text-xs font-bold text-fg transition hover:bg-surface-hover"
-        >
-          <Globe className="size-4 text-ok" />
-          <span>Art directions &amp; print specs</span>
-          {showcaseOpen ? <ChevronUp className="size-4 text-fg/70" /> : <ChevronDown className="size-4 text-fg/70" />}
-        </button>
 
         <Toaster theme="dark" position="bottom-center" richColors={false} />
       </div>

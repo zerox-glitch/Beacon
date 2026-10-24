@@ -65,6 +65,32 @@ export type ImageMode =
 
 export type QrEffect = "none" | "shadow" | "glow" | "outline" | "emboss" | "extrude";
 
+/** Decorative container frames ported from the reference app's Templates engine. */
+export type TemplateFrameId =
+  | "none"
+  | "simple-border"
+  | "badge-scan-me"
+  | "modern-pill"
+  | "phone-frame"
+  | "stamp"
+  | "ticket"
+  | "neon-glow"
+  | "bracket"
+  | "badge"
+  | "arch"
+  | "cup"
+  | "card"
+  | "label"
+  | "speech"
+  | "note"
+  | "globe"
+  | "plaque"
+  | "pentagon"
+  | "hexagon"
+  | "diamond"
+  | "seal"
+  | "bucket";
+
 export type EccLevel = "L" | "M" | "Q" | "H";
 
 export interface QrStyle {
@@ -78,6 +104,13 @@ export interface QrStyle {
   gradientType: GradientType;
   gradientTo: string;
   quietZone: number;
+  /** Decorative container frame (Templates engine, ported from the reference
+   * app): per-side code insets + painted frame background/foreground. */
+  frameStyle?: TemplateFrameId;
+  /** Caption drawn by frames that show text (default "SCAN ME"). */
+  frameCaption?: string;
+  /** Template border decoration ("love", "halloween", "note", …). */
+  decor?: string;
   moduleGap: number;
   imageMode: ImageMode;
   imageOpacity: number;
@@ -186,6 +219,8 @@ export interface Preset {
    * templates that cannot carry a photo, and admins can pin either way.
    */
   imageCompatible?: boolean;
+  /** Frame (Frame & caption picker) this look is designed around. */
+  frame?: import("./frames").FrameId;
   style: QrStyle;
 }
 

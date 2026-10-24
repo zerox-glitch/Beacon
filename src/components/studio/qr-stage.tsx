@@ -26,6 +26,7 @@ import { finishExport } from "@/lib/qr/finish";
 import { buildPayload, payloadLabel } from "@/lib/qr/payload";
 import { useCms } from "@/lib/cms/runtime";
 import { canvasPngBlob, loadImage, renderQr } from "@/lib/qr/render";
+import { preloadFrameArt, isDecorFrame } from "@/lib/qr/frames";
 import { inspectPngBlob, inspectRenderedQr } from "@/lib/qr/scan-engine";
 import { downloadSvg, exportArtDirectionSvg, exportQrSvg } from "@/lib/qr/svg-export";
 import { useStudio } from "@/lib/store";
@@ -130,6 +131,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       useStudio.getState().setError(null);
       const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
       const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
+      await preloadFrameArt(frame);
       if (cancelled) return;
       const canvas = workRef.current;
       if (!canvas) {
@@ -140,10 +142,13 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
       // Always paint a scan-sized bitmap (CSS scales it down). A 180px preview
       // is only ~3px/module on a version-7 photo QR — too small for jsQR or phones.
+      // Device-pixel aware so framed art stays crisp on hi-DPI screens.
+      const dpr = typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 3) : 1;
       const workPx = pictured ? Math.max(px, 512) : Math.max(px, 320);
+      const renderPx = Math.max(workPx, Math.round(workPx * dpr));
       try {
         renderQr(canvas, encoded.qr, style, {
-          pixelSize: workPx,
+          pixelSize: renderPx,
           art,
           logo,
           frame,
@@ -155,7 +160,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         let report = await inspectRenderedQr(canvas, expected);
         if (!report.ok && pictured) {
           renderQr(canvas, encoded.qr, style, {
-            pixelSize: workPx,
+            pixelSize: renderPx,
             art,
             logo,
             frame,
@@ -211,6 +216,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
     const canvas = makeCanvas();
     const art = imageUrl ? await loadImage(imageUrl).catch(() => null) : null;
     const logo = logoUrl ? await loadImage(logoUrl).catch(() => null) : null;
+    await preloadFrameArt(frame);
     const pictured = Boolean(art) && style.imageMode !== "none" && style.imageMode !== "logo";
     if (pictured) {
       const expected = buildPayload(payload).trim() || null;
@@ -419,6 +425,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         onDrop={onDropImage}
         className={cn(
           "qr-mat relative aspect-square h-full max-h-[min(100%,280px)] w-auto max-w-full p-2 transition duration-200 sm:max-h-[340px] sm:p-4 md:max-h-[400px] md:p-5 lg:max-h-[440px]",
+          isDecorFrame(frame) && "p-0.5 sm:p-0.5 md:p-0.5",
           frame === "ticket" ? "rounded-[28px]" : "rounded-2xl",
         )}
         style={{
@@ -428,7 +435,10 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       >
         <div
           ref={innerRef}
-          className="relative mx-auto aspect-square h-full w-full overflow-hidden rounded-xl"
+          className={cn(
+            "relative mx-auto aspect-square h-full w-full overflow-hidden",
+            isDecorFrame(frame) ? "rounded-[2px]" : "rounded-xl",
+          )}
           style={{ background: paper }}
         >
           <canvas ref={workRef} className="block h-full w-full max-h-full max-w-full" aria-label="QR code preview" />

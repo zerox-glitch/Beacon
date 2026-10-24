@@ -11,11 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as FiverrUpworkAlternativeRouteImport } from './routes/fiverr-upwork-alternative'
+import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiMediaMediaIdRouteImport } from './routes/api/media/$mediaId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -28,6 +32,16 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FiverrUpworkAlternativeRoute = FiverrUpworkAlternativeRouteImport.update({
+  id: '/fiverr-upwork-alternative',
+  path: '/fiverr-upwork-alternative',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HallOfFameRoute = HallOfFameRouteImport.update({
+  id: '/hall-of-fame',
+  path: '/hall-of-fame',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
@@ -36,6 +50,11 @@ const LabRoute = LabRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
@@ -53,6 +72,11 @@ const StudioRoute = StudioRouteImport.update({
   path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMediaMediaIdRoute = ApiMediaMediaIdRouteImport.update({
   id: '/api/media/$mediaId',
   path: '/api/media/$mediaId',
@@ -62,32 +86,44 @@ const ApiMediaMediaIdRoute = ApiMediaMediaIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/fiverr-upwork-alternative': typeof FiverrUpworkAlternativeRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/fiverr-upwork-alternative': typeof FiverrUpworkAlternativeRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/fiverr-upwork-alternative': typeof FiverrUpworkAlternativeRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/lab': typeof LabRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/studio': typeof StudioRoute
+  '/terms': typeof TermsRoute
   '/api/media/$mediaId': typeof ApiMediaMediaIdRoute
 }
 export interface FileRouteTypes {
@@ -95,42 +131,58 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/fiverr-upwork-alternative'
+    | '/hall-of-fame'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/fiverr-upwork-alternative'
+    | '/hall-of-fame'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/fiverr-upwork-alternative'
+    | '/hall-of-fame'
     | '/lab'
     | '/llms.txt'
+    | '/privacy'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/studio'
+    | '/terms'
     | '/api/media/$mediaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  FiverrUpworkAlternativeRoute: typeof FiverrUpworkAlternativeRoute
+  HallOfFameRoute: typeof HallOfFameRoute
   LabRoute: typeof LabRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  PrivacyRoute: typeof PrivacyRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StudioRoute: typeof StudioRoute
+  TermsRoute: typeof TermsRoute
   ApiMediaMediaIdRoute: typeof ApiMediaMediaIdRoute
 }
 
@@ -150,6 +202,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fiverr-upwork-alternative': {
+      id: '/fiverr-upwork-alternative'
+      path: '/fiverr-upwork-alternative'
+      fullPath: '/fiverr-upwork-alternative'
+      preLoaderRoute: typeof FiverrUpworkAlternativeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hall-of-fame': {
+      id: '/hall-of-fame'
+      path: '/hall-of-fame'
+      fullPath: '/hall-of-fame'
+      preLoaderRoute: typeof HallOfFameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lab': {
       id: '/lab'
       path: '/lab'
@@ -162,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/robots.txt': {
@@ -185,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/media/$mediaId': {
       id: '/api/media/$mediaId'
       path: '/api/media/$mediaId'
@@ -198,11 +278,15 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  FiverrUpworkAlternativeRoute: FiverrUpworkAlternativeRoute,
+  HallOfFameRoute: HallOfFameRoute,
   LabRoute: LabRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  PrivacyRoute: PrivacyRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StudioRoute: StudioRoute,
+  TermsRoute: TermsRoute,
   ApiMediaMediaIdRoute: ApiMediaMediaIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,4 +1,5 @@
 import { encode } from "uqr";
+import { preloadFrameArt } from "./frames";
 import { loadImage, renderQr } from "./render";
 import type { Preset, QrStyle } from "./types";
 
@@ -36,6 +37,7 @@ function thumbStyle(preset: Preset, hasArt: boolean): QrStyle {
 
 async function paint(preset: Preset): Promise<string> {
   const art = preset.artUrl ? await loadImage(preset.artUrl).catch(() => null) : null;
+  if (preset.frame) await preloadFrameArt(preset.frame);
   const style = thumbStyle(preset, Boolean(art));
   const qr = encode("https://qrwho.vercel.app", {
     ecc: art ? "H" : "M",
@@ -43,7 +45,12 @@ async function paint(preset: Preset): Promise<string> {
     border: 0,
   });
   const canvas = document.createElement("canvas");
-  renderQr(canvas, qr, style, { pixelSize: THUMB_PX, art, exportScale: true });
+  renderQr(canvas, qr, style, {
+    pixelSize: THUMB_PX,
+    art,
+    frame: preset.frame ?? "none",
+    exportScale: true,
+  });
   return canvas.toDataURL("image/jpeg", 0.78);
 }
 

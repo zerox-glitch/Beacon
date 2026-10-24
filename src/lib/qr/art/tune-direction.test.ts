@@ -102,6 +102,33 @@ test("tuneDirection: module gap follows the slider, clamped to the painter's ran
   assert.equal(tuneDirection(dir, { ...DEFAULT_STYLE, moduleGap: Number.NaN }).gap, dir.gap);
 });
 
+test("tuneDirection: explicit eye/pupil picks apply exactly — never substituted", () => {
+  const dir = getArtDirection("neon-cyber-grid")!;
+  // Both picked: (frame, ball) flow through untouched.
+  const both = tuneDirection(dir, {
+    ...seededStyle("neon-cyber-grid"),
+    eyeShape: "diamond",
+    ballShape: "hex",
+    eyePicked: true,
+    ballPicked: true,
+  });
+  assert.equal(both.finderFrame, "diamond");
+  assert.equal(both.finderBall, "hex");
+  // Pupil-only pick: the ball changes and the displayed frame carries it —
+  // exactly what the pupil-row icons preview (frame = style.eyeShape).
+  const pupilOnly = tuneDirection(dir, {
+    ...seededStyle("neon-cyber-grid"),
+    eyeShape: "extra-rounded",
+    ballShape: "leaf",
+    ballPicked: true,
+  });
+  assert.equal(pupilOnly.finderFrame, "extra-rounded");
+  assert.equal(pupilOnly.finderBall, "leaf");
+  // No picks: the template keeps its own finder.
+  const untouched = tuneDirection(dir, seededStyle("neon-cyber-grid"));
+  assert.equal(untouched.finderFrame, undefined);
+});
+
 test("tuneDirection: applying a preset's own seeded style changes nothing visible", () => {
   for (const preset of artDirectionPresets()) {
     const dir = getArtDirection(preset.style.artDirection);

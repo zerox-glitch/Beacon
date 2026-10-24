@@ -281,7 +281,7 @@ export function Note({ children }: { children: ReactNode }) {
 export function AdminWordmark({ logoUrl, siteName }: { logoUrl: string; siteName: string }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <img src={logoUrl || "/logo.png"} alt="" className="size-8 shrink-0 rounded-lg border border-border" />
+      <img src={logoUrl || "/logo.png"} alt="" className="size-[42px] shrink-0 rounded-lg border border-border" />
       <div className="min-w-0 leading-tight">
         <p className="truncate text-sm font-semibold text-fg">{siteName || "QRWho"}</p>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-accent">Admin</p>

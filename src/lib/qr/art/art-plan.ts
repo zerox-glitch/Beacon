@@ -515,7 +515,10 @@ function pushEyeLayer(
   fill: FillSpec,
   role: PaintRole,
 ): void {
-  if (shape === "circle") {
+  // "target" as a layer is a plain disc (the app's drawEyeLayer maps
+  // `Circle, Target -> drawCircle`) — as a finder FRAME the ring look comes
+  // from silhouetteFinder's own three-circle special case.
+  if (shape === "circle" || shape === "target") {
     out.push({ shape: "circle", x, y, w: sz, h: sz, fill, role, gx: 0, gy: 0 });
     return;
   }
@@ -561,9 +564,6 @@ function pushEyeLayer(
       break;
     case "leaf":
       c = [sz * 0.42, 0, sz * 0.42, 0];
-      break;
-    case "target":
-      c = [sz * 0.5, sz * 0.5, sz * 0.5, sz * 0.5];
       break;
     default:
       c = [sz * 0.18, sz * 0.18, sz * 0.18, sz * 0.18];
@@ -645,9 +645,9 @@ function finderPaints(
 ): Paint[] {
   const s = cell * 7;
   // Design-tab eye/pupil picks (explicit): the classic 10-silhouette system,
-  // battery-resolved per template by tuneDirection. At "lean" level the
-  // camera-safe solid finder wins, as before.
-  if (level !== "lean" && dir.finderFrame) {
+  // drawn exactly as picked (the app's drawEye rule). The scan meter + Fix
+  // scan guard quality — the renderer never silently substitutes a shape.
+  if (dir.finderFrame) {
     return silhouetteFinder(dir.finderFrame, dir.finderBall, inks, ox, oy, cell, corner);
   }
   // The template's own finder, as authored (or solid at lean).

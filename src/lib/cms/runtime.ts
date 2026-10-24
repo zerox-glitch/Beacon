@@ -13,6 +13,7 @@ import { PRESETS } from "@/lib/qr/presets";
 import { mergeCatalog, type VisibleCatalog } from "./catalog-merge.ts";
 import type { BrandDoc, ContentDoc, SamplesDoc, SeoDoc } from "./schemas.ts";
 import { DEFAULT_BRAND, DEFAULT_CONTENT, DEFAULT_SAMPLES, DEFAULT_SEO } from "./schemas.ts";
+import type { PublicBundle } from "./types.ts";
 
 export type CmsStatus = "idle" | "loading" | "ready" | "error";
 
@@ -60,6 +61,34 @@ export function getCmsState(): CmsState {
 
 let inflight: Promise<void> | null = null;
 
+function applyBundle(bundle: PublicBundle): void {
+  state = {
+    status: "ready",
+    catalog: mergeCatalog(PRESETS, bundle.templates, { categories: bundle.categories }),
+    brand: bundle.brand,
+    content: bundle.content,
+    seo: bundle.seo,
+    presetCount: PRESETS.length + bundle.templates.filter((t) => t.isCustom).length,
+    defaultTemplate: bundle.defaultTemplate ?? null,
+    samplesDoc: bundle.samples ?? DEFAULT_SAMPLES,
+    error: null,
+  };
+}
+
+/**
+ * Seed the store from data that arrived WITH the page (the root SSR loader
+ * dehydrates the public bundle). The support button, announcement bar and
+ * gallery then render on the very first client paint instead of flashing a
+ * placeholder until a second fetch round-trips; `ensureCms` becomes a no-op
+ * afterwards. Idempotent — later calls (client-side loader runs) are ignored
+ * while the store is ready.
+ */
+export function hydrateCms(bundle: PublicBundle): void {
+  if (state.status === "ready") return;
+  applyBundle(bundle);
+  emit();
+}
+
 /** Fetch the public bundle once; `force` bypasses the module-level latch. */
 export function ensureCms(force = false): Promise<void> {
   if (inflight && !force) return inflight;
@@ -70,17 +99,7 @@ export function ensureCms(force = false): Promise<void> {
     try {
       const { getPublicCms } = await import("./public-api");
       const bundle = await getPublicCms();
-      state = {
-        status: "ready",
-        catalog: mergeCatalog(PRESETS, bundle.templates, { categories: bundle.categories }),
-        brand: bundle.brand,
-        content: bundle.content,
-        seo: bundle.seo,
-        presetCount: PRESETS.length + bundle.templates.filter((t) => t.isCustom).length,
-        defaultTemplate: bundle.defaultTemplate ?? null,
-        samplesDoc: bundle.samples ?? DEFAULT_SAMPLES,
-        error: null,
-      };
+      applyBundle(bundle);
     } catch (err) {
       state = { ...INITIAL, status: "error", error: (err as Error)?.message ?? "cms fetch failed" };
     } finally {
