@@ -19,7 +19,6 @@ import { weaveMode } from "@/lib/qr/art-engine";
 import { forgetPhoto, refinePhotoQr, type CandidateId } from "@/lib/qr/photo/photo-engine";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { DestinationDock } from "@/components/studio/destination-dock";
 import { ScannabilityMeter } from "@/components/studio/scannability-meter";
 import { tryEncodePayload } from "@/lib/qr/encode";
 import { finishExport } from "@/lib/qr/finish";
@@ -60,7 +59,6 @@ function makeCanvas(): HTMLCanvasElement {
 
 export function QrStage({ compact = false }: { compact?: boolean }) {
   const cms = useCms();
-  const GALLERY_PRESETS = cms.catalog.presets.filter((p) => Boolean(p.artUrl));
   const [supportOpen, setSupportOpen] = useState(false);
   const innerRef = useRef<HTMLDivElement>(null);
   const workRef = useRef<HTMLCanvasElement | null>(null);
@@ -70,7 +68,6 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
   const logoUrl = useStudio((s) => s.logoUrl);
   const scanOk = useStudio((s) => s.scanOk);
   const pictured = Boolean(imageUrl) && style.imageMode !== "none" && style.imageMode !== "logo";
-  const presetId = useStudio((s) => s.presetId);
   const error = useStudio((s) => s.error);
   const [copied, setCopied] = useState(false);
   const [px, setPx] = useState(220);
@@ -410,9 +407,19 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
       {/* m-auto centers when it fits and scrolls from the top when cramped —
           justify-center + overflow-hidden used to clip the top and bottom. */}
       <div className="m-auto flex w-full flex-col items-center gap-1.5 sm:gap-4">
-      <div className="w-full shrink-0">
-        <DestinationDock />
+      <div className="mx-auto w-full max-w-[280px] shrink-0 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
+        <ScannabilityMeter
+          scanOk={scanOk}
+          style={style}
+          hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
+          onAutoFix={onAutoFix}
+          fixing={fixing}
+          photoStatus={photoStatus}
+        />
       </div>
+
+      {scanOk === false && pictured ? <PhotoRescue style={style} /> : null}
+
       <div className="flex min-h-0 w-full flex-1 items-center justify-center">
       <div
         onDragOver={(e) => {
@@ -517,18 +524,7 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
         </button>
       </div>
 
-      <div className="mx-auto w-full max-w-[280px] shrink-0 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
-        <ScannabilityMeter
-          scanOk={scanOk}
-          style={style}
-          hasImage={Boolean(imageUrl) && style.imageMode !== "none"}
-          onAutoFix={onAutoFix}
-          fixing={fixing}
-          photoStatus={photoStatus}
-        />
-      </div>
 
-      {scanOk === false && pictured ? <PhotoRescue style={style} /> : null}
 
       <div className="action-bar z-10 flex w-full max-w-[280px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/20 p-2 sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
         <button
@@ -612,32 +608,6 @@ export function QrStage({ compact = false }: { compact?: boolean }) {
           <Shuffle className="size-4" />
           Surprise me
         </button>
-      </div>
-
-      <div className="hidden w-full max-w-[280px] shrink-0 sm:block sm:max-w-[340px] md:max-w-[400px] lg:max-w-[440px]">
-        <p className="mb-1.5 px-0.5 text-[10px] font-semibold tracking-wide text-fg/80 sm:text-[11px]">
-          Steal a look — summit, peony, dusk
-        </p>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {GALLERY_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              title={p.name}
-              onClick={() => useStudio.getState().applyPreset(p.id)}
-              className={cn(
-                "relative size-12 shrink-0 overflow-hidden rounded-md border sm:size-14",
-                presetId === p.id ? "border-accent ring-1 ring-accent/50" : "border-border",
-              )}
-            >
-              {p.artUrl ? (
-                <img src={p.artUrl} alt={p.name} className="size-full object-cover" />
-              ) : (
-                <span className="block size-full" style={{ background: p.style.bg }} />
-              )}
-            </button>
-          ))}
-        </div>
       </div>
       </div>
 
