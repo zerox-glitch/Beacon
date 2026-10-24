@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  Check,
   FolderOpen,
   ImageIcon,
   LayoutGrid,
@@ -46,12 +47,20 @@ function RotatingHook() {
 }
 
 const STUDIO_TABS = [
-  { id: "content" as const, label: "Create", icon: Type },
-  { id: "image" as const, label: "Photo Art", icon: ImageIcon },
-  { id: "presets" as const, label: "Presets", icon: LayoutGrid },
-  { id: "design" as const, label: "Design", icon: Palette },
-  { id: "library" as const, label: "Library", icon: FolderOpen },
+  { id: "content" as const, label: "Content", shortLabel: "1. Content", hint: "Choose what your QR opens", icon: Type, primary: true },
+  { id: "presets" as const, label: "Templates", shortLabel: "2. Templates", hint: "Pick a ready-made QR style", icon: LayoutGrid, primary: true },
+  { id: "design" as const, label: "Customize", shortLabel: "3. Customize", hint: "Fine-tune colors, shapes, and frames", icon: Palette, primary: true },
+  { id: "image" as const, label: "Photo Art", shortLabel: "Photo Art", hint: "Use a photo inside your QR", icon: ImageIcon, primary: false },
+  { id: "library" as const, label: "My QRs", shortLabel: "My QRs", hint: "Open your saved designs", icon: FolderOpen, primary: false },
 ] as const;
+
+const STUDIO_HELP: Record<(typeof STUDIO_TABS)[number]["id"], { title: string; description: string }> = {
+  content: { title: "What should your QR open?", description: "Start with a link, Wi-Fi, contact, or any other QR type." },
+  presets: { title: "Choose a starting design", description: "Select a template, then customize it as much as you like." },
+  design: { title: "Make it yours", description: "Adjust shapes, colors, frames, and advanced QR settings." },
+  image: { title: "Create with a photo", description: "Explore photo-based QR styles and image controls." },
+  library: { title: "Your saved QR codes", description: "Find and reuse your saved creations." },
+};
 
 export function Studio() {
   const { brand, defaultTemplate } = useCms();
@@ -143,41 +152,70 @@ export function Studio() {
             >
               <span className={cn("h-1.5 w-11 rounded-full", sheetOpen ? "bg-fg/70" : "bg-accent-fg/80")} />
               <span className="text-xs font-semibold tracking-wide">
-                {sheetOpen ? "Close studio" : "Open presets & design"}
+                {sheetOpen ? "Close studio" : "Open Studio tools"}
               </span>
               {sheetOpen ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
             </button>
 
-            <div
+            <nav
+              aria-label="QR Studio tools"
               className={cn(
-                "sticky top-0 z-20 grid grid-cols-5 border-b border-border bg-surface p-1",
-                !sheetOpen && "hidden lg:grid",
+                "sticky top-0 z-20 border-b border-border bg-surface px-2 pb-2 pt-3 sm:px-3",
+                !sheetOpen && "hidden lg:block",
               )}
             >
-              {STUDIO_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const active = mobileTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      setSheetOpen(true);
-                      setMobileTab(tab.id);
-                    }}
-                    className={cn(
-                      "flex h-12 flex-col items-center justify-center gap-1 rounded-xl transition-all",
-                      active
-                        ? "border border-[#22d3ee] bg-[#22d3ee] font-bold text-[#04181d] shadow-[0_0_18px_-4px_rgba(34,211,238,0.55)]"
-                        : "font-medium text-fg/75 hover:bg-surface-hover hover:text-fg",
-                    )}
-                  >
-                    <Icon className="size-4 sm:size-4.5" />
-                    <span className="text-[11px] leading-none">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                Create your QR in 3 steps
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {STUDIO_TABS.filter((tab) => tab.primary).map((tab) => {
+                  const Icon = tab.icon;
+                  const active = mobileTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      aria-current={active ? "step" : undefined}
+                      title={tab.hint}
+                      onClick={() => { setSheetOpen(true); setMobileTab(tab.id); }}
+                      className={cn(
+                        "flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-1.5 py-2 text-[11px] font-semibold transition-colors sm:text-xs",
+                        active
+                          ? "border-[#22d3ee] bg-[#22d3ee] text-[#04181d]"
+                          : "border-border bg-elevated text-fg/85 hover:border-border-strong hover:bg-surface-hover",
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span className="truncate">{tab.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex gap-2">
+                {STUDIO_TABS.filter((tab) => !tab.primary).map((tab) => {
+                  const Icon = tab.icon;
+                  const active = mobileTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      title={tab.hint}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => { setSheetOpen(true); setMobileTab(tab.id); }}
+                      className={cn(
+                        "flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border px-2 text-xs font-medium transition-colors",
+                        active
+                          ? "border-accent bg-accent/15 text-fg"
+                          : "border-border bg-transparent text-muted hover:bg-surface-hover hover:text-fg",
+                      )}
+                    >
+                      <Icon className="size-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
 
             <div
               className={cn(
@@ -185,11 +223,11 @@ export function Studio() {
                 !sheetOpen && "hidden lg:block",
               )}
             >
-              {mobileTab === "content" && <ContentPanel />}
+              <div className="mb-4 rounded-xl border border-border bg-surface/70 p-3">\n                <h2 className="text-sm font-semibold text-fg">{STUDIO_HELP[mobileTab].title}</h2>\n                <p className="mt-1 text-xs leading-relaxed text-muted">{STUDIO_HELP[mobileTab].description}</p>\n              </div>\n              {mobileTab === "content" && <ContentPanel />}
               {mobileTab === "presets" && <PresetGallery />}
               {mobileTab === "design" && <DesignPanel />}
               {mobileTab === "image" && <ImagePanel />}
-              {mobileTab === "library" && <LibraryPanel />}
+              {mobileTab === "library" && <LibraryPanel />}\n              {STUDIO_TABS.some((t) => t.id === mobileTab && t.primary) && (\n                <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">\n                  <span className="flex items-center gap-1 text-[11px] text-muted"><Check className="size-3.5" /> Changes appear in the live preview</span>\n                  {mobileTab !== "design" && (\n                    <button type="button" onClick={() => setMobileTab(mobileTab === "content" ? "presets" : "design")} className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-fg">\n                      Next: {mobileTab === "content" ? "Templates" : "Customize"} →\n                    </button>\n                  )}\n                </div>\n              )}
             </div>
           </aside>
         </div>
