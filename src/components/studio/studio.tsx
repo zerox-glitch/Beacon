@@ -223,11 +223,25 @@ export function Studio() {
                 !sheetOpen && "hidden lg:block",
               )}
             >
-              <div className="mb-4 rounded-xl border border-border bg-surface/70 p-3">\n                <h2 className="text-sm font-semibold text-fg">{STUDIO_HELP[mobileTab].title}</h2>\n                <p className="mt-1 text-xs leading-relaxed text-muted">{STUDIO_HELP[mobileTab].description}</p>\n              </div>\n              {mobileTab === "content" && <ContentPanel />}
+              <div className="mb-4 rounded-xl border border-border bg-surface/70 p-3">
+                <h2 className="text-sm font-semibold text-fg">{STUDIO_HELP[mobileTab].title}</h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{STUDIO_HELP[mobileTab].description}</p>
+              </div>
+              {mobileTab === "content" && <ContentPanel />}
               {mobileTab === "presets" && <PresetGallery />}
               {mobileTab === "design" && <DesignPanel />}
               {mobileTab === "image" && <ImagePanel />}
-              {mobileTab === "library" && <LibraryPanel />}\n              {STUDIO_TABS.some((t) => t.id === mobileTab && t.primary) && (\n                <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">\n                  <span className="flex items-center gap-1 text-[11px] text-muted"><Check className="size-3.5" /> Changes appear in the live preview</span>\n                  {mobileTab !== "design" && (\n                    <button type="button" onClick={() => setMobileTab(mobileTab === "content" ? "presets" : "design")} className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-fg">\n                      Next: {mobileTab === "content" ? "Templates" : "Customize"} →\n                    </button>\n                  )}\n                </div>\n              )}
+              {mobileTab === "library" && <LibraryPanel />}
+              {STUDIO_TABS.some((t) => t.id === mobileTab && t.primary) && (
+                <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
+                  <span className="flex items-center gap-1 text-[11px] text-muted"><Check className="size-3.5" /> Changes appear in the live preview</span>
+                  {mobileTab !== "design" && (
+                    <button type="button" onClick={() => setMobileTab(mobileTab === "content" ? "presets" : "design")} className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-fg">
+                      Next: {mobileTab === "content" ? "Templates" : "Customize"} →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
         </div>
