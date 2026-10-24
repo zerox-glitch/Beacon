@@ -1,5 +1,6 @@
 import { DEFAULT_STYLE, type ModuleShape, type EyeShape, type Preset, type QrStyle } from "./types";
 import type { FrameId } from "./frames";
+import { APP_IMPORTED_PRESETS } from "./app-imported-presets";
 import { ART_DIRECTION_CATEGORY, TEMPLATE_CATEGORY, artDirectionPresets } from "./art-directions";
 
 interface Palette {
@@ -2736,7 +2737,7 @@ const FRAME_PRESETS: Preset[] = [
   }),
 ];
 
-export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS, ...SALON_PRESETS, ...THEMES_PRESETS, ...FRAME_PRESETS];
+export const PRESETS: Preset[] = [...STYLE_PRESETS, ...buildPresets(), ...PHOTO_PRESETS, ...ART_PRESETS, ...SCENE_PRESETS, ...SALON_PRESETS, ...THEMES_PRESETS, ...FRAME_PRESETS, ...APP_IMPORTED_PRESETS];
 
 export const GALLERY_PRESETS: Preset[] = PRESETS.filter((p) => Boolean(p.artUrl));
 
